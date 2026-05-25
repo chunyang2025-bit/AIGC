@@ -1,0 +1,181 @@
+"use client";
+
+import { Suspense, useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { BriefcaseBusiness, CheckCircle2, Headphones, HelpCircle, LockKeyhole, Phone, ShieldCheck, Sparkles, UserCog } from "lucide-react";
+import { createAuthSession, roleProfilePath } from "@/lib/auth";
+
+const roles = [
+  {
+    key: "dispatch",
+    href: "/buyer/profile",
+    icon: BriefcaseBusiness,
+    title: "我要派单",
+    subtitle: "机构/品牌/个人/组织",
+    button: "登录/注册并完善主体主页",
+    helper: "先完善基本介绍、资质和联系方式，再发布AIGC内容需求。",
+    points: ["主体基本情况展示", "上传对应资质材料", "Agent 整理历史需求"]
+  },
+  {
+    key: "accept",
+    href: "/provider/profile",
+    icon: UserCog,
+    title: "我要接单",
+    subtitle: "创作者/工作室/接单服务商",
+    button: "登录/注册并完善展示页",
+    helper: "先完善接单展示页，再进入需求大厅浏览公开需求。",
+    points: ["填写服务定位与案例方向", "进入创作者信息大厅", "再浏览公开需求并表达意向"]
+  },
+  {
+    key: "admin",
+    href: "/admin",
+    icon: ShieldCheck,
+    title: "平台运营",
+    subtitle: "平台工作人员/审核人员",
+    button: "登录并进入运营后台",
+    helper: "仅平台内部人员使用，查看审核、用户、需求、线索和月活数据。",
+    points: ["主体资质审核", "需求与线索管理", "月活和 Agent 指标看板"]
+  }
+];
+
+function LoginContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestedRole = searchParams.get("role");
+  const initialRole = roles.some((role) => role.key === requestedRole) ? requestedRole ?? "accept" : "accept";
+  const [activeKey, setActiveKey] = useState(initialRole);
+  const [phone, setPhone] = useState("138 0000 0000");
+  const [email, setEmail] = useState("demo@linggong.local");
+  const activeRole = roles.find((role) => role.key === activeKey) ?? roles[0];
+  const ActiveIcon = activeRole.icon;
+  const activeRoleValue = activeRole.key === "dispatch" ? "buyer" : activeRole.key === "accept" ? "creator" : "admin";
+
+  function login() {
+    const session = createAuthSession({
+      role: activeRoleValue,
+      phone,
+      email
+    });
+    router.push(roleProfilePath(session.role));
+  }
+
+  return (
+    <main className="dispatchLoginShell">
+      <header className="dispatchLoginTop">
+        <Link className="brand" href="/">
+          <span className="brandMark">
+            <Sparkles size={18} />
+          </span>
+          <span>灵工智创平台</span>
+        </Link>
+        <nav>
+          <Link href="/projects">
+            <BriefcaseBusiness size={18} /> 派单大厅
+          </Link>
+          <Link href="/">
+            <HelpCircle size={18} /> 帮助中心
+          </Link>
+          <Link href="/">
+            <Headphones size={18} /> 联系客服
+          </Link>
+        </nav>
+      </header>
+
+      <section className="dispatchLoginMain">
+        <div className="dispatchPoster" aria-label="平台介绍">
+          <div className="posterBadge">AI内容生产</div>
+          <div className="posterCard">
+            <span>公开需求</span>
+            <strong>在线派单</strong>
+            <em>创作者展示 · Agent撮合 · 线索留痕</em>
+          </div>
+          <div className="posterBubble one">Brief Agent</div>
+          <div className="posterBubble two">Matching Agent</div>
+          <div className="posterBubble three">线索/月活统计</div>
+        </div>
+
+        <aside className="dispatchLoginPanel">
+          <Link className="qrLoginHint" href="/login">
+            扫码登录
+          </Link>
+
+          <div className="dispatchTabs threeTabs" role="tablist" aria-label="登录身份">
+            {roles.map((role) => (
+              <button
+                className={role.key === activeKey ? "dispatchTab active" : "dispatchTab"}
+                key={role.key}
+                onClick={() => setActiveKey(role.key)}
+                type="button"
+              >
+                {role.title}
+              </button>
+            ))}
+          </div>
+
+          <div className="selectedRole compact">
+            <div className="roleIcon">
+              <ActiveIcon size={22} />
+            </div>
+            <div>
+              <strong>{activeRole.title}</strong>
+              <span>{activeRole.subtitle}</span>
+            </div>
+          </div>
+
+          <div className="loginForm">
+            <label>
+              手机号
+              <div className="loginInput">
+                <Phone size={16} />
+                <input placeholder="请输入手机号" value={phone} onChange={(event) => setPhone(event.target.value)} />
+              </div>
+            </label>
+            <label>
+              邮箱
+              <div className="loginInput">
+                <Sparkles size={16} />
+                <input placeholder="请输入邮箱" value={email} onChange={(event) => setEmail(event.target.value)} />
+              </div>
+            </label>
+            <label>
+              验证码
+              <div className="loginInput codeInput">
+                <LockKeyhole size={16} />
+                <input placeholder="请输入验证码" defaultValue="123456" />
+                <button type="button">获取验证码</button>
+              </div>
+            </label>
+          </div>
+
+          <button className="btn primary loginSubmit orange" onClick={login} type="button">
+            {activeRole.button}
+          </button>
+
+          <label className="agreementCheck">
+            <input type="checkbox" defaultChecked />
+            <span>已阅读并同意《平台使用协议》《隐私政策》</span>
+          </label>
+
+          <div className="dispatchRoleTips">
+            <p>{activeRole.helper}</p>
+            {activeRole.points.map((point) => (
+              <div key={point}>
+                <CheckCircle2 size={15} />
+                <span>{point}</span>
+              </div>
+            ))}
+          </div>
+        </aside>
+      </section>
+    </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<main className="main"><div className="notice">正在加载登录入口...</div></main>}>
+      <LoginContent />
+    </Suspense>
+  );
+}
