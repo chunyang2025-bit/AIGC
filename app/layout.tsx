@@ -35,14 +35,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <span>灵工智创平台</span>
             </Link>
             <nav className="navLinks" aria-label="Primary navigation">
-              <Link href="/projects">
-                <BriefcaseBusiness size={16} /> 派单大厅
-              </Link>
               <Link href="/creators">
-                <UsersRound size={16} /> 创作者大厅
+                <Search size={16} /> 创作者
               </Link>
-              <Link href="/login">
-                <Search size={16} /> 登录入口
+              <Link href="/projects">
+                <BriefcaseBusiness size={16} /> 公开需求
+              </Link>
+              <Link href="/admin">
+                <UsersRound size={16} /> 运营后台
               </Link>
             </nav>
             <div className="navActions">

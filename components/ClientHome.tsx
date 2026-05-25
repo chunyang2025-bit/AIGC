@@ -28,7 +28,7 @@ export function ClientHome() {
           </span>
           <div>
             <h1>灵工智创平台</h1>
-            <p>用需求发布 Agent 拆解 Brief，用匹配 Agent 推荐创作者，平台只促成双方建立联系。</p>
+            <p>用需求发布 Agent 拆解 Brief，用匹配 Agent 推荐创作者，再通过平台完成协作交付。</p>
           </div>
           <div className="toolbarGroup">
             <Link className="btn primary" href="/projects">
@@ -105,11 +105,11 @@ export function ClientHome() {
       <section className="section">
         <div className="sectionHeader">
           <div>
-            <h2>派单信息</h2>
-            <p>公开展示部分派单需求，登录后可查看完整需求和派单方主页。</p>
+            <h2>公开需求</h2>
+            <p>像招聘平台一样，创作者未登录也能先浏览企业发布的内容需求。</p>
           </div>
           <Link className="btn" href="/projects">
-            查看所有 <ArrowRight size={16} />
+            查看全部需求 <ArrowRight size={16} />
           </Link>
         </div>
         <div className="jobList">
@@ -127,8 +127,8 @@ export function ClientHome() {
       <section className="section">
         <div className="sectionHeader">
           <div>
-            <h2>接单信息</h2>
-            <p>公开展示部分接单方能力信息，登录后可查看完整装修页和代表作。</p>
+            <h2>精选创作者</h2>
+            <p>把AIGC能力做成可比较、可报价、可交付的标准化服务。</p>
           </div>
           <Link className="btn" href="/creators">
             查看所有 <ArrowRight size={16} />
