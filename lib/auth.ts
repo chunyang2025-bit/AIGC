@@ -123,12 +123,14 @@ function requestAuthUser(path: string, input: { role: UserRole; phone: string; e
   return parsed.ok ? parsed.data ?? null : null;
 }
 
-export function loginOrRegister(input: { role: UserRole; phone: string; email: string; name?: string }) {
-  const loginUser = requestAuthUser("/api/auth/login", input);
-  const user = loginUser ?? requestAuthUser("/api/auth/register", input);
-
+function saveUserSession(user: {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+}, input: { phone: string }) {
   if (!user) {
-    throw new Error("登录或注册失败，请检查手机号、邮箱和网络状态。");
+    throw new Error("账号处理失败，请检查手机号、邮箱和网络状态。");
   }
 
   const session: AuthSession = {
@@ -142,6 +144,24 @@ export function loginOrRegister(input: { role: UserRole; phone: string; email: s
   };
   saveAuthSession(session);
   return session;
+}
+
+export function registerAccount(input: { role: UserRole; phone: string; email: string; name?: string }) {
+  const user = requestAuthUser("/api/auth/register", input);
+  if (!user) {
+    throw new Error("注册失败，请检查手机号、邮箱和网络状态。");
+  }
+
+  return saveUserSession(user, input);
+}
+
+export function loginAccount(input: { role: UserRole; phone: string; email: string; name?: string }) {
+  const user = requestAuthUser("/api/auth/login", input);
+  if (!user) {
+    throw new Error("未找到账号，请先注册。");
+  }
+
+  return saveUserSession(user, input);
 }
 
 export function setAuthStatus(status: AccountStatus) {

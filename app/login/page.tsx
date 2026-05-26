@@ -4,7 +4,7 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BriefcaseBusiness, CheckCircle2, Headphones, HelpCircle, LockKeyhole, Phone, ShieldCheck, Sparkles, UserCog } from "lucide-react";
-import { loginOrRegister, roleProfilePath } from "@/lib/auth";
+import { loginAccount, registerAccount, roleProfilePath } from "@/lib/auth";
 
 const roles = [
   {
@@ -53,16 +53,38 @@ function LoginContent() {
   const ActiveIcon = activeRole.icon;
   const activeRoleValue = activeRole.key === "dispatch" ? "buyer" : activeRole.key === "accept" ? "creator" : "admin";
 
-  function login() {
+  function validateInput() {
     setStatusText("");
     if (!phone.trim() || !email.trim()) {
       setStatusText("请先填写手机号和邮箱。");
-      return;
+      return false;
     }
+    return true;
+  }
 
+  function register() {
+    if (!validateInput()) return;
     try {
       setIsSubmitting(true);
-      const session = loginOrRegister({
+      registerAccount({
+        role: activeRoleValue,
+        phone: phone.trim(),
+        email: email.trim(),
+        name: email.trim()
+      });
+      setStatusText("注册成功，请点击登录进入对应工作台。");
+    } catch (error) {
+      setStatusText(error instanceof Error ? error.message : "注册失败，请稍后再试。");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  function login() {
+    if (!validateInput()) return;
+    try {
+      setIsSubmitting(true);
+      const session = loginAccount({
         role: activeRoleValue,
         phone: phone.trim(),
         email: email.trim(),
@@ -165,9 +187,14 @@ function LoginContent() {
             </label>
           </div>
 
-          <button className="btn primary loginSubmit orange" onClick={login} disabled={isSubmitting} type="button">
-            {isSubmitting ? "正在登录..." : activeRole.button}
-          </button>
+          <div className="toolbarGroup">
+            <button className="btn loginSubmit" onClick={register} disabled={isSubmitting} type="button">
+              {isSubmitting ? "处理中..." : "先注册"}
+            </button>
+            <button className="btn primary loginSubmit orange" onClick={login} disabled={isSubmitting} type="button">
+              登录进入
+            </button>
+          </div>
 
           {statusText ? <div className="notice compactNotice">{statusText}</div> : null}
 
