@@ -5,6 +5,8 @@ import { recommendCreators } from "./matching";
 import { ActivityEvent, BuyerProfile, MarketplaceData, Order, Project, ProjectCategory, ProjectMatch, VerificationType } from "./types";
 
 const STORAGE_KEY = "linggong-zhichuang-demo-v2";
+const USE_API_KEY = "linggong-zhichuang-use-api";
+const API_BASE = "";
 
 function cloneData(data: MarketplaceData): MarketplaceData {
   return JSON.parse(JSON.stringify(data)) as MarketplaceData;
@@ -46,9 +48,56 @@ function normalizeData(data: MarketplaceData): MarketplaceData {
   };
 }
 
+function shouldUseApi() {
+  if (typeof window === "undefined") return false;
+
+  const current = window.localStorage.getItem(USE_API_KEY);
+  if (current === null) {
+    window.localStorage.setItem(USE_API_KEY, "true");
+    return true;
+  }
+
+  return current !== "false";
+}
+
+function requestJson<T>(path: string, init?: RequestInit): T | null {
+  if (typeof window === "undefined" || !shouldUseApi()) return null;
+
+  const xhr = new XMLHttpRequest();
+  xhr.open(init?.method ?? "GET", `${API_BASE}${path}`, false);
+  xhr.setRequestHeader("Accept", "application/json");
+
+  const body = init?.body;
+  if (body) {
+    xhr.setRequestHeader("Content-Type", "application/json");
+  }
+
+  try {
+    xhr.send(typeof body === "string" ? body : undefined);
+  } catch {
+    return null;
+  }
+
+  if (xhr.status < 200 || xhr.status >= 300) return null;
+
+  try {
+    const parsed = JSON.parse(xhr.responseText) as { ok: boolean; data?: T };
+    return parsed.ok && parsed.data !== undefined ? parsed.data : null;
+  } catch {
+    return null;
+  }
+}
+
 export function loadMarketplaceData(): MarketplaceData {
   if (typeof window === "undefined") {
     return normalizeData(cloneData(demoData));
+  }
+
+  const remote = requestJson<MarketplaceData>("/api/state");
+  if (remote) {
+    const normalized = normalizeData(remote);
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+    return normalized;
   }
 
   const cached = window.localStorage.getItem(STORAGE_KEY);
@@ -73,6 +122,15 @@ export function saveMarketplaceData(data: MarketplaceData) {
   }
 }
 
+function syncFromApi() {
+  const remote = requestJson<MarketplaceData>("/api/state");
+  if (!remote) return null;
+
+  const normalized = normalizeData(remote);
+  saveMarketplaceData(normalized);
+  return normalized;
+}
+
 export function createProject(input: {
   title: string;
   description: string;
@@ -85,6 +143,19 @@ export function createProject(input: {
   contactPhone?: string;
   agentBrief?: Project["agentBrief"];
 }) {
+  const remote = requestJson<{ project: Project; matches: ProjectMatch[] }>("/api/projects", {
+    method: "POST",
+    body: JSON.stringify({
+      buyerId: "u-buyer-1",
+      ...input
+    })
+  });
+
+  if (remote) {
+    syncFromApi();
+    return remote;
+  }
+
   const data = loadMarketplaceData();
   const project: Project = {
     id: `p-${Date.now()}`,
@@ -123,6 +194,16 @@ export function createProject(input: {
 }
 
 export function inviteCreator(projectId: string, creatorId: string) {
+  const remote = requestJson<Order>(`/api/projects/${projectId}/invite`, {
+    method: "POST",
+    body: JSON.stringify({ creatorId })
+  });
+
+  if (remote) {
+    syncFromApi();
+    return remote;
+  }
+
   const data = loadMarketplaceData();
   const project = data.projects.find((item) => item.id === projectId);
   const creator = data.creators.find((item) => item.id === creatorId);
@@ -182,6 +263,19 @@ export function expressInterestInProject(
     intro: string;
   }
 ) {
+  const remote = requestJson<Order>(`/api/projects/${projectId}/interest`, {
+    method: "POST",
+    body: JSON.stringify({
+      creatorId,
+      intro: input.intro
+    })
+  });
+
+  if (remote) {
+    syncFromApi();
+    return remote;
+  }
+
   const data = loadMarketplaceData();
   const project = data.projects.find((item) => item.id === projectId);
   const creator = data.creators.find((item) => item.id === creatorId);
@@ -250,6 +344,16 @@ export function expressInterestInProject(
 }
 
 export function updateOrderStatus(orderId: string, status: Order["status"]) {
+  const remote = requestJson<Order>(`/api/orders/${orderId}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status })
+  });
+
+  if (remote) {
+    syncFromApi();
+    return;
+  }
+
   const data = loadMarketplaceData();
   const order = data.orders.find((item) => item.id === orderId);
   const creator = order ? data.creators.find((item) => item.id === order.creatorId) : null;
@@ -276,6 +380,22 @@ export function updateOrderStatus(orderId: string, status: Order["status"]) {
 
 export function approveCurrentAccount(role: "buyer" | "creator") {
   const data = loadMarketplaceData();
+  const target =
+    role === "buyer"
+      ? data.buyerProfiles?.find((profile) => profile.userId === "u-buyer-1" || profile.id === "bp-self")
+      : data.creators.find((creator) => creator.id === "c-self" || creator.userId === "u-creator-self");
+  const remote = target
+    ? requestJson(`/api/admin/verify`, {
+        method: "PATCH",
+        body: JSON.stringify({ subjectType: role, id: target.id, verified: true })
+      })
+    : null;
+
+  if (remote) {
+    syncFromApi();
+    return;
+  }
+
   const next: MarketplaceData =
     role === "buyer"
       ? {
@@ -310,6 +430,20 @@ export function upsertCurrentBuyerProfile(input: {
   businessLicenseFile: string;
   qualificationFiles: string[];
 }) {
+  const remote = requestJson<BuyerProfile>("/api/buyers", {
+    method: "POST",
+    body: JSON.stringify({
+      id: "bp-self",
+      userId: "u-buyer-1",
+      ...input
+    })
+  });
+
+  if (remote) {
+    syncFromApi();
+    return remote;
+  }
+
   const data = loadMarketplaceData();
   const now = new Date().toISOString();
   const userId = "u-buyer-1";
@@ -380,6 +514,21 @@ export function upsertCurrentCreatorProfile(input: {
   contactEmail: string;
   contactPhone: string;
 }) {
+  const remote = requestJson<BuyerProfile>("/api/creators", {
+    method: "POST",
+    body: JSON.stringify({
+      id: "c-self",
+      userId: "u-creator-self",
+      verificationType: input.identityType,
+      ...input
+    })
+  });
+
+  if (remote) {
+    syncFromApi();
+    return remote;
+  }
+
   const data = loadMarketplaceData();
   const now = new Date().toISOString();
   const userId = "u-creator-self";
@@ -450,6 +599,11 @@ export function upsertCurrentCreatorProfile(input: {
 }
 
 export function getProjectMatches(data: MarketplaceData, projectId: string): ProjectMatch[] {
+  const remote = requestJson<{ matches: ProjectMatch[] }>(`/api/projects/${projectId}/matches`);
+  if (remote) {
+    return remote.matches;
+  }
+
   const project = data.projects.find((item) => item.id === projectId);
   if (!project) return [];
 
@@ -462,5 +616,14 @@ export function getProjectMatches(data: MarketplaceData, projectId: string): Pro
 }
 
 export function resetDemoData() {
+  const remote = requestJson<MarketplaceData>("/api/reset", {
+    method: "POST"
+  });
+
+  if (remote) {
+    saveMarketplaceData(remote);
+    return;
+  }
+
   saveMarketplaceData(cloneData(demoData));
 }
