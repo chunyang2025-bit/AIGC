@@ -4,7 +4,7 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BriefcaseBusiness, CheckCircle2, Headphones, HelpCircle, LockKeyhole, Phone, ShieldCheck, Sparkles, UserCog } from "lucide-react";
-import { createAuthSession, roleProfilePath } from "@/lib/auth";
+import { loginOrRegister, roleProfilePath } from "@/lib/auth";
 
 const roles = [
   {
@@ -47,17 +47,34 @@ function LoginContent() {
   const [activeKey, setActiveKey] = useState(initialRole);
   const [phone, setPhone] = useState("138 0000 0000");
   const [email, setEmail] = useState("demo@linggong.local");
+  const [statusText, setStatusText] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const activeRole = roles.find((role) => role.key === activeKey) ?? roles[0];
   const ActiveIcon = activeRole.icon;
   const activeRoleValue = activeRole.key === "dispatch" ? "buyer" : activeRole.key === "accept" ? "creator" : "admin";
 
   function login() {
-    const session = createAuthSession({
-      role: activeRoleValue,
-      phone,
-      email
-    });
-    router.push(roleProfilePath(session.role));
+    setStatusText("");
+    if (!phone.trim() || !email.trim()) {
+      setStatusText("请先填写手机号和邮箱。");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const session = loginOrRegister({
+        role: activeRoleValue,
+        phone: phone.trim(),
+        email: email.trim(),
+        name: email.trim()
+      });
+      setStatusText("登录成功，正在进入对应工作台。");
+      router.push(roleProfilePath(session.role));
+    } catch (error) {
+      setStatusText(error instanceof Error ? error.message : "登录失败，请稍后再试。");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -148,9 +165,11 @@ function LoginContent() {
             </label>
           </div>
 
-          <button className="btn primary loginSubmit orange" onClick={login} type="button">
-            {activeRole.button}
+          <button className="btn primary loginSubmit orange" onClick={login} disabled={isSubmitting} type="button">
+            {isSubmitting ? "正在登录..." : activeRole.button}
           </button>
+
+          {statusText ? <div className="notice compactNotice">{statusText}</div> : null}
 
           <label className="agreementCheck">
             <input type="checkbox" defaultChecked />

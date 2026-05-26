@@ -6,6 +6,7 @@ export type AccountStatus = "registered" | "pending_review" | "approved";
 
 export type AuthSession = {
   userId: string;
+  name?: string;
   role: UserRole;
   phone: string;
   email: string;
@@ -43,6 +44,59 @@ export function createAuthSession(input: { role: UserRole; phone: string; email:
     phone: input.phone,
     email: input.email,
     status: input.role === "admin" ? "approved" : "registered",
+    createdAt: new Date().toISOString()
+  };
+  saveAuthSession(session);
+  return session;
+}
+
+function requestAuthUser(path: string, input: { role: UserRole; phone: string; email: string; name?: string }) {
+  const xhr = new XMLHttpRequest();
+  xhr.open("POST", path, false);
+  xhr.setRequestHeader("Accept", "application/json");
+  xhr.setRequestHeader("Content-Type", "application/json");
+  xhr.send(
+    JSON.stringify({
+      role: input.role,
+      phone: input.phone,
+      email: input.email,
+      name: input.name || input.email || input.phone || "新用户"
+    })
+  );
+
+  if (xhr.status < 200 || xhr.status >= 300) {
+    return null;
+  }
+
+  const parsed = JSON.parse(xhr.responseText) as {
+    ok: boolean;
+    data?: {
+      id: string;
+      name: string;
+      email: string;
+      role: UserRole;
+      createdAt: string;
+    };
+  };
+
+  return parsed.ok ? parsed.data ?? null : null;
+}
+
+export function loginOrRegister(input: { role: UserRole; phone: string; email: string; name?: string }) {
+  const loginUser = requestAuthUser("/api/auth/login", input);
+  const user = loginUser ?? requestAuthUser("/api/auth/register", input);
+
+  if (!user) {
+    throw new Error("登录或注册失败，请检查手机号、邮箱和网络状态。");
+  }
+
+  const session: AuthSession = {
+    userId: user.id,
+    name: user.name,
+    role: user.role,
+    phone: input.phone,
+    email: user.email,
+    status: user.role === "admin" ? "approved" : "registered",
     createdAt: new Date().toISOString()
   };
   saveAuthSession(session);
