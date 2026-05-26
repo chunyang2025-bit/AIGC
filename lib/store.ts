@@ -3,6 +3,7 @@
 import { demoData } from "./demo-data";
 import { recommendCreators } from "./matching";
 import { ActivityEvent, BuyerProfile, MarketplaceData, Order, Project, ProjectCategory, ProjectMatch, VerificationType } from "./types";
+import { readAuthSession, saveAuthSession } from "./auth";
 
 const STORAGE_KEY = "linggong-zhichuang-demo-v2";
 const USE_API_KEY = "linggong-zhichuang-use-api";
@@ -143,10 +144,12 @@ export function createProject(input: {
   contactPhone?: string;
   agentBrief?: Project["agentBrief"];
 }) {
+  const session = readAuthSession();
+  const buyerId = session?.role === "buyer" ? session.userId : "u-buyer-1";
   const remote = requestJson<{ project: Project; matches: ProjectMatch[] }>("/api/projects", {
     method: "POST",
     body: JSON.stringify({
-      buyerId: "u-buyer-1",
+      buyerId,
       ...input
     })
   });
@@ -159,7 +162,7 @@ export function createProject(input: {
   const data = loadMarketplaceData();
   const project: Project = {
     id: `p-${Date.now()}`,
-    buyerId: "u-buyer-1",
+    buyerId,
     title: input.title,
     description: input.description,
     category: input.category,
@@ -176,7 +179,7 @@ export function createProject(input: {
   const matches = recommendCreators(project, data.creators, 10);
   const activityEvent: ActivityEvent = {
     id: `a-${Date.now()}`,
-    userId: "u-buyer-1",
+    userId: buyerId,
     role: "buyer",
     eventType: "post_project",
     targetType: "project",
@@ -380,10 +383,11 @@ export function updateOrderStatus(orderId: string, status: Order["status"]) {
 
 export function approveCurrentAccount(role: "buyer" | "creator") {
   const data = loadMarketplaceData();
+  const session = readAuthSession();
   const target =
     role === "buyer"
-      ? data.buyerProfiles?.find((profile) => profile.userId === "u-buyer-1" || profile.id === "bp-self")
-      : data.creators.find((creator) => creator.id === "c-self" || creator.userId === "u-creator-self");
+      ? data.buyerProfiles?.find((profile) => profile.userId === session?.userId || profile.id === "bp-self")
+      : data.creators.find((creator) => creator.userId === session?.userId || creator.id === "c-self");
   const remote = target
     ? requestJson(`/api/admin/verify`, {
         method: "PATCH",
@@ -430,24 +434,26 @@ export function upsertCurrentBuyerProfile(input: {
   businessLicenseFile: string;
   qualificationFiles: string[];
 }) {
+  const session = readAuthSession();
+  const userId = session?.role === "buyer" ? session.userId : "u-buyer-1";
+  const profileId = `bp-${userId}`;
   const remote = requestJson<BuyerProfile>("/api/buyers", {
     method: "POST",
     body: JSON.stringify({
-      id: "bp-self",
-      userId: "u-buyer-1",
+      id: profileId,
+      userId,
       ...input
     })
   });
 
   if (remote) {
+    if (session) saveAuthSession({ ...session, status: "pending_review" });
     syncFromApi();
     return remote;
   }
 
   const data = loadMarketplaceData();
   const now = new Date().toISOString();
-  const userId = "u-buyer-1";
-  const profileId = "bp-self";
   const profile: BuyerProfile = {
     id: profileId,
     userId,
@@ -487,6 +493,7 @@ export function upsertCurrentBuyerProfile(input: {
     activityEvents: [activityEvent, ...data.activityEvents]
   };
   saveMarketplaceData(next);
+  if (session) saveAuthSession({ ...session, status: "pending_review" });
   return profile;
 }
 
@@ -514,25 +521,27 @@ export function upsertCurrentCreatorProfile(input: {
   contactEmail: string;
   contactPhone: string;
 }) {
+  const session = readAuthSession();
+  const userId = session?.role === "creator" ? session.userId : "u-creator-self";
+  const profileId = `c-${userId}`;
   const remote = requestJson<BuyerProfile>("/api/creators", {
     method: "POST",
     body: JSON.stringify({
-      id: "c-self",
-      userId: "u-creator-self",
+      id: profileId,
+      userId,
       verificationType: input.identityType,
       ...input
     })
   });
 
   if (remote) {
+    if (session) saveAuthSession({ ...session, status: "pending_review" });
     syncFromApi();
     return remote;
   }
 
   const data = loadMarketplaceData();
   const now = new Date().toISOString();
-  const userId = "u-creator-self";
-  const profileId = "c-self";
   const profile = {
     id: profileId,
     userId,
@@ -595,7 +604,38 @@ export function upsertCurrentCreatorProfile(input: {
     activityEvents: [activityEvent, ...data.activityEvents]
   };
   saveMarketplaceData(next);
+  if (session) saveAuthSession({ ...session, status: "pending_review" });
   return profile;
+}
+
+export function verifySubject(subjectType: "buyer" | "creator", id: string, verified = true) {
+  const remote = requestJson(`/api/admin/verify`, {
+    method: "PATCH",
+    body: JSON.stringify({ subjectType, id, verified })
+  });
+
+  if (remote) {
+    syncFromApi();
+    const session = readAuthSession();
+    if (session) saveAuthSession({ ...session, status: "approved" });
+    return true;
+  }
+
+  return false;
+}
+
+export function createOrderMessage(orderId: string, input: { senderId: string; body: string; attachmentUrl?: string }) {
+  const remote = requestJson(`/api/orders/${orderId}/messages`, {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+
+  if (remote) {
+    syncFromApi();
+    return true;
+  }
+
+  return false;
 }
 
 export function getProjectMatches(data: MarketplaceData, projectId: string): ProjectMatch[] {

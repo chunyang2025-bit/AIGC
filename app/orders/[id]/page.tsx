@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { notFound, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, CheckCircle2, CircleDotDashed, MessageSquare, PhoneCall, RotateCcw } from "lucide-react";
 import { compactDate, money, orderStatusLabel } from "@/lib/format";
-import { loadMarketplaceData, updateOrderStatus } from "@/lib/store";
+import { createOrderMessage, loadMarketplaceData, updateOrderStatus } from "@/lib/store";
+import { readAuthSession } from "@/lib/auth";
 import { OrderStatus } from "@/lib/types";
 
 const statusActions: Array<{ label: string; status: OrderStatus; icon: React.ReactNode }> = [
@@ -15,7 +17,9 @@ const statusActions: Array<{ label: string; status: OrderStatus; icon: React.Rea
 
 export default function OrderPage({ params }: { params: { id: string } }) {
   const router = useRouter();
+  const session = readAuthSession();
   const data = loadMarketplaceData();
+  const [messageBody, setMessageBody] = useState("");
   const order = data.orders.find((item) => item.id === params.id);
 
   if (!order) {
@@ -25,6 +29,7 @@ export default function OrderPage({ params }: { params: { id: string } }) {
   const project = data.projects.find((item) => item.id === order.projectId);
   const creator = data.creators.find((item) => item.id === order.creatorId);
   const messages = data.messages.filter((message) => message.orderId === order.id).reverse();
+  const senderId = session?.role === "creator" ? creator?.userId ?? session.userId : order.buyerId;
 
   return (
     <main className="main">
@@ -67,8 +72,26 @@ export default function OrderPage({ params }: { params: { id: string } }) {
             ) : null}
           </div>
           <div className="panelTop">
-            <input aria-label="message" placeholder="记录沟通备注或下一步安排" style={{ flex: 1, minHeight: 40, border: "1px solid var(--line)", borderRadius: 8, padding: "0 12px" }} />
-            <button className="btn primary">
+            <input
+              aria-label="message"
+              placeholder="记录沟通备注或下一步安排"
+              style={{ flex: 1, minHeight: 40, border: "1px solid var(--line)", borderRadius: 8, padding: "0 12px" }}
+              value={messageBody}
+              onChange={(event) => setMessageBody(event.target.value)}
+            />
+            <button
+              className="btn primary"
+              onClick={() => {
+                if (!messageBody.trim()) return;
+                createOrderMessage(order.id, {
+                  senderId,
+                  body: messageBody.trim()
+                });
+                setMessageBody("");
+                router.refresh();
+              }}
+              type="button"
+            >
               <MessageSquare size={16} /> 记录
             </button>
           </div>

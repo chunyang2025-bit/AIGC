@@ -50,6 +50,47 @@ export function createAuthSession(input: { role: UserRole; phone: string; email:
   return session;
 }
 
+function requestState() {
+  const xhr = new XMLHttpRequest();
+  xhr.open("GET", "/api/state", false);
+  xhr.setRequestHeader("Accept", "application/json");
+
+  try {
+    xhr.send();
+  } catch {
+    return null;
+  }
+
+  if (xhr.status < 200 || xhr.status >= 300) return null;
+
+  try {
+    return JSON.parse(xhr.responseText) as {
+      ok: boolean;
+      data?: {
+        buyerProfiles?: Array<{ userId: string; verified: boolean }>;
+        creators: Array<{ userId: string; verified: boolean }>;
+      };
+    };
+  } catch {
+    return null;
+  }
+}
+
+function inferAccountStatus(userId: string, role: UserRole): AccountStatus {
+  if (role === "admin") return "approved";
+
+  const state = requestState();
+  if (!state?.ok || !state.data) return "registered";
+
+  const subject =
+    role === "buyer"
+      ? state.data.buyerProfiles?.find((profile) => profile.userId === userId)
+      : state.data.creators.find((creator) => creator.userId === userId);
+
+  if (!subject) return "registered";
+  return subject.verified ? "approved" : "pending_review";
+}
+
 function requestAuthUser(path: string, input: { role: UserRole; phone: string; email: string; name?: string }) {
   const xhr = new XMLHttpRequest();
   xhr.open("POST", path, false);
@@ -96,7 +137,7 @@ export function loginOrRegister(input: { role: UserRole; phone: string; email: s
     role: user.role,
     phone: input.phone,
     email: user.email,
-    status: user.role === "admin" ? "approved" : "registered",
+    status: inferAccountStatus(user.id, user.role),
     createdAt: new Date().toISOString()
   };
   saveAuthSession(session);
@@ -129,6 +170,6 @@ export function roleLoginPath(role: UserRole) {
 export function roleEntryPath(role: UserRole, approvedPath: string) {
   const session = readAuthSession();
   if (!session || session.role !== role) return roleLoginPath(role);
-  if (!isApproved(session)) return roleProfilePath(role);
+  if (inferAccountStatus(session.userId, session.role) !== "approved") return roleProfilePath(role);
   return approvedPath;
 }

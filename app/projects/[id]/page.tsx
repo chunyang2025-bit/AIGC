@@ -12,7 +12,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
   const router = useRouter();
   const session = readAuthSession();
   const data = loadMarketplaceData();
-  const currentCreator = data.creators.find((creator) => creator.id === "c-self") ?? data.creators[3];
+  const currentCreator = data.creators.find((creator) => creator.userId === session?.userId);
   const [intro, setIntro] = useState(
     `你好，我是${currentCreator?.name ?? "接单创作者"}。我看过这个需求，想进一步沟通内容方向、周期和素材范围。`
   );
@@ -33,7 +33,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
 
   function submitInterest(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!currentCreator || !isApproved(session)) return;
+    if (!currentCreator || !currentCreator.verified) return;
 
     const order = expressInterestInProject(projectId, currentCreator.id, {
       intro
@@ -168,7 +168,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                   <div className="notice">
                     <Link2 size={15} /> 将发送展示页：/creators/{currentCreator.id}
                   </div>
-                  {isApproved(session) ? (
+                  {currentCreator.verified ? (
                     <button className="btn primary" type="submit">
                       <Send size={16} /> 发送我的展示页并邀约聊天
                     </button>
@@ -178,9 +178,13 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                     </div>
                   )}
                 </form>
-              ) : (
+              ) : session?.role === "creator" ? (
                 <Link className="btn primary" href="/provider/profile">
                   完善展示页后邀约
+                </Link>
+              ) : (
+                <Link className="btn primary" href="/login?role=accept">
+                  接单方登录后邀约
                 </Link>
               )}
             </div>

@@ -20,6 +20,8 @@ export default function BuyerProjectDetailPage({ params }: { params: { id: strin
 
   const matches = getProjectMatches(data, project.id);
   const leads = data.orders.filter((order) => order.projectId === project.id);
+  const buyerProfile = data.buyerProfiles?.find((profile) => profile.userId === session?.userId);
+  const approved = buyerProfile?.verified ?? isApproved(session);
 
   return (
     <main className="main">
@@ -146,7 +148,7 @@ export default function BuyerProjectDetailPage({ params }: { params: { id: strin
                     risk={match.risk}
                     nextStep={match.nextStep}
                     onInvite={
-                      isApproved(session)
+                      approved
                         ? () => {
                             const order = inviteCreator(project.id, creator.id);
                             if (order) {
@@ -159,7 +161,7 @@ export default function BuyerProjectDetailPage({ params }: { params: { id: strin
                 );
               })}
             </div>
-            {!isApproved(session) ? <div className="notice">当前主体主页正在审核，审核通过后才能邀请创作者。</div> : null}
+            {!approved ? <div className="notice">当前主体主页正在审核，审核通过后才能邀请创作者。</div> : null}
           </section>
         </section>
 

@@ -7,7 +7,7 @@ import { CreatorCard } from "@/components/CreatorCard";
 import { categoryLabel } from "@/lib/format";
 import { inviteCreator, loadMarketplaceData } from "@/lib/store";
 import { ProjectCategory } from "@/lib/types";
-import { roleEntryPath } from "@/lib/auth";
+import { isApproved, readAuthSession, roleEntryPath } from "@/lib/auth";
 
 const categories: Array<ProjectCategory | "All"> = ["All", "AI Short Video", "Image Design", "Digital Human"];
 
@@ -15,6 +15,7 @@ function CreatorsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const data = loadMarketplaceData();
+  const session = readAuthSession();
   const projectId = searchParams.get("project");
   const project = projectId ? data.projects.find((item) => item.id === projectId) : null;
   const [category, setCategory] = useState<ProjectCategory | "All">(project?.category ?? "All");
@@ -52,6 +53,11 @@ function CreatorsContent() {
   function invite(creatorId: string) {
     if (!project) {
       router.push("/login");
+      return;
+    }
+    const buyerProfile = data.buyerProfiles?.find((profile) => profile.userId === session?.userId);
+    if (!(buyerProfile?.verified ?? isApproved(session))) {
+      router.push("/buyer/profile");
       return;
     }
     const order = inviteCreator(project.id, creatorId);

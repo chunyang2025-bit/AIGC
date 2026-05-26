@@ -5,12 +5,15 @@ import { useRouter } from "next/navigation";
 import { Bot, CheckCircle2, FileText, SendHorizonal, Sparkles } from "lucide-react";
 import { draftProjectBrief, DraftBriefResult } from "@/lib/brief-agent";
 import { categoryLabel, money } from "@/lib/format";
-import { createProject } from "@/lib/store";
+import { createProject, loadMarketplaceData } from "@/lib/store";
 import { isApproved, readAuthSession } from "@/lib/auth";
 
 export default function PostProjectPage() {
   const router = useRouter();
   const session = readAuthSession();
+  const data = loadMarketplaceData();
+  const buyerProfile = data.buyerProfiles?.find((profile) => profile.userId === session?.userId);
+  const approved = buyerProfile?.verified ?? isApproved(session);
   const [rawIdea, setRawIdea] = useState("我要给一款智能台灯做小红书和抖音投放内容，突出护眼、氛围灯和桌面美学。");
   const [productName, setProductName] = useState("智能台灯");
   const [audience, setAudience] = useState("25-35岁城市白领、学生和桌搭爱好者");
@@ -157,7 +160,7 @@ export default function PostProjectPage() {
             <button
               className="btn primary"
               onClick={() => {
-                if (!isApproved(session)) return;
+                if (!approved) return;
                 const { project } = createProject({
                   title: draft.title,
                   description: draft.description,
@@ -172,11 +175,11 @@ export default function PostProjectPage() {
                 });
                 router.push(`/buyer/projects/${project.id}`);
               }}
-              disabled={!isApproved(session)}
+              disabled={!approved}
             >
-              <SendHorizonal size={16} /> {isApproved(session) ? "确认并启动匹配 Agent" : "审核通过后可发布需求"}
+              <SendHorizonal size={16} /> {approved ? "确认并启动匹配 Agent" : "审核通过后可发布需求"}
             </button>
-            {!isApproved(session) ? <div className="notice">当前主体主页正在审核，审核通过后才能正式发布需求。</div> : null}
+            {!approved ? <div className="notice">当前主体主页正在审核，审核通过后才能正式发布需求。</div> : null}
           </div>
         </aside>
       </div>

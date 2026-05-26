@@ -9,7 +9,9 @@ import { isApproved, readAuthSession } from "@/lib/auth";
 export default function BuyerPortalPage() {
   const data = loadMarketplaceData();
   const session = readAuthSession();
-  const buyerId = "u-buyer-1";
+  const buyerId = session?.role === "buyer" ? session.userId : "u-buyer-1";
+  const buyerProfile = data.buyerProfiles?.find((profile) => profile.userId === buyerId);
+  const approved = buyerProfile?.verified ?? isApproved(session);
   const projects = data.projects.filter((project) => project.buyerId === buyerId);
   const leads = data.orders.filter((order) => order.buyerId === buyerId);
   const activeLeads = leads.filter((order) => order.status !== "approved");
@@ -27,7 +29,7 @@ export default function BuyerPortalPage() {
           <p>发布内容需求，启动 Brief Agent，查看匹配结果，并邀请创作者建立沟通线索。</p>
           </div>
           <div className="toolbarGroup">
-            <Link className={isApproved(session) ? "btn primary" : "btn"} href={isApproved(session) ? "/post-project" : "/buyer/profile"}>
+            <Link className={approved ? "btn primary" : "btn"} href={approved ? "/post-project" : "/buyer/profile"}>
               <Plus size={16} /> 启动需求 Agent
             </Link>
             <Link className="btn" href="/creators">
@@ -51,7 +53,7 @@ export default function BuyerPortalPage() {
         </div>
       </section>
 
-      {!isApproved(session) ? (
+      {!approved ? (
         <section className="notice">
           主体主页已提交后需等待平台审核。审核通过后才能正式发布需求和邀请创作者。
         </section>

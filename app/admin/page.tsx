@@ -3,9 +3,8 @@
 import { RotateCcw, ShieldCheck, UsersRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { activeOrders, monthlyActiveUsers } from "@/lib/analytics";
-import { activityEventLabel, categoryLabel, money, orderStatusLabel, roleLabel, targetTypeLabel } from "@/lib/format";
-import { approveCurrentAccount, resetDemoData, loadMarketplaceData } from "@/lib/store";
-import { setAuthStatus } from "@/lib/auth";
+import { activityEventLabel, categoryLabel, money, orderStatusLabel, roleLabel, targetTypeLabel, verificationTypeLabel } from "@/lib/format";
+import { resetDemoData, loadMarketplaceData, verifySubject } from "@/lib/store";
 
 export default function AdminPage() {
   const router = useRouter();
@@ -34,13 +33,12 @@ export default function AdminPage() {
         <button
           className="btn primary"
           onClick={() => {
-            approveCurrentAccount("buyer");
-            approveCurrentAccount("creator");
-            setAuthStatus("approved");
+            data.buyerProfiles?.filter((profile) => !profile.verified).forEach((profile) => verifySubject("buyer", profile.id));
+            data.creators.filter((creator) => !creator.verified).forEach((creator) => verifySubject("creator", creator.id));
             router.refresh();
           }}
         >
-          <ShieldCheck size={16} /> 演示审核通过
+          <ShieldCheck size={16} /> 全部审核通过
         </button>
       </div>
 
@@ -123,6 +121,52 @@ export default function AdminPage() {
         <section className="card">
           <div className="panelTop">
             <div>
+              <strong>派单方审核</strong>
+              <div className="muted">派单方通过审核后可发布需求和邀请创作者。</div>
+            </div>
+            <ShieldCheck size={18} />
+          </div>
+          <table className="table">
+            <thead>
+              <tr>
+                <th>主体</th>
+                <th>类型</th>
+                <th>联系方式</th>
+                <th>状态</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(data.buyerProfiles ?? []).map((profile) => (
+                <tr key={profile.id}>
+                  <td>{profile.displayName ?? profile.companyName}</td>
+                  <td>{verificationTypeLabel(profile.verificationType ?? "other")}</td>
+                  <td>{profile.contactEmail || profile.contactPhone || "-"}</td>
+                  <td>
+                    <span className={profile.verified ? "tag green" : "tag gold"}>{profile.verified ? "已认证" : "待审核"}</span>
+                  </td>
+                  <td>
+                    <button
+                      className="btn"
+                      disabled={profile.verified}
+                      onClick={() => {
+                        verifySubject("buyer", profile.id);
+                        router.refresh();
+                      }}
+                      type="button"
+                    >
+                      审核通过
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+
+        <section className="card">
+          <div className="panelTop">
+            <div>
               <strong>创作者审核</strong>
               <div className="muted">创作者通过审核后可被需求方邀请合作。</div>
             </div>
@@ -135,6 +179,7 @@ export default function AdminPage() {
                 <th>服务品类</th>
                 <th>评分</th>
                 <th>状态</th>
+                <th>操作</th>
               </tr>
             </thead>
             <tbody>
@@ -146,12 +191,27 @@ export default function AdminPage() {
                   <td>
                     <span className={creator.verified ? "tag green" : "tag gold"}>{creator.verified ? "已认证" : "待审核"}</span>
                   </td>
+                  <td>
+                    <button
+                      className="btn"
+                      disabled={creator.verified}
+                      onClick={() => {
+                        verifySubject("creator", creator.id);
+                        router.refresh();
+                      }}
+                      type="button"
+                    >
+                      审核通过
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </section>
+      </div>
 
+      <div className="grid two">
         <section className="card">
           <div className="panelTop">
             <div>

@@ -9,7 +9,8 @@ import { isApproved, readAuthSession } from "@/lib/auth";
 export default function ProviderPortalPage() {
   const data = loadMarketplaceData();
   const session = readAuthSession();
-  const creator = data.creators.find((item) => item.id === "c-self") ?? data.creators[3];
+  const creator = data.creators.find((item) => item.userId === session?.userId) ?? data.creators[3];
+  const approved = creator?.verified ?? isApproved(session);
   const leads = data.orders.filter((order) => order.creatorId === creator.id);
   const invitations = data.matches
     .filter((match) => match.creatorId === creator.id)
@@ -66,7 +67,7 @@ export default function ProviderPortalPage() {
         </div>
       </section>
 
-      {!isApproved(session) ? (
+      {!approved ? (
         <section className="notice">
           展示页已提交后需等待平台审核。审核通过后才能向派单方发起沟通或正式接单。
         </section>
