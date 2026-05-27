@@ -435,7 +435,7 @@ export function upsertCurrentBuyerProfile(input: {
   qualificationFiles: string[];
 }) {
   const session = readAuthSession();
-  const userId = session?.role === "buyer" ? session.userId : "u-buyer-1";
+  const userId = session?.userId ?? "u-buyer-1";
   const profileId = `bp-${userId}`;
   const remote = requestJson<BuyerProfile>("/api/buyers", {
     method: "POST",
@@ -522,7 +522,7 @@ export function upsertCurrentCreatorProfile(input: {
   contactPhone: string;
 }) {
   const session = readAuthSession();
-  const userId = session?.role === "creator" ? session.userId : "u-creator-self";
+  const userId = session?.userId ?? "u-creator-self";
   const profileId = `c-${userId}`;
   const remote = requestJson<BuyerProfile>("/api/creators", {
     method: "POST",

@@ -4,9 +4,9 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BriefcaseBusiness, CheckCircle2, Headphones, HelpCircle, LockKeyhole, Phone, ShieldCheck, Sparkles, UserCog } from "lucide-react";
-import { loginAccount, registerAccount, roleProfilePath } from "@/lib/auth";
+import { loginAccount, registerAccount, roleProfilePath, roleWorkbenchPath } from "@/lib/auth";
 
-const roles = [
+const publicRoles = [
   {
     key: "dispatch",
     href: "/buyer/profile",
@@ -26,31 +26,33 @@ const roles = [
     button: "登录/注册并完善展示页",
     helper: "同一个账号可同时开通派单和接单能力。本次选择接单后，先完善接单展示页。",
     points: ["填写服务定位与案例方向", "进入创作者信息大厅", "再浏览公开需求并表达意向"]
-  },
-  {
-    key: "admin",
-    href: "/admin",
-    icon: ShieldCheck,
-    title: "平台运营",
-    subtitle: "平台工作人员/审核人员",
-    button: "登录并进入运营后台",
-    helper: "仅平台内部人员使用，查看审核、用户、需求、线索和月活数据。",
-    points: ["主体资质审核", "需求与线索管理", "月活和 Agent 指标看板"]
   }
 ];
+
+const adminRole = {
+  key: "admin",
+  href: "/admin",
+  icon: ShieldCheck,
+  title: "平台运营",
+  subtitle: "平台工作人员/审核人员",
+  button: "登录并进入运营后台",
+  helper: "仅平台内部人员使用，查看审核、用户、需求、线索和月活数据。",
+  points: ["主体资质审核", "需求与线索管理", "月活和 Agent 指标看板"]
+};
 
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const requestedRole = searchParams.get("role");
-  const initialRole = roles.some((role) => role.key === requestedRole) ? requestedRole ?? "accept" : "accept";
+  const visibleRoles = requestedRole === "admin" ? [adminRole] : publicRoles;
+  const initialRole = visibleRoles.some((role) => role.key === requestedRole) ? requestedRole ?? "accept" : "accept";
   const [activeKey, setActiveKey] = useState(initialRole);
-  const [phone, setPhone] = useState("138 0000 0000");
-  const [email, setEmail] = useState("demo@linggong.local");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [statusText, setStatusText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mode, setMode] = useState<"login" | "register">("login");
-  const activeRole = roles.find((role) => role.key === activeKey) ?? roles[0];
+  const activeRole = visibleRoles.find((role) => role.key === activeKey) ?? visibleRoles[0];
   const ActiveIcon = activeRole.icon;
   const activeRoleValue = activeRole.key === "dispatch" ? "buyer" : activeRole.key === "accept" ? "creator" : "admin";
 
@@ -65,6 +67,10 @@ function LoginContent() {
 
   function register() {
     if (!validateInput()) return;
+    if (activeRoleValue === "admin") {
+      setStatusText("平台运营账号不开放自助注册，请使用已分配的内部账号登录。");
+      return;
+    }
     try {
       setIsSubmitting(true);
       registerAccount({
@@ -93,7 +99,7 @@ function LoginContent() {
         name: email.trim()
       });
       setStatusText("登录成功，正在进入对应工作台。");
-      router.push(roleProfilePath(session.role));
+      router.push(session.status === "approved" ? roleWorkbenchPath(session.role) : roleProfilePath(session.role));
     } catch (error) {
       const message = error instanceof Error ? error.message : "登录失败，请稍后再试。";
       if (message.includes("先注册") || message.includes("未找到账号")) {
@@ -143,9 +149,9 @@ function LoginContent() {
         </div>
 
         <aside className="dispatchLoginPanel">
-          <Link className="qrLoginHint" href="/login">
-            扫码登录
-          </Link>
+          <span className="qrLoginHint">
+            演示登录
+          </span>
 
           <div className="panelTop">
             <div>
@@ -155,7 +161,7 @@ function LoginContent() {
           </div>
 
           <div className="dispatchTabs threeTabs" role="tablist" aria-label="登录身份">
-            {roles.map((role) => (
+            {visibleRoles.map((role) => (
               <button
                 className={role.key === activeKey ? "dispatchTab active" : "dispatchTab"}
                 key={role.key}
@@ -200,7 +206,12 @@ function LoginContent() {
               <div className="loginInput codeInput">
                 <LockKeyhole size={16} />
                 <input placeholder="请输入验证码" defaultValue="123456" />
-                <button type="button">获取验证码</button>
+                <button
+                  onClick={() => setStatusText("MVP演示验证码为 123456，正式上线后接入短信服务。")}
+                  type="button"
+                >
+                  获取验证码
+                </button>
               </div>
             </label>
           </div>
@@ -217,7 +228,7 @@ function LoginContent() {
 
           {statusText ? <div className="notice compactNotice">{statusText}</div> : null}
 
-          <div className="toolbarGroup">
+          {activeRoleValue !== "admin" ? <div className="toolbarGroup">
             <span className="muted">{mode === "login" ? "还没有账号？" : "已有账号？"}</span>
             <button
               className="btn"
@@ -230,7 +241,7 @@ function LoginContent() {
             >
               {mode === "login" ? "去注册" : "去登录"}
             </button>
-          </div>
+          </div> : null}
 
           <label className="agreementCheck">
             <input type="checkbox" defaultChecked />

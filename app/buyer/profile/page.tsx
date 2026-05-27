@@ -7,7 +7,7 @@ import { ArrowRight, Building2, CheckCircle2, FileBadge2, Globe2, History, Mail,
 import { compactDate, money, requiredCredentialLabel, verificationTypeLabel } from "@/lib/format";
 import { loadMarketplaceData, upsertCurrentBuyerProfile } from "@/lib/store";
 import { VerificationType } from "@/lib/types";
-import { setAuthStatus } from "@/lib/auth";
+import { readAuthSession, setAuthCapability } from "@/lib/auth";
 
 const verificationTypes: VerificationType[] = [
   "enterprise",
@@ -32,25 +32,28 @@ function splitList(value: string) {
 export default function BuyerProfilePage() {
   const router = useRouter();
   const data = loadMarketplaceData();
-  const [companyName, setCompanyName] = useState("杭州北辰智能科技");
-  const [displayName, setDisplayName] = useState("北辰智能内容需求中心");
-  const [avatarUrl, setAvatarUrl] = useState("北");
-  const [profileSlogan, setProfileSlogan] = useState("长期寻找懂智能硬件和B端软件的AIGC内容伙伴");
-  const [industry, setIndustry] = useState("智能硬件 / SaaS");
-  const [location, setLocation] = useState("杭州");
-  const [companyIntro, setCompanyIntro] = useState("专注智能办公硬件和企业效率工具，常年需要产品短视频、SaaS说明视频和电商内容素材。");
-  const [verificationType, setVerificationType] = useState<VerificationType>("enterprise");
-  const [contactEmail, setContactEmail] = useState("mira@northstar.ai");
-  const [contactPhone, setContactPhone] = useState("0571-8800-1024");
-  const [websiteUrl, setWebsiteUrl] = useState("https://northstar.example.com");
-  const [socialUrl, setSocialUrl] = useState("https://www.xiaohongshu.com/user/profile/northstar");
-  const [serviceArea, setServiceArea] = useState("全国远程协作，杭州可线下面谈");
-  const [businessLicenseFile, setBusinessLicenseFile] = useState("杭州北辰智能科技营业执照.pdf");
-  const [qualificationFiles, setQualificationFiles] = useState("品牌授权书.pdf\n产品检测说明.pdf");
+  const session = readAuthSession();
+  const currentProfile = data.buyerProfiles?.find((profile) => profile.userId === session?.userId);
+  const subjectName = currentProfile?.companyName ?? session?.name ?? "";
+  const [companyName, setCompanyName] = useState(subjectName);
+  const [displayName, setDisplayName] = useState(currentProfile?.displayName ?? subjectName);
+  const [avatarUrl, setAvatarUrl] = useState(currentProfile?.avatarUrl ?? subjectName.slice(0, 1));
+  const [profileSlogan, setProfileSlogan] = useState(currentProfile?.profileSlogan ?? "");
+  const [industry, setIndustry] = useState(currentProfile?.industry ?? "");
+  const [location, setLocation] = useState(currentProfile?.location ?? "");
+  const [companyIntro, setCompanyIntro] = useState(currentProfile?.companyIntro ?? "");
+  const [verificationType, setVerificationType] = useState<VerificationType>(currentProfile?.verificationType ?? "enterprise");
+  const [contactEmail, setContactEmail] = useState(currentProfile?.contactEmail ?? session?.email ?? "");
+  const [contactPhone, setContactPhone] = useState(currentProfile?.contactPhone ?? session?.phone ?? "");
+  const [websiteUrl, setWebsiteUrl] = useState(currentProfile?.websiteUrl ?? "");
+  const [socialUrl, setSocialUrl] = useState(currentProfile?.socialUrl ?? "");
+  const [serviceArea, setServiceArea] = useState(currentProfile?.serviceArea ?? "");
+  const [businessLicenseFile, setBusinessLicenseFile] = useState(currentProfile?.businessLicenseFile ?? "");
+  const [qualificationFiles, setQualificationFiles] = useState((currentProfile?.qualificationFiles ?? []).join("\n"));
 
   const history = useMemo(
-    () => data.projects.filter((project) => project.buyerId === "u-buyer-1").slice(0, 4),
-    [data.projects]
+    () => data.projects.filter((project) => project.buyerId === session?.userId).slice(0, 4),
+    [data.projects, session?.userId]
   );
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -72,7 +75,7 @@ export default function BuyerProfilePage() {
       businessLicenseFile,
       qualificationFiles: splitList(qualificationFiles)
     });
-    setAuthStatus("pending_review");
+    setAuthCapability("buyer", "pending_review");
     router.push("/buyer");
   }
 
@@ -231,27 +234,27 @@ export default function BuyerProfilePage() {
               <div className="profilePreviewHead">
                 <span className="avatar">{avatarUrl.slice(0, 1) || displayName.slice(0, 1)}</span>
                 <div>
-                  <strong>{displayName}</strong>
-                  <div className="muted">{companyName}</div>
+                  <strong>{displayName || "主页昵称"}</strong>
+                  <div className="muted">{companyName || "主体名称"}</div>
                 </div>
               </div>
               <div className="tagList">
                 <span className="tag blue">{verificationTypeLabel(verificationType)}</span>
-                <span className="tag">{industry}</span>
+                <span className="tag">{industry || "行业方向"}</span>
               </div>
               <div>
-                <h2 style={{ margin: 0 }}>{profileSlogan}</h2>
-                <div className="muted">{location}</div>
+                <h2 style={{ margin: 0 }}>{profileSlogan || "主页一句话简介"}</h2>
+                <div className="muted">{location || "所在城市"}</div>
               </div>
-              <p className="muted" style={{ margin: 0, lineHeight: 1.6 }}>{companyIntro}</p>
+              <p className="muted" style={{ margin: 0, lineHeight: 1.6 }}>{companyIntro || "基本介绍会展示在这里，帮助接单方判断是否适合沟通。"}</p>
               <div className="row muted">
-                <Globe2 size={16} /> {websiteUrl}
-              </div>
-              <div className="row muted">
-                <Mail size={16} /> {contactEmail}
+                <Globe2 size={16} /> {websiteUrl || "官网/作品页"}
               </div>
               <div className="row muted">
-                <Phone size={16} /> {contactPhone}
+                <Mail size={16} /> {contactEmail || "联系邮箱"}
+              </div>
+              <div className="row muted">
+                <Phone size={16} /> {contactPhone || "联系电话"}
               </div>
               <div className="notice">
                 <FileBadge2 size={15} /> {businessLicenseFile || `待上传${requiredCredentialLabel(verificationType)}`}
@@ -261,12 +264,12 @@ export default function BuyerProfilePage() {
           <section className="card">
             <div className="cardBody stack">
               <strong>Agent整理的历史需求</strong>
-              {history.map((project) => (
+              {history.length ? history.map((project) => (
                 <Link className="miniLead" href={`/projects/${project.id}`} key={project.id}>
                   <span>{project.title}</span>
                   <em>{money(project.budget)} · {compactDate(project.createdAt)}</em>
                 </Link>
-              ))}
+              )) : <div className="muted">发布需求后，Agent 会在这里整理历史需求。</div>}
             </div>
           </section>
         </aside>

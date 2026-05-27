@@ -172,6 +172,13 @@ export function setAuthStatus(status: AccountStatus) {
   }
 }
 
+export function setAuthCapability(role: UserRole, status: AccountStatus = "pending_review") {
+  const session = readAuthSession();
+  if (session) {
+    saveAuthSession({ ...session, role, status });
+  }
+}
+
 export function isApproved(session: AuthSession | null) {
   return session?.status === "approved";
 }
@@ -179,6 +186,12 @@ export function isApproved(session: AuthSession | null) {
 export function roleProfilePath(role: UserRole) {
   if (role === "buyer") return "/buyer/profile";
   if (role === "creator") return "/provider/profile";
+  return "/admin";
+}
+
+export function roleWorkbenchPath(role: UserRole) {
+  if (role === "buyer") return "/buyer";
+  if (role === "creator") return "/provider";
   return "/admin";
 }
 

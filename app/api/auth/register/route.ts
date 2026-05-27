@@ -14,6 +14,9 @@ export async function POST(request: Request) {
 
   const data = await getMarketplaceData();
   const user = registerUser(data, body);
+  if (!user) {
+    return apiFail(403, "平台运营账号不开放自助注册");
+  }
   await saveMarketplaceData(data);
   return apiOk(user);
 }

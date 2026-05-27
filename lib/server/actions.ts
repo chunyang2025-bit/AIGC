@@ -46,6 +46,9 @@ export function registerUser(data: MarketplaceData, input: Record<string, unknow
   const role = ["buyer", "creator", "admin"].includes(String(input.role))
     ? (String(input.role) as UserRole)
     : "buyer";
+  if (role === "admin") {
+    return null;
+  }
   const email = String(input.email || `${Date.now()}@demo.local`);
   const existing = data.users.find((item) => item.email === email);
   if (existing) {
@@ -80,7 +83,9 @@ export function loginUser(data: MarketplaceData, input: Record<string, unknown>)
     ? (String(input.role) as UserRole)
     : undefined;
   const email = String(input.email || "");
-  const user = data.users.find((item) => item.email === email && (!role || item.role === "admin" || role !== "admin"));
+  const user = data.users.find((item) =>
+    item.email === email && (role === "admin" ? item.role === "admin" : item.role !== "admin")
+  );
 
   if (user) {
     addActivity(data, {

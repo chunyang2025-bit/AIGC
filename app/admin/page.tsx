@@ -1,18 +1,31 @@
 "use client";
 
+import { useEffect } from "react";
 import { RotateCcw, ShieldCheck, UsersRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { activeOrders, monthlyActiveUsers } from "@/lib/analytics";
 import { activityEventLabel, categoryLabel, money, orderStatusLabel, roleLabel, targetTypeLabel, verificationTypeLabel } from "@/lib/format";
 import { resetDemoData, loadMarketplaceData, verifySubject } from "@/lib/store";
+import { readAuthSession } from "@/lib/auth";
 
 export default function AdminPage() {
   const router = useRouter();
+  const session = readAuthSession();
   const data = loadMarketplaceData();
   const intentBudget = data.orders.reduce((sum, order) => sum + order.amount, 0);
   const reachedIntent = data.orders.filter((order) => order.status === "approved").length;
   const buyerMau = monthlyActiveUsers(data, "buyer");
   const creatorMau = monthlyActiveUsers(data, "creator");
+
+  useEffect(() => {
+    if (!session || session.role !== "admin") {
+      router.push("/login?role=admin");
+    }
+  }, [router, session]);
+
+  if (!session || session.role !== "admin") {
+    return null;
+  }
 
   return (
     <main className="main">

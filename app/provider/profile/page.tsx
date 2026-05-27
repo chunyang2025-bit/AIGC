@@ -6,9 +6,9 @@ import { useRouter } from "next/navigation";
 import { ArrowRight, BriefcaseBusiness, CheckCircle2, Eye, Save, Sparkles, UserRound } from "lucide-react";
 import { CreatorCard } from "@/components/CreatorCard";
 import { categoryLabel, requiredCredentialLabel, verificationTypeLabel } from "@/lib/format";
-import { upsertCurrentCreatorProfile } from "@/lib/store";
+import { loadMarketplaceData, upsertCurrentCreatorProfile } from "@/lib/store";
 import { CreatorProfile, ProjectCategory, VerificationType } from "@/lib/types";
-import { setAuthStatus } from "@/lib/auth";
+import { readAuthSession, setAuthCapability } from "@/lib/auth";
 
 const categoryOptions: ProjectCategory[] = ["AI Short Video", "Image Design", "Digital Human"];
 const verificationTypes: VerificationType[] = [
@@ -33,38 +33,42 @@ function splitList(value: string) {
 
 export default function ProviderProfilePage() {
   const router = useRouter();
-  const [name, setName] = useState("青禾AIGC工作室");
-  const [displayName, setDisplayName] = useState("青禾AIGC工作室");
-  const [avatarUrl, setAvatarUrl] = useState("青");
-  const [profileSlogan, setProfileSlogan] = useState("稳定承接电商短视频、商品图和数字人口播内容");
-  const [title, setTitle] = useState("AI短视频与商品内容创作服务商");
-  const [location, setLocation] = useState("杭州");
-  const [bio, setBio] = useState("擅长电商商品短视频、AI商品图、数字人口播脚本与成片生产，可配合品牌方快速测试内容方向。");
-  const [resume, setResume] = useState("3年AIGC内容生产经验，服务过家清、服饰、本地生活与教育课程团队，熟悉从需求拆解、脚本、分镜到成片/图片素材整理的完整流程。");
-  const [skills, setSkills] = useState("商品短视频, 即梦, Runway, 数字人口播, 小红书种草");
-  const [portfolio, setPortfolio] = useState("家清用品爆款短视频：https://example.com/work/home-cleaning\n服饰商品图批量生成：https://example.com/work/fashion-images\n本地生活数字人口播：https://example.com/work/local-avatar");
-  const [priceMin, setPriceMin] = useState("800");
-  const [priceMax, setPriceMax] = useState("5000");
-  const [responseTime, setResponseTime] = useState("2小时内响应");
-  const [identityType, setIdentityType] = useState<VerificationType>("enterprise");
-  const [credentialFile, setCredentialFile] = useState("青禾AIGC工作室营业执照.pdf");
-  const [qualificationFiles, setQualificationFiles] = useState("服务合同模板.pdf\n过往项目授权展示说明.pdf");
-  const [contactEmail, setContactEmail] = useState("hello@qinghe-aigc.cn");
-  const [contactPhone, setContactPhone] = useState("0571-8800-8899");
-  const [websiteUrl, setWebsiteUrl] = useState("https://qinghe-aigc.example.com");
-  const [socialUrl, setSocialUrl] = useState("https://www.xiaohongshu.com/user/profile/qinghe-aigc");
-  const [serviceArea, setServiceArea] = useState("全国远程协作，杭州可线下面谈");
-  const [categories, setCategories] = useState<ProjectCategory[]>(["AI Short Video", "Image Design"]);
+  const data = loadMarketplaceData();
+  const session = readAuthSession();
+  const currentProfile = data.creators.find((creator) => creator.userId === session?.userId);
+  const subjectName = currentProfile?.name ?? session?.name ?? "";
+  const [name, setName] = useState(subjectName);
+  const [displayName, setDisplayName] = useState(currentProfile?.displayName ?? subjectName);
+  const [avatarUrl, setAvatarUrl] = useState(currentProfile?.avatarUrl ?? subjectName.slice(0, 1));
+  const [profileSlogan, setProfileSlogan] = useState(currentProfile?.profileSlogan ?? "");
+  const [title, setTitle] = useState(currentProfile?.title ?? "");
+  const [location, setLocation] = useState(currentProfile?.location ?? "");
+  const [bio, setBio] = useState(currentProfile?.bio ?? "");
+  const [resume, setResume] = useState(currentProfile?.resume ?? "");
+  const [skills, setSkills] = useState((currentProfile?.skills ?? []).join(", "));
+  const [portfolio, setPortfolio] = useState((currentProfile?.portfolio ?? []).join("\n"));
+  const [priceMin, setPriceMin] = useState(currentProfile ? String(currentProfile.priceMin) : "");
+  const [priceMax, setPriceMax] = useState(currentProfile ? String(currentProfile.priceMax) : "");
+  const [responseTime, setResponseTime] = useState(currentProfile?.responseTime ?? "");
+  const [identityType, setIdentityType] = useState<VerificationType>(currentProfile?.identityType ?? currentProfile?.verificationType ?? "individual");
+  const [credentialFile, setCredentialFile] = useState(currentProfile?.credentialFile ?? "");
+  const [qualificationFiles, setQualificationFiles] = useState((currentProfile?.qualificationFiles ?? []).join("\n"));
+  const [contactEmail, setContactEmail] = useState(currentProfile?.contactEmail ?? session?.email ?? "");
+  const [contactPhone, setContactPhone] = useState(currentProfile?.contactPhone ?? session?.phone ?? "");
+  const [websiteUrl, setWebsiteUrl] = useState(currentProfile?.websiteUrl ?? "");
+  const [socialUrl, setSocialUrl] = useState(currentProfile?.socialUrl ?? "");
+  const [serviceArea, setServiceArea] = useState(currentProfile?.serviceArea ?? "");
+  const [categories, setCategories] = useState<ProjectCategory[]>(currentProfile?.categories ?? ["AI Short Video"]);
 
   const preview = useMemo<CreatorProfile>(
     () => ({
       id: "c-preview",
       userId: "u-creator-self",
-      name,
-      title,
-      location,
-      bio,
-      resume,
+      name: name || "展示名称",
+      title: title || "服务定位",
+      location: location || "所在城市",
+      bio: bio || "服务介绍会展示在这里，帮助派单方判断是否适合沟通。",
+      resume: resume || "简历/履历会展示在这里。",
       skills: splitList(skills).length ? splitList(skills) : ["AI内容创作"],
       categories,
       portfolio: splitList(portfolio),
@@ -72,15 +76,15 @@ export default function ProviderProfilePage() {
       priceMax: Number(priceMax) || 0,
       completedProjects: 0,
       rating: 4.6,
-      responseTime,
+      responseTime: responseTime || "待填写",
       verified: false,
       identityType,
       verificationType: identityType,
       credentialFile,
       qualificationFiles: splitList(qualificationFiles),
       avatarUrl,
-      displayName,
-      profileSlogan,
+      displayName: displayName || name || "主页昵称",
+      profileSlogan: profileSlogan || "主页一句话简介",
       websiteUrl,
       socialUrl,
       serviceArea,
@@ -123,7 +127,7 @@ export default function ProviderProfilePage() {
       contactEmail,
       contactPhone
     });
-    setAuthStatus("pending_review");
+    setAuthCapability("creator", "pending_review");
     router.push("/provider");
   }
 
