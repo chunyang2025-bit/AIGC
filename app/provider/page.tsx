@@ -54,6 +54,9 @@ export default function ProviderPortalPage() {
             <Link className="btn primary" href="/projects">
               <BriefcaseBusiness size={16} /> 浏览可接需求
             </Link>
+            <Link className="btn" href="/buyer/profile">
+              <BriefcaseBusiness size={16} /> 开通派单能力
+            </Link>
             <Link className="btn" href="/provider/profile">
               <Star size={16} /> 编辑我的展示页
             </Link>

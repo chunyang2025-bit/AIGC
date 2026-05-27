@@ -50,6 +50,9 @@ export default function BuyerPortalPage() {
             <Link className={approved ? "btn primary" : "btn"} href={approved ? "/post-project" : "/buyer/profile"}>
               <Plus size={16} /> 启动需求 Agent
             </Link>
+            <Link className="btn" href="/provider/profile">
+              <UsersRound size={16} /> 开通接单能力
+            </Link>
             <Link className="btn" href="/creators">
               <Search size={16} /> 创作者信息大厅
             </Link>

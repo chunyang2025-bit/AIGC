@@ -147,6 +147,13 @@ function LoginContent() {
             扫码登录
           </Link>
 
+          <div className="panelTop">
+            <div>
+              <strong>主体账号登录</strong>
+              <div className="muted">一个主体账号，可同时开通派单和接单两种能力。</div>
+            </div>
+          </div>
+
           <div className="dispatchTabs threeTabs" role="tablist" aria-label="登录身份">
             {roles.map((role) => (
               <button
@@ -200,7 +207,7 @@ function LoginContent() {
 
           {mode === "login" ? (
             <button className="btn primary loginSubmit orange" onClick={login} disabled={isSubmitting} type="button">
-              {isSubmitting ? "正在登录..." : "登录进入"}
+              {isSubmitting ? "正在登录..." : `以${activeRole.title}能力进入`}
             </button>
           ) : (
             <button className="btn primary loginSubmit orange" onClick={register} disabled={isSubmitting} type="button">
