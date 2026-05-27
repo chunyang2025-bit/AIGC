@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { RotateCcw, ShieldCheck, UsersRound } from "lucide-react";
+import { Download, RotateCcw, ShieldCheck, UsersRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { activeOrders, monthlyActiveUsers } from "@/lib/analytics";
 import { activityEventLabel, categoryLabel, money, orderStatusLabel, roleLabel, targetTypeLabel, verificationTypeLabel } from "@/lib/format";
@@ -16,6 +16,53 @@ export default function AdminPage() {
   const reachedIntent = data.orders.filter((order) => order.status === "approved").length;
   const buyerMau = monthlyActiveUsers(data, "buyer");
   const creatorMau = monthlyActiveUsers(data, "creator");
+
+  function exportOperationsReport() {
+    const report = {
+      exportedAt: new Date().toISOString(),
+      summary: {
+        registeredUsers: data.users.length,
+        buyerProfiles: data.buyerProfiles?.length ?? 0,
+        creators: data.creators.length,
+        verifiedBuyerProfiles: (data.buyerProfiles ?? []).filter((profile) => profile.verified).length,
+        verifiedCreators: data.creators.filter((creator) => creator.verified).length,
+        projects: data.projects.length,
+        publicProjects: data.projects.filter((project) => project.status === "open" || project.status === "matching").length,
+        leads: data.orders.length,
+        activeLeads: activeOrders(data),
+        intentionBudget: intentBudget,
+        reachedIntent,
+        buyerMau,
+        creatorMau,
+        totalMau: monthlyActiveUsers(data),
+        activityEvents: data.activityEvents.length,
+        agentBriefs: data.projects.filter((project) => project.agentBrief).length,
+        agentMatches: data.matches.length
+      },
+      pendingReviews: {
+        buyers: (data.buyerProfiles ?? []).filter((profile) => !profile.verified).map((profile) => ({
+          id: profile.id,
+          name: profile.displayName ?? profile.companyName,
+          type: profile.verificationType,
+          contact: profile.contactEmail || profile.contactPhone
+        })),
+        creators: data.creators.filter((creator) => !creator.verified).map((creator) => ({
+          id: creator.id,
+          name: creator.displayName ?? creator.name,
+          type: creator.verificationType ?? creator.identityType,
+          contact: creator.contactEmail || creator.contactPhone
+        }))
+      },
+      recentActivity: data.activityEvents.slice(-50)
+    };
+    const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `linggong-operations-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
 
   useEffect(() => {
     if (!session || session.role !== "admin") {
@@ -34,6 +81,13 @@ export default function AdminPage() {
           <h1>运营后台</h1>
           <p>查看用户审核、需求管理、合作线索、意向预算和月活数据。</p>
         </div>
+        <button
+          className="btn"
+          onClick={exportOperationsReport}
+          type="button"
+        >
+          <Download size={16} /> 导出运营报表
+        </button>
         <button
           className="btn"
           onClick={() => {

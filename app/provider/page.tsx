@@ -90,7 +90,7 @@ export default function ProviderPortalPage() {
 
       {!approved ? (
         <section className="notice">
-          展示页已提交后需等待平台审核。审核通过后才能向派单方发起沟通或正式接单。
+          你已完成基础入驻，可以浏览公开需求并继续完善展示页。审核通过后才能向派单方发起沟通。
         </section>
       ) : null}
 

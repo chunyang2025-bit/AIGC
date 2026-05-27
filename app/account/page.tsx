@@ -43,7 +43,7 @@ export default function AccountPage() {
           </span>
           <div>
             <h1>{subjectName}</h1>
-            <p>一个账号对应一个主体。你可以分别开通派单能力和接单能力，每种能力都需要提交主页资料并通过平台审核。</p>
+          <p>一个账号对应一个主体。你可以分别开通派单能力和接单能力，先基础入驻，再补充资质并等待平台审核。</p>
           </div>
         </div>
         <div className="portalStats">
@@ -56,8 +56,8 @@ export default function AccountPage() {
             <span>接单能力</span>
           </div>
           <div className="metric">
-            <strong>{[buyerProfile, creatorProfile].filter((item) => item?.verified).length}</strong>
-            <span>已通过审核</span>
+            <strong>{[buyerProfile, creatorProfile].filter(Boolean).length}</strong>
+            <span>已开通能力</span>
           </div>
         </div>
       </section>
@@ -79,7 +79,9 @@ export default function AccountPage() {
               <Link className="btn primary" href={buyerProfile?.verified ? "/buyer" : "/buyer/profile"}>
                 {buyerProfile ? "查看/编辑派单资料" : "开通派单能力"}
               </Link>
-              {buyerProfile?.verified ? <Link className="btn" href="/post-project">发布需求</Link> : null}
+              <Link className="btn" href={buyerProfile?.verified ? "/post-project" : "/buyer/profile"}>
+                {buyerProfile?.verified ? "发布需求" : "补充认证"}
+              </Link>
             </div>
           </div>
         </section>
@@ -100,14 +102,14 @@ export default function AccountPage() {
               <Link className="btn primary" href={creatorProfile?.verified ? "/provider" : "/provider/profile"}>
                 {creatorProfile ? "查看/编辑接单资料" : "开通接单能力"}
               </Link>
-              {creatorProfile?.verified ? <Link className="btn" href="/projects">浏览需求</Link> : null}
+              <Link className="btn" href="/projects">浏览需求</Link>
             </div>
           </div>
         </section>
       </div>
 
       <section className="notice">
-        <Clock size={15} /> 提交资料后由平台运营后台审核。审核通过前可以继续编辑资料，但不能正式派单或接单。
+        <Clock size={15} /> 基础入驻后即可浏览平台公开信息；通过审核后可发布需求、主动邀约或发起沟通。
       </section>
     </main>
   );

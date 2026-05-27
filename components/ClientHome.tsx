@@ -1,10 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, BriefcaseBusiness, CheckCircle2, CircleDollarSign, LogIn, Plus, Search, Sparkles, TrendingUp, UsersRound } from "lucide-react";
+import { ArrowRight, BriefcaseBusiness, CheckCircle2, CircleDollarSign, FileBadge2, LogIn, Plus, Search, Sparkles, TrendingUp, UsersRound } from "lucide-react";
 import { CreatorCard } from "./CreatorCard";
 import { ProjectCard } from "./ProjectCard";
-import { monthlyActiveUsers } from "@/lib/analytics";
 import { loadMarketplaceData } from "@/lib/store";
 import { money } from "@/lib/format";
 import { roleEntryPath } from "@/lib/auth";
@@ -14,8 +13,6 @@ export function ClientHome() {
   const featured = data.creators.slice(0, 3);
   const projects = data.projects.slice(0, 3);
   const intentBudget = data.orders.reduce((sum, order) => sum + order.amount, 0);
-  const buyerMau = monthlyActiveUsers(data, "buyer");
-  const creatorMau = monthlyActiveUsers(data, "creator");
   const buyerEntry = roleEntryPath("buyer", "/post-project");
   const creatorEntry = roleEntryPath("creator", "/provider");
 
@@ -28,7 +25,7 @@ export function ClientHome() {
           </span>
           <div>
             <h1>灵工智创平台</h1>
-            <p>用需求发布 Agent 拆解 Brief，用匹配 Agent 推荐创作者，再通过平台完成协作交付。</p>
+            <p>免费开放入驻的AIGC供需撮合平台。派单方发布内容需求，接单方装修展示页，平台用 Agent 推荐合适的沟通对象。</p>
           </div>
           <div className="toolbarGroup">
             <Link className="btn primary" href="/projects">
@@ -43,16 +40,16 @@ export function ClientHome() {
           </div>
           <div className="heroKpis">
             <div>
-              <strong>{buyerMau}</strong>
-              <span>需求方月活</span>
+              <strong>{data.creators.length}</strong>
+              <span>入驻接单方</span>
             </div>
             <div>
-              <strong>{creatorMau}</strong>
-              <span>创作者月活</span>
+              <strong>{data.projects.length}</strong>
+              <span>公开需求</span>
             </div>
             <div>
-              <strong>{money(intentBudget)}</strong>
-              <span>意向预算</span>
+              <strong>{data.orders.length}</strong>
+              <span>沟通线索</span>
             </div>
           </div>
         </div>
@@ -79,8 +76,8 @@ export function ClientHome() {
             </div>
             <div className="opsCell">
               <CircleDollarSign size={18} />
-              <strong>{data.orders.length}</strong>
-              <span>合作线索</span>
+              <strong>{money(intentBudget)}</strong>
+              <span>意向预算</span>
             </div>
           </div>
           <div className="matchBoard">
@@ -100,6 +97,37 @@ export function ClientHome() {
             ))}
           </div>
         </aside>
+      </section>
+
+      <section className="section">
+        <div className="sectionHeader">
+          <div>
+            <h2>免费开放入驻</h2>
+            <p>先完成基础资料即可加入平台；补充认证材料后获得更高曝光和主动沟通权限。</p>
+          </div>
+        </div>
+        <div className="grid two">
+          <div className="card">
+            <div className="cardBody stack">
+              <UsersRound size={22} />
+              <strong>接单方免费入驻</strong>
+              <p className="muted" style={{ margin: 0 }}>创建展示页，展示服务定位、联系方式、简历和代表作；认证通过后可主动向派单方发起沟通。</p>
+              <Link className="btn primary" href={creatorEntry}>
+                <LogIn size={16} /> 免费成为接单方
+              </Link>
+            </div>
+          </div>
+          <div className="card">
+            <div className="cardBody stack">
+              <FileBadge2 size={22} />
+              <strong>派单方免费发布需求</strong>
+              <p className="muted" style={{ margin: 0 }}>发布AIGC内容需求，获得10位接单方推荐，也可以在创作者信息大厅自主检索并邀请沟通。</p>
+              <Link className="btn primary" href={buyerEntry}>
+                <Plus size={16} /> 免费发布需求
+              </Link>
+            </div>
+          </div>
+        </div>
       </section>
 
       <section className="section">
@@ -128,7 +156,7 @@ export function ClientHome() {
         <div className="sectionHeader">
           <div>
             <h2>精选创作者</h2>
-            <p>把AIGC能力做成可比较、可报价、可交付的标准化服务。</p>
+            <p>把AIGC能力做成可比较、可检索、可联系的标准化服务展示。</p>
           </div>
           <Link className="btn" href="/creators">
             查看所有 <ArrowRight size={16} />
