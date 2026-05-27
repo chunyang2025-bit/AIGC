@@ -128,18 +128,19 @@ function saveUserSession(user: {
   name: string;
   email: string;
   role: UserRole;
-}, input: { phone: string }) {
+}, input: { phone: string; role?: UserRole }) {
   if (!user) {
     throw new Error("账号处理失败，请检查手机号、邮箱和网络状态。");
   }
 
+  const sessionRole = input.role ?? user.role;
   const session: AuthSession = {
     userId: user.id,
     name: user.name,
-    role: user.role,
+    role: sessionRole,
     phone: input.phone,
     email: user.email,
-    status: inferAccountStatus(user.id, user.role),
+    status: inferAccountStatus(user.id, sessionRole),
     createdAt: new Date().toISOString()
   };
   saveAuthSession(session);

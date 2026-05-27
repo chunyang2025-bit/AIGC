@@ -14,7 +14,7 @@ const roles = [
     title: "我要派单",
     subtitle: "机构/品牌/个人/组织",
     button: "登录/注册并完善主体主页",
-    helper: "先完善基本介绍、资质和联系方式，再发布AIGC内容需求。",
+    helper: "同一个账号可同时开通派单和接单能力。本次选择派单后，先完善派单方资料和资质。",
     points: ["主体基本情况展示", "上传对应资质材料", "Agent 整理历史需求"]
   },
   {
@@ -24,7 +24,7 @@ const roles = [
     title: "我要接单",
     subtitle: "创作者/工作室/接单服务商",
     button: "登录/注册并完善展示页",
-    helper: "先完善接单展示页，再进入需求大厅浏览公开需求。",
+    helper: "同一个账号可同时开通派单和接单能力。本次选择接单后，先完善接单展示页。",
     points: ["填写服务定位与案例方向", "进入创作者信息大厅", "再浏览公开需求并表达意向"]
   },
   {
@@ -168,6 +168,9 @@ function LoginContent() {
               <strong>{activeRole.title}</strong>
               <span>{activeRole.subtitle}</span>
             </div>
+          </div>
+          <div className="notice compactNotice">
+            一个账号对应一个主体，可分别开通派单能力和接单能力；本次选择只决定登录后进入哪个流程。
           </div>
 
           <div className="loginForm">
