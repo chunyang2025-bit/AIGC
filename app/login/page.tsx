@@ -49,14 +49,13 @@ function LoginContent() {
   const [email, setEmail] = useState("demo@linggong.local");
   const [statusText, setStatusText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showRegisterAction, setShowRegisterAction] = useState(false);
+  const [mode, setMode] = useState<"login" | "register">("login");
   const activeRole = roles.find((role) => role.key === activeKey) ?? roles[0];
   const ActiveIcon = activeRole.icon;
   const activeRoleValue = activeRole.key === "dispatch" ? "buyer" : activeRole.key === "accept" ? "creator" : "admin";
 
   function validateInput() {
     setStatusText("");
-    setShowRegisterAction(false);
     if (!phone.trim() || !email.trim()) {
       setStatusText("请先填写手机号和邮箱。");
       return false;
@@ -74,8 +73,8 @@ function LoginContent() {
         email: email.trim(),
         name: email.trim()
       });
-      setShowRegisterAction(false);
-      setStatusText("注册成功，请点击登录进入对应工作台。");
+      setMode("login");
+      setStatusText("注册成功，请使用刚才的账号登录。");
     } catch (error) {
       setStatusText(error instanceof Error ? error.message : "注册失败，请稍后再试。");
     } finally {
@@ -97,8 +96,12 @@ function LoginContent() {
       router.push(roleProfilePath(session.role));
     } catch (error) {
       const message = error instanceof Error ? error.message : "登录失败，请稍后再试。";
-      setShowRegisterAction(message.includes("先注册") || message.includes("未找到账号"));
-      setStatusText(message);
+      if (message.includes("先注册") || message.includes("未找到账号")) {
+        setMode("register");
+        setStatusText("没有找到账号，请先完成注册。");
+      } else {
+        setStatusText(message);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -192,16 +195,30 @@ function LoginContent() {
             </label>
           </div>
 
-          <button className="btn primary loginSubmit orange" onClick={login} disabled={isSubmitting} type="button">
-            {isSubmitting ? "正在处理..." : "登录进入"}
-          </button>
+          {mode === "login" ? (
+            <button className="btn primary loginSubmit orange" onClick={login} disabled={isSubmitting} type="button">
+              {isSubmitting ? "正在登录..." : "登录进入"}
+            </button>
+          ) : (
+            <button className="btn primary loginSubmit orange" onClick={register} disabled={isSubmitting} type="button">
+              {isSubmitting ? "正在注册..." : "注册账号"}
+            </button>
+          )}
 
           {statusText ? <div className="notice compactNotice">{statusText}</div> : null}
 
           <div className="toolbarGroup">
-            <span className="muted">还没有账号？</span>
-            <button className="btn" onClick={register} disabled={isSubmitting || !showRegisterAction} type="button">
-              立即注册
+            <span className="muted">{mode === "login" ? "还没有账号？" : "已有账号？"}</span>
+            <button
+              className="btn"
+              onClick={() => {
+                setStatusText("");
+                setMode(mode === "login" ? "register" : "login");
+              }}
+              disabled={isSubmitting}
+              type="button"
+            >
+              {mode === "login" ? "去注册" : "去登录"}
             </button>
           </div>
 

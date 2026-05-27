@@ -152,7 +152,7 @@ export function registerAccount(input: { role: UserRole; phone: string; email: s
     throw new Error("注册失败，请检查手机号、邮箱和网络状态。");
   }
 
-  return saveUserSession(user, input);
+  return user;
 }
 
 export function loginAccount(input: { role: UserRole; phone: string; email: string; name?: string }) {

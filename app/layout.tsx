@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { BriefcaseBusiness, LogIn, Plus, Search, Sparkles, UsersRound } from "lucide-react";
+import { BriefcaseBusiness, LogIn, Plus, Search, Sparkles } from "lucide-react";
 import Link from "next/link";
 import "./globals.css";
 
@@ -41,15 +41,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Link href="/projects">
                 <BriefcaseBusiness size={16} /> 公开需求
               </Link>
-              <Link href="/admin">
-                <UsersRound size={16} /> 运营后台
-              </Link>
             </nav>
             <div className="navActions">
-              <Link className="btn ghost" href="/login">
+              <Link className="btn ghost" href="/login?role=accept">
                 <LogIn size={16} /> 我要接单
               </Link>
-              <Link className="btn primary" href="/post-project">
+              <Link className="btn primary" href="/login?role=dispatch">
                 <Plus size={16} /> 我要派单
               </Link>
             </div>
