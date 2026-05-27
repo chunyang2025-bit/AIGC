@@ -1,21 +1,39 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Bot, BriefcaseBusiness, CheckCircle2, Clock, Plus, Search, UsersRound } from "lucide-react";
 import { compactDate, money, orderStatusLabel, projectStatusLabel } from "@/lib/format";
 import { loadMarketplaceData } from "@/lib/store";
 import { isApproved, readAuthSession } from "@/lib/auth";
 
 export default function BuyerPortalPage() {
+  const router = useRouter();
   const data = loadMarketplaceData();
   const session = readAuthSession();
-  const buyerId = session?.role === "buyer" ? session.userId : "u-buyer-1";
+  const buyerId = session?.role === "buyer" ? session.userId : "";
   const buyerProfile = data.buyerProfiles?.find((profile) => profile.userId === buyerId);
   const approved = buyerProfile?.verified ?? isApproved(session);
   const projects = data.projects.filter((project) => project.buyerId === buyerId);
   const leads = data.orders.filter((order) => order.buyerId === buyerId);
   const activeLeads = leads.filter((order) => order.status !== "approved");
   const agentProjects = projects.filter((project) => project.agentBrief);
+
+  useEffect(() => {
+    if (!session || session.role !== "buyer") {
+      router.push("/login?role=dispatch");
+      return;
+    }
+
+    if (!buyerProfile) {
+      router.push("/buyer/profile");
+    }
+  }, [buyerProfile, router, session]);
+
+  if (!session || session.role !== "buyer" || !buyerProfile) {
+    return null;
+  }
 
   return (
     <main className="main">

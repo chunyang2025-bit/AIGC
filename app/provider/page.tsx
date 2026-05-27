@@ -1,15 +1,33 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Banknote, BriefcaseBusiness, CheckCircle2, FileUp, Inbox, Star, UserRound } from "lucide-react";
 import { categoryLabel, money, orderStatusLabel } from "@/lib/format";
 import { loadMarketplaceData } from "@/lib/store";
 import { isApproved, readAuthSession } from "@/lib/auth";
 
 export default function ProviderPortalPage() {
+  const router = useRouter();
   const data = loadMarketplaceData();
   const session = readAuthSession();
-  const creator = data.creators.find((item) => item.userId === session?.userId) ?? data.creators[3];
+  const creator = data.creators.find((item) => item.userId === session?.userId);
+  useEffect(() => {
+    if (!session || session.role !== "creator") {
+      router.push("/login?role=accept");
+      return;
+    }
+
+    if (!creator) {
+      router.push("/provider/profile");
+    }
+  }, [creator, router, session]);
+
+  if (!session || session.role !== "creator" || !creator) {
+    return null;
+  }
+
   const approved = creator?.verified ?? isApproved(session);
   const leads = data.orders.filter((order) => order.creatorId === creator.id);
   const invitations = data.matches
