@@ -3,7 +3,8 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BriefcaseBusiness, CheckCircle2, Clock, ShieldCheck, UserRound } from "lucide-react";
+import { BriefcaseBusiness, Clock, MessageSquare, ShieldCheck, UserRound } from "lucide-react";
+import { compactDate, money, orderStatusLabel, projectStatusLabel } from "@/lib/format";
 import { loadMarketplaceData } from "@/lib/store";
 import { readAuthSession } from "@/lib/auth";
 
@@ -33,6 +34,9 @@ export default function AccountPage() {
   if (!session) return null;
 
   const subjectName = buyerProfile?.displayName ?? creatorProfile?.displayName ?? session.name ?? session.email;
+  const myProjects = data.projects.filter((project) => project.buyerId === session.userId);
+  const myBuyerLeads = data.orders.filter((order) => order.buyerId === session.userId);
+  const myCreatorLeads = creatorProfile ? data.orders.filter((order) => order.creatorId === creatorProfile.id) : [];
 
   return (
     <main className="main">
@@ -43,7 +47,7 @@ export default function AccountPage() {
           </span>
           <div>
             <h1>{subjectName}</h1>
-          <p>一个账号对应一个主体。你可以分别开通派单能力和接单能力，先基础入驻，再补充资质并等待平台审核。</p>
+            <p>一个账号对应一个主体。你可以分别管理派单能力和接单能力，在这里查看我的派单、我的接单和审核状态。</p>
           </div>
         </div>
         <div className="portalStats">
@@ -108,8 +112,94 @@ export default function AccountPage() {
         </section>
       </div>
 
+      <div className="grid two">
+        <section className="card">
+          <div className="panelTop">
+            <div>
+              <strong>我的派单</strong>
+              <div className="muted">查看已发布需求、匹配推荐和沟通线索。</div>
+            </div>
+            <BriefcaseBusiness size={18} />
+          </div>
+          <div className="cardBody stack">
+            <div className="grid two compactGrid">
+              <div className="metric">
+                <strong>{myProjects.length}</strong>
+                <span>已发布需求</span>
+              </div>
+              <div className="metric">
+                <strong>{myBuyerLeads.length}</strong>
+                <span>沟通线索</span>
+              </div>
+            </div>
+            {myProjects.slice(0, 3).map((project) => (
+              <Link className="miniLead" href={`/buyer/projects/${project.id}`} key={project.id}>
+                <span>{project.title}</span>
+                <em>{projectStatusLabel(project.status)} · {money(project.budget)} · {compactDate(project.createdAt)}</em>
+              </Link>
+            ))}
+            {myProjects.length === 0 ? <div className="muted">通过审核后发布第一个需求。</div> : null}
+            <div className="toolbarGroup">
+              <Link className="btn primary" href={buyerProfile?.verified ? "/buyer" : "/buyer/profile"}>
+                进入我的派单
+              </Link>
+              <Link className="btn" href={buyerProfile?.verified ? "/post-project" : "/buyer/profile"}>
+                {buyerProfile?.verified ? "发布需求" : "完善派单认证"}
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        <section className="card">
+          <div className="panelTop">
+            <div>
+              <strong>我的接单</strong>
+              <div className="muted">查看展示页、收到的邀约和接单沟通。</div>
+            </div>
+            <MessageSquare size={18} />
+          </div>
+          <div className="cardBody stack">
+            <div className="grid two compactGrid">
+              <div className="metric">
+                <strong>{creatorProfile ? 1 : 0}</strong>
+                <span>展示页</span>
+              </div>
+              <div className="metric">
+                <strong>{myCreatorLeads.length}</strong>
+                <span>沟通线索</span>
+              </div>
+            </div>
+            {myCreatorLeads.slice(0, 3).map((lead) => {
+              const project = data.projects.find((item) => item.id === lead.projectId);
+              return (
+                <Link className="miniLead" href={`/orders/${lead.id}`} key={lead.id}>
+                  <span>{project?.title ?? "需求沟通"}</span>
+                  <em>{orderStatusLabel(lead.status)} · {money(lead.amount)} · {compactDate(lead.createdAt)}</em>
+                </Link>
+              );
+            })}
+            {creatorProfile ? (
+              <Link className="miniLead" href={`/creators/${creatorProfile.id}`}>
+                <span>{creatorProfile.displayName ?? creatorProfile.name}</span>
+                <em>{creatorProfile.verified ? "已认证展示页" : "展示页待审核"}</em>
+              </Link>
+            ) : (
+              <div className="muted">开通接单能力后，这里会显示你的展示页和沟通线索。</div>
+            )}
+            <div className="toolbarGroup">
+              <Link className="btn primary" href={creatorProfile?.verified ? "/provider" : "/provider/profile"}>
+                进入我的接单
+              </Link>
+              <Link className="btn" href="/projects">
+                浏览需求
+              </Link>
+            </div>
+          </div>
+        </section>
+      </div>
+
       <section className="notice">
-        <Clock size={15} /> 基础入驻后即可浏览平台公开信息；通过审核后可发布需求、主动邀约或发起沟通。
+        <Clock size={15} /> 派单方需完成主体资质审核后才能发布需求；接单方审核通过后可主动发起沟通。
       </section>
     </main>
   );

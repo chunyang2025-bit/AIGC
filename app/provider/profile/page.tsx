@@ -140,7 +140,7 @@ export default function ProviderProfilePage() {
           </span>
           <div>
             <h1>先完善创作者展示页，再进入需求大厅</h1>
-            <p>先填写基础展示页即可入驻；补充资质、简历和代表作后，更容易被派单方主动邀请沟通。</p>
+            <p>派单方会先看你的服务定位、案例方向、报价区间和响应速度。资料越完整，越容易被主动邀请沟通。</p>
           </div>
           <div className="profileSteps">
             <span>
@@ -185,7 +185,7 @@ export default function ProviderProfilePage() {
               </div>
               <div className="field">
                 <label htmlFor="creator-location">所在城市</label>
-                <input id="creator-location" value={location} onChange={(event) => setLocation(event.target.value)} />
+                <input id="creator-location" value={location} onChange={(event) => setLocation(event.target.value)} required />
               </div>
             </div>
 
@@ -298,12 +298,12 @@ export default function ProviderProfilePage() {
 
             <div className="field">
               <label htmlFor="creator-bio">服务介绍</label>
-              <textarea id="creator-bio" value={bio} onChange={(event) => setBio(event.target.value)} />
+              <textarea id="creator-bio" value={bio} onChange={(event) => setBio(event.target.value)} required />
             </div>
 
             <div className="field">
               <label htmlFor="creator-resume">简历/履历</label>
-              <textarea id="creator-resume" value={resume} onChange={(event) => setResume(event.target.value)} />
+              <textarea id="creator-resume" value={resume} onChange={(event) => setResume(event.target.value)} required />
               <span className="fieldHint">这部分会展示在你的主页里，发起沟通时会随展示页一起发送给派单方。</span>
             </div>
 

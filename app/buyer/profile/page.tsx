@@ -88,14 +88,14 @@ export default function BuyerProfilePage() {
           </span>
           <div>
             <h1>先完善主体主页，再发布需求</h1>
-            <p>先提交基础主页即可入驻；补充资质并通过审核后，可正式发布需求和邀请创作者沟通。</p>
+            <p>接单方会查看你的主体认证、主页装修、历史需求和联系方式。派单方需通过资质审核后，才能发布真实需求和邀请接单方沟通。</p>
           </div>
           <div className="profileSteps">
             <span>
               <CheckCircle2 size={15} /> 基本介绍
             </span>
             <span>
-              <FileBadge2 size={15} /> 资质可后续补充
+              <FileBadge2 size={15} /> 营业执照/资质
             </span>
             <span>
               <History size={15} /> Agent整理历史需求
@@ -109,7 +109,7 @@ export default function BuyerProfilePage() {
           <div className="panelTop">
             <div>
               <strong>认证资料与主页装修</strong>
-              <div className="muted">先完成基础入驻，再补充资质文件提升可信度和曝光。</div>
+              <div className="muted">参考平台主体认证逻辑，先选择主体类型，再补充主页展示信息和有效资质。</div>
             </div>
             <Sparkles size={18} />
           </div>
@@ -133,7 +133,7 @@ export default function BuyerProfilePage() {
               </div>
               <div className="field">
                 <label htmlFor="company-location">所在城市</label>
-                <input id="company-location" value={location} onChange={(event) => setLocation(event.target.value)} />
+                <input id="company-location" value={location} onChange={(event) => setLocation(event.target.value)} required />
               </div>
             </div>
 
@@ -168,7 +168,7 @@ export default function BuyerProfilePage() {
 
             <div className="field">
               <label htmlFor="intro">基本介绍</label>
-              <textarea id="intro" value={companyIntro} onChange={(event) => setCompanyIntro(event.target.value)} />
+              <textarea id="intro" value={companyIntro} onChange={(event) => setCompanyIntro(event.target.value)} required />
             </div>
 
             <div className="grid two compactGrid">
@@ -200,14 +200,14 @@ export default function BuyerProfilePage() {
 
             <div className="field">
               <label htmlFor="license">{requiredCredentialLabel(verificationType)}</label>
-              <input id="license" value={businessLicenseFile} onChange={(event) => setBusinessLicenseFile(event.target.value)} />
-              <span className="fieldHint">可先留空完成基础入驻，后续补充资质后由运营后台审核。</span>
+              <input id="license" value={businessLicenseFile} onChange={(event) => setBusinessLicenseFile(event.target.value)} required />
+              <span className="fieldHint">请填写已上传或待审核的资质文件名称，后续可接入真实文件上传。</span>
             </div>
 
             <div className="field">
               <label htmlFor="qualifications">其他有效资质</label>
               <textarea id="qualifications" value={qualificationFiles} onChange={(event) => setQualificationFiles(event.target.value)} />
-              <span className="fieldHint">可后续补充。每行一个资质，例如品牌授权、产品检测、版权证明等。</span>
+              <span className="fieldHint">每行一个资质，例如品牌授权、产品检测、版权证明等。</span>
             </div>
 
             <div className="toolbarGroup">
