@@ -608,10 +608,10 @@ export function upsertCurrentCreatorProfile(input: {
   return profile;
 }
 
-export function verifySubject(subjectType: "buyer" | "creator", id: string, verified = true) {
+export function verifySubject(subjectType: "buyer" | "creator", id: string, verified = true, rejectedReason?: string) {
   const remote = requestJson(`/api/admin/verify`, {
     method: "PATCH",
-    body: JSON.stringify({ subjectType, id, verified })
+    body: JSON.stringify({ subjectType, id, verified, rejectedReason })
   });
 
   if (remote) {

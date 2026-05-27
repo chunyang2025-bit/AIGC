@@ -55,6 +55,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
           </header>
           {children}
+          <footer className="main" style={{ paddingTop: 0 }}>
+            <div className="toolbarGroup muted" style={{ justifyContent: "center", flexWrap: "wrap" }}>
+              <Link href="/terms">服务协议</Link>
+              <Link href="/privacy">隐私政策</Link>
+              <Link href="/rules">入驻规则</Link>
+              <Link href="/disclaimer">免责声明</Link>
+            </div>
+          </footer>
         </div>
       </body>
     </html>

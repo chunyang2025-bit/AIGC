@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Banknote, BriefcaseBusiness, CheckCircle2, FileUp, Inbox, Star, UserRound } from "lucide-react";
+import { Banknote, BriefcaseBusiness, CheckCircle2, FileText, FileUp, Inbox, Search, Star, UserRound } from "lucide-react";
 import { categoryLabel, money, orderStatusLabel } from "@/lib/format";
 import { loadMarketplaceData } from "@/lib/store";
 import { isApproved, readAuthSession } from "@/lib/auth";
@@ -38,6 +38,28 @@ export default function ProviderPortalPage() {
     }))
     .filter((item) => item.project);
   const intentAmount = leads.reduce((sum, order) => sum + order.amount, 0);
+  const onboardingTasks = [
+    {
+      label: "完善展示页",
+      done: Boolean(creator.bio && creator.title && creator.contactEmail),
+      href: "/provider/profile"
+    },
+    {
+      label: "补充代表作",
+      done: creator.portfolio.length > 0,
+      href: "/provider/profile"
+    },
+    {
+      label: "浏览公开需求",
+      done: true,
+      href: "/projects"
+    },
+    {
+      label: "获得发起沟通权限",
+      done: approved,
+      href: "/provider/profile"
+    }
+  ];
 
   return (
     <main className="main">
@@ -93,6 +115,24 @@ export default function ProviderPortalPage() {
           你已完成基础入驻，可以浏览公开需求并继续完善展示页。审核通过后才能向派单方发起沟通。
         </section>
       ) : null}
+
+      <section className="section">
+        <div className="sectionHeader">
+          <div>
+            <h2>接单方新手任务</h2>
+            <p>这些任务不限制浏览，但完成后更容易被派单方看到并邀请沟通。</p>
+          </div>
+        </div>
+        <div className="grid four">
+          {onboardingTasks.map((task, index) => (
+            <Link className="metric" href={task.href} key={task.label}>
+              {index === 0 ? <UserRound size={18} /> : index === 1 ? <FileText size={18} /> : index === 2 ? <Search size={18} /> : <CheckCircle2 size={18} />}
+              <strong>{task.done ? "已完成" : "待完成"}</strong>
+              <span>{task.label}</span>
+            </Link>
+          ))}
+        </div>
+      </section>
 
       <section className="section">
         <div className="grid four">

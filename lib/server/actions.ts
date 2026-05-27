@@ -421,16 +421,17 @@ export function verifySubject(data: MarketplaceData, input: Record<string, unkno
   const subjectType = String(input.subjectType || input.type);
   const idValue = String(input.id || input.subjectId || "");
   const verified = input.verified === undefined ? true : Boolean(input.verified);
+  const rejectedReason = verified ? undefined : String(input.rejectedReason || input.reason || "资料不完整，请补充后重新提交。");
 
   if (subjectType === "buyer") {
     data.buyerProfiles = (data.buyerProfiles ?? []).map((profile) =>
-      profile.id === idValue || profile.userId === idValue ? { ...profile, verified } : profile
+      profile.id === idValue || profile.userId === idValue ? { ...profile, verified, rejectedReason } : profile
     );
     return data.buyerProfiles.find((profile) => profile.id === idValue || profile.userId === idValue);
   }
 
   data.creators = data.creators.map((creator) =>
-    creator.id === idValue || creator.userId === idValue ? { ...creator, verified } : creator
+    creator.id === idValue || creator.userId === idValue ? { ...creator, verified, rejectedReason } : creator
   );
   return data.creators.find((creator) => creator.id === idValue || creator.userId === idValue);
 }

@@ -43,6 +43,7 @@ export type CreatorProfile = {
   rating: number;
   responseTime: string;
   verified: boolean;
+  rejectedReason?: string;
   identityType?: VerificationType;
   verificationType?: VerificationType;
   credentialFile?: string;
@@ -77,6 +78,7 @@ export type BuyerProfile = {
   businessLicenseFile: string;
   qualificationFiles: string[];
   verified: boolean;
+  rejectedReason?: string;
   cover: string;
 };
 

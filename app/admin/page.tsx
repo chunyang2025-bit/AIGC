@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Download, RotateCcw, ShieldCheck, UsersRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { activeOrders, monthlyActiveUsers } from "@/lib/analytics";
@@ -16,10 +16,17 @@ export default function AdminPage() {
   const reachedIntent = data.orders.filter((order) => order.status === "approved").length;
   const buyerMau = monthlyActiveUsers(data, "buyer");
   const creatorMau = monthlyActiveUsers(data, "creator");
+  const [reviewReason, setReviewReason] = useState("资料不完整，请补充主体资质或联系方式后重新提交。");
 
   function exportOperationsReport() {
     const report = {
       exportedAt: new Date().toISOString(),
+      platform: {
+        name: "灵工智创平台",
+        positioning: "AIGC供需撮合与创作者入驻平台",
+        launchStrategy: "免费开放入驻，派单方资质审核后发布真实需求，接单方基础入驻后通过新手任务完善资料。",
+        liabilityBoundary: "平台只提供信息展示、智能匹配和沟通留痕，不托管资金，不承诺交易交付。"
+      },
       summary: {
         registeredUsers: data.users.length,
         buyerProfiles: data.buyerProfiles?.length ?? 0,
@@ -193,6 +200,12 @@ export default function AdminPage() {
             </div>
             <ShieldCheck size={18} />
           </div>
+          <div className="cardBody">
+            <div className="field">
+              <label htmlFor="review-reason">驳回原因模板</label>
+              <input id="review-reason" value={reviewReason} onChange={(event) => setReviewReason(event.target.value)} />
+            </div>
+          </div>
           <table className="table">
             <thead>
               <tr>
@@ -211,6 +224,7 @@ export default function AdminPage() {
                   <td>{profile.contactEmail || profile.contactPhone || "-"}</td>
                   <td>
                     <span className={profile.verified ? "tag green" : "tag gold"}>{profile.verified ? "已认证" : "待审核"}</span>
+                    {!profile.verified && profile.rejectedReason ? <div className="muted">{profile.rejectedReason}</div> : null}
                   </td>
                   <td>
                     <button
@@ -223,6 +237,17 @@ export default function AdminPage() {
                       type="button"
                     >
                       审核通过
+                    </button>
+                    <button
+                      className="btn"
+                      disabled={profile.verified}
+                      onClick={() => {
+                        verifySubject("buyer", profile.id, false, reviewReason);
+                        router.refresh();
+                      }}
+                      type="button"
+                    >
+                      驳回
                     </button>
                   </td>
                 </tr>
@@ -257,6 +282,7 @@ export default function AdminPage() {
                   <td>{creator.rating.toFixed(1)}</td>
                   <td>
                     <span className={creator.verified ? "tag green" : "tag gold"}>{creator.verified ? "已认证" : "待审核"}</span>
+                    {!creator.verified && creator.rejectedReason ? <div className="muted">{creator.rejectedReason}</div> : null}
                   </td>
                   <td>
                     <button
@@ -269,6 +295,17 @@ export default function AdminPage() {
                       type="button"
                     >
                       审核通过
+                    </button>
+                    <button
+                      className="btn"
+                      disabled={creator.verified}
+                      onClick={() => {
+                        verifySubject("creator", creator.id, false, reviewReason);
+                        router.refresh();
+                      }}
+                      type="button"
+                    >
+                      驳回
                     </button>
                   </td>
                 </tr>
