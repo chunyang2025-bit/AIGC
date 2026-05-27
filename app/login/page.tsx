@@ -3,7 +3,7 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { BriefcaseBusiness, CheckCircle2, Headphones, HelpCircle, LockKeyhole, Phone, ShieldCheck, Sparkles, UserCog } from "lucide-react";
+import { BriefcaseBusiness, CheckCircle2, Headphones, HelpCircle, LockKeyhole, Mail, Phone, ShieldCheck, Sparkles, UserCog } from "lucide-react";
 import { loginAccount, registerAccount, roleProfilePath, roleWorkbenchPath } from "@/lib/auth";
 
 const publicRoles = [
@@ -47,19 +47,51 @@ function LoginContent() {
   const visibleRoles = requestedRole === "admin" ? [adminRole] : publicRoles;
   const initialRole = visibleRoles.some((role) => role.key === requestedRole) ? requestedRole ?? "accept" : "accept";
   const [activeKey, setActiveKey] = useState(initialRole);
+  const [account, setAccount] = useState("");
   const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [code, setCode] = useState("");
   const [statusText, setStatusText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mode, setMode] = useState<"login" | "register">("login");
+  const [loginMethod, setLoginMethod] = useState<"password" | "code">("password");
   const activeRole = visibleRoles.find((role) => role.key === activeKey) ?? visibleRoles[0];
   const ActiveIcon = activeRole.icon;
   const activeRoleValue = activeRole.key === "dispatch" ? "buyer" : activeRole.key === "accept" ? "creator" : "admin";
 
   function validateInput() {
     setStatusText("");
-    if (!phone.trim() || !email.trim()) {
-      setStatusText("请先填写手机号和邮箱。");
+    if (mode === "register") {
+      if (!account.trim()) {
+        setStatusText("请先填写手机号或邮箱。");
+        return false;
+      }
+      if (password.length < 6) {
+        setStatusText("密码至少需要6位。");
+        return false;
+      }
+      if (password !== confirmPassword) {
+        setStatusText("两次输入的密码不一致。");
+        return false;
+      }
+      return true;
+    }
+
+    if (loginMethod === "code") {
+      if (!phone.trim()) {
+        setStatusText("请先填写手机号。");
+        return false;
+      }
+      if (!code.trim()) {
+        setStatusText("请先填写验证码。");
+        return false;
+      }
+      return true;
+    }
+
+    if (!account.trim() || !password.trim()) {
+      setStatusText("请先填写账号和密码。");
       return false;
     }
     return true;
@@ -75,12 +107,13 @@ function LoginContent() {
       setIsSubmitting(true);
       registerAccount({
         role: activeRoleValue,
-        phone: phone.trim(),
-        email: email.trim(),
-        name: email.trim()
+        account: account.trim(),
+        password: password.trim(),
+        name: account.trim()
       });
       setMode("login");
-      setStatusText("注册成功，请使用刚才的账号登录。");
+      setLoginMethod("password");
+      setStatusText("注册成功，请使用刚才的账号和密码登录。");
     } catch (error) {
       setStatusText(error instanceof Error ? error.message : "注册失败，请稍后再试。");
     } finally {
@@ -94,9 +127,12 @@ function LoginContent() {
       setIsSubmitting(true);
       const session = loginAccount({
         role: activeRoleValue,
+        account: loginMethod === "code" ? phone.trim() : account.trim(),
         phone: phone.trim(),
-        email: email.trim(),
-        name: email.trim()
+        password: password.trim(),
+        code: code.trim(),
+        authMethod: loginMethod,
+        name: account.trim() || phone.trim()
       });
       setStatusText("登录成功，正在进入对应工作台。");
       router.push(session.status === "approved" ? roleWorkbenchPath(session.role) : roleProfilePath(session.role));
@@ -186,34 +222,68 @@ function LoginContent() {
             一个账号对应一个主体，可分别开通派单能力和接单能力。
           </div>
 
+          {mode === "login" ? (
+            <div className="dispatchTabs" role="tablist" aria-label="登录方式">
+              <button className={loginMethod === "password" ? "dispatchTab active" : "dispatchTab"} onClick={() => setLoginMethod("password")} type="button">
+                账号密码
+              </button>
+              <button className={loginMethod === "code" ? "dispatchTab active" : "dispatchTab"} onClick={() => setLoginMethod("code")} type="button">
+                手机验证码
+              </button>
+            </div>
+          ) : null}
+
           <div className="loginForm">
-            <label>
-              手机号
-              <div className="loginInput">
-                <Phone size={16} />
-                <input placeholder="请输入手机号" value={phone} onChange={(event) => setPhone(event.target.value)} />
-              </div>
-            </label>
-            <label>
-              邮箱
-              <div className="loginInput">
-                <Sparkles size={16} />
-                <input placeholder="请输入邮箱" value={email} onChange={(event) => setEmail(event.target.value)} />
-              </div>
-            </label>
-            <label>
-              验证码
-              <div className="loginInput codeInput">
-                <LockKeyhole size={16} />
-                <input placeholder="请输入验证码" defaultValue="123456" />
-                <button
-                  onClick={() => setStatusText("验证码已发送，请查看手机或邮箱。")}
-                  type="button"
-                >
-                  获取验证码
-                </button>
-              </div>
-            </label>
+            {mode === "register" || loginMethod === "password" ? (
+              <>
+                <label>
+                  账号
+                  <div className="loginInput">
+                    <Mail size={16} />
+                    <input placeholder="手机号或邮箱" value={account} onChange={(event) => setAccount(event.target.value)} />
+                  </div>
+                </label>
+                <label>
+                  密码
+                  <div className="loginInput">
+                    <LockKeyhole size={16} />
+                    <input placeholder="请输入密码" type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
+                  </div>
+                </label>
+                {mode === "register" ? (
+                  <label>
+                    确认密码
+                    <div className="loginInput">
+                      <LockKeyhole size={16} />
+                      <input placeholder="请再次输入密码" type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} />
+                    </div>
+                  </label>
+                ) : null}
+              </>
+            ) : (
+              <>
+                <label>
+                  手机号
+                  <div className="loginInput">
+                    <Phone size={16} />
+                    <input placeholder="请输入手机号" value={phone} onChange={(event) => setPhone(event.target.value)} />
+                  </div>
+                </label>
+                <label>
+                  验证码
+                  <div className="loginInput codeInput">
+                    <LockKeyhole size={16} />
+                    <input placeholder="请输入验证码" value={code} onChange={(event) => setCode(event.target.value)} />
+                    <button
+                      onClick={() => setStatusText("验证码已发送，请查看手机短信。")}
+                      type="button"
+                    >
+                      获取验证码
+                    </button>
+                  </div>
+                </label>
+              </>
+            )}
           </div>
 
           {mode === "login" ? (

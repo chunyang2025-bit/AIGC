@@ -91,7 +91,19 @@ function inferAccountStatus(userId: string, role: UserRole): AccountStatus {
   return subject.verified ? "approved" : "pending_review";
 }
 
-function requestAuthUser(path: string, input: { role: UserRole; phone: string; email: string; name?: string }) {
+function normalizeAccount(account: string) {
+  return account.trim();
+}
+
+function requestAuthUser(path: string, input: {
+  role: UserRole;
+  account: string;
+  password?: string;
+  phone?: string;
+  code?: string;
+  authMethod?: "password" | "code";
+  name?: string;
+}) {
   const xhr = new XMLHttpRequest();
   xhr.open("POST", path, false);
   xhr.setRequestHeader("Accept", "application/json");
@@ -99,9 +111,13 @@ function requestAuthUser(path: string, input: { role: UserRole; phone: string; e
   xhr.send(
     JSON.stringify({
       role: input.role,
-      phone: input.phone,
-      email: input.email,
-      name: input.name || input.email || input.phone || "新用户"
+      account: normalizeAccount(input.account),
+      phone: input.phone || normalizeAccount(input.account),
+      email: normalizeAccount(input.account).includes("@") ? normalizeAccount(input.account) : `${normalizeAccount(input.account)}@phone.aigclancer.local`,
+      password: input.password,
+      code: input.code,
+      authMethod: input.authMethod,
+      name: input.name || normalizeAccount(input.account) || "新用户"
     })
   );
 
@@ -127,8 +143,9 @@ function saveUserSession(user: {
   id: string;
   name: string;
   email: string;
+  phone?: string;
   role: UserRole;
-}, input: { phone: string; role?: UserRole }) {
+}, input: { account: string; phone?: string; role?: UserRole }) {
   if (!user) {
     throw new Error("账号处理失败，请检查手机号、邮箱和网络状态。");
   }
@@ -138,7 +155,7 @@ function saveUserSession(user: {
     userId: user.id,
     name: user.name,
     role: sessionRole,
-    phone: input.phone,
+    phone: input.phone || (input.account.includes("@") ? "" : input.account),
     email: user.email,
     status: inferAccountStatus(user.id, sessionRole),
     createdAt: new Date().toISOString()
@@ -147,7 +164,7 @@ function saveUserSession(user: {
   return session;
 }
 
-export function registerAccount(input: { role: UserRole; phone: string; email: string; name?: string }) {
+export function registerAccount(input: { role: UserRole; account: string; password: string; name?: string }) {
   const user = requestAuthUser("/api/auth/register", input);
   if (!user) {
     throw new Error("注册失败，请检查手机号、邮箱和网络状态。");
@@ -156,7 +173,15 @@ export function registerAccount(input: { role: UserRole; phone: string; email: s
   return user;
 }
 
-export function loginAccount(input: { role: UserRole; phone: string; email: string; name?: string }) {
+export function loginAccount(input: {
+  role: UserRole;
+  account: string;
+  phone?: string;
+  password?: string;
+  code?: string;
+  authMethod?: "password" | "code";
+  name?: string;
+}) {
   const user = requestAuthUser("/api/auth/login", input);
   if (!user) {
     throw new Error("未找到账号，请先注册。");

@@ -49,20 +49,23 @@ export function registerUser(data: MarketplaceData, input: Record<string, unknow
   if (role === "admin") {
     return null;
   }
-  const email = String(input.email || `${Date.now()}@demo.local`);
-  const existing = data.users.find((item) => item.email === email);
+  const account = String(input.account || input.email || input.phone || "").trim();
+  const password = String(input.password || "");
+  if (!account || password.length < 6) return null;
+
+  const email = account.includes("@") ? account : String(input.email || `${account}@phone.aigclancer.local`);
+  const phone = account.includes("@") ? String(input.phone || "") : account;
+  const existing = data.users.find((item) => item.email === email || item.account === account || item.phone === account);
   if (existing) {
-    addActivity(data, {
-      userId: existing.id,
-      role,
-      eventType: "login"
-    });
-    return existing;
+    return null;
   }
 
   const user = {
     id: id("u"),
-    name: String(input.name || input.email || "新用户"),
+    name: String(input.name || account || "新用户"),
+    account,
+    phone,
+    password,
     email,
     role,
     createdAt: today()
@@ -82,12 +85,18 @@ export function loginUser(data: MarketplaceData, input: Record<string, unknown>)
   const role = ["buyer", "creator", "admin"].includes(String(input.role))
     ? (String(input.role) as UserRole)
     : undefined;
-  const email = String(input.email || "");
+  const account = String(input.account || input.email || input.phone || "").trim();
+  const authMethod = String(input.authMethod || "password");
+  const password = String(input.password || "");
+  const code = String(input.code || "");
   const user = data.users.find((item) =>
-    item.email === email && (role === "admin" ? item.role === "admin" : item.role !== "admin")
+    (item.email === account || item.account === account || item.phone === account) &&
+    (role === "admin" ? item.role === "admin" : item.role !== "admin")
   );
 
-  if (user) {
+  const passwordMatches = user ? user.password ? user.password === password : password.length >= 6 : false;
+  const codeMatches = authMethod === "code" && /^\d{6}$/.test(code) && account && !account.includes("@");
+  if (user && (authMethod === "code" ? codeMatches : passwordMatches)) {
     addActivity(data, {
       userId: user.id,
       role: role ?? user.role,
@@ -95,7 +104,7 @@ export function loginUser(data: MarketplaceData, input: Record<string, unknown>)
     });
   }
 
-  return user;
+  return user && (authMethod === "code" ? codeMatches : passwordMatches) ? user : null;
 }
 
 export function createProject(data: MarketplaceData, input: Record<string, unknown>) {

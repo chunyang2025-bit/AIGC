@@ -21,6 +21,9 @@ export type VerificationType =
 export type User = {
   id: string;
   name: string;
+  account?: string;
+  phone?: string;
+  password?: string;
   email: string;
   role: UserRole;
   createdAt: string;
