@@ -129,7 +129,7 @@ export default function BuyerProfilePage() {
               <div className="field">
                 <label htmlFor="avatar-url">头像/Logo</label>
                 <input id="avatar-url" value={avatarUrl} onChange={(event) => setAvatarUrl(event.target.value)} />
-                <span className="fieldHint">MVP阶段可填头像文字或图片链接。</span>
+                <span className="fieldHint">可填写头像文字、Logo链接或图片链接。</span>
               </div>
               <div className="field">
                 <label htmlFor="company-location">所在城市</label>

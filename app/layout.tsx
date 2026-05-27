@@ -4,8 +4,8 @@ import Link from "next/link";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "灵工智创平台",
-  description: "连接需求发布方与AIGC创作者的AI内容生产经纪网络。"
+  title: "AIGClancer",
+  description: "连接需求发布方与AIGC创作者的供需撮合平台。"
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -32,7 +32,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <span className="brandMark">
                 <Sparkles size={18} />
               </span>
-              <span>灵工智创平台</span>
+              <span>AIGClancer</span>
             </Link>
             <nav className="navLinks" aria-label="Primary navigation">
               <Link href="/creators">

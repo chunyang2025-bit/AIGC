@@ -22,7 +22,7 @@ export default function AdminPage() {
     const report = {
       exportedAt: new Date().toISOString(),
       platform: {
-        name: "灵工智创平台",
+        name: "AIGClancer",
         positioning: "AIGC供需撮合与创作者入驻平台",
         launchStrategy: "免费开放入驻，派单方资质审核后发布真实需求，接单方基础入驻后通过新手任务完善资料。",
         liabilityBoundary: "平台只提供信息展示、智能匹配和沟通留痕，不托管资金，不承诺交易交付。"
@@ -66,7 +66,7 @@ export default function AdminPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `linggong-operations-${new Date().toISOString().slice(0, 10)}.json`;
+    link.download = `aigclancer-operations-${new Date().toISOString().slice(0, 10)}.json`;
     link.click();
     URL.revokeObjectURL(url);
   }
@@ -102,7 +102,7 @@ export default function AdminPage() {
             router.refresh();
           }}
         >
-          <RotateCcw size={16} /> 重置演示数据
+          <RotateCcw size={16} /> 重置种子数据
         </button>
         <button
           className="btn primary"
@@ -141,7 +141,7 @@ export default function AdminPage() {
         <div className="sectionHeader">
           <div>
             <h2>月活运营指标</h2>
-            <p>用于上线后跟踪需求方与创作者活跃情况，支撑创业补贴材料中的运营证明。</p>
+            <p>用于跟踪需求方与创作者活跃情况，沉淀平台运营证明。</p>
           </div>
         </div>
         <div className="grid four">
@@ -356,7 +356,7 @@ export default function AdminPage() {
         <div className="sectionHeader">
           <div>
             <h2>最近活跃记录</h2>
-            <p>上线后建议把登录、浏览、发布需求、邀请、发消息、发送资料和达成意向都写入这张表。</p>
+            <p>记录登录、浏览、发布需求、邀请、发消息、发送资料和达成意向等关键行为。</p>
           </div>
         </div>
         <table className="table">

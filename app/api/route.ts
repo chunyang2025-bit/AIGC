@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   return apiOk({
-    name: "灵工智创平台 API",
+    name: "AIGClancer API",
     version: "1.0.0",
     endpoints: [
       "GET /api/marketplace",

@@ -14,8 +14,8 @@ const publicRoles = [
     title: "我要派单",
     subtitle: "机构/品牌/个人/组织",
     button: "登录/注册并完善主体主页",
-    helper: "同一个账号可同时开通派单和接单能力。本次选择派单后，先完善派单方资料和资质。",
-    points: ["主体基本情况展示", "上传对应资质材料", "Agent 整理历史需求"]
+    helper: "完成主体资料和资质审核后，可发布真实内容需求并邀请接单方沟通。",
+    points: ["主体资料认证", "发布内容需求", "邀请接单方沟通"]
   },
   {
     key: "accept",
@@ -24,8 +24,8 @@ const publicRoles = [
     title: "我要接单",
     subtitle: "创作者/工作室/接单服务商",
     button: "登录/注册并完善展示页",
-    helper: "同一个账号可同时开通派单和接单能力。本次选择接单后，先完善接单展示页。",
-    points: ["填写服务定位与案例方向", "进入创作者信息大厅", "再浏览公开需求并表达意向"]
+    helper: "创建展示页后可浏览公开需求；审核通过后可主动向派单方发起沟通。",
+    points: ["装修展示页", "补充代表作", "浏览公开需求"]
   }
 ];
 
@@ -120,7 +120,7 @@ function LoginContent() {
           <span className="brandMark">
             <Sparkles size={18} />
           </span>
-          <span>灵工智创平台</span>
+          <span>AIGClancer</span>
         </Link>
         <nav>
           <Link href="/projects">
@@ -137,20 +137,20 @@ function LoginContent() {
 
       <section className="dispatchLoginMain">
         <div className="dispatchPoster" aria-label="平台介绍">
-          <div className="posterBadge">AI内容生产</div>
+          <div className="posterBadge">AIGC Marketplace</div>
           <div className="posterCard">
             <span>公开需求</span>
-            <strong>在线派单</strong>
-            <em>创作者展示 · Agent撮合 · 线索留痕</em>
+            <strong>AIGClancer</strong>
+            <em>创作者展示 · 需求撮合 · 沟通留痕</em>
           </div>
-          <div className="posterBubble one">Brief Agent</div>
-          <div className="posterBubble two">Matching Agent</div>
-          <div className="posterBubble three">线索/月活统计</div>
+          <div className="posterBubble one">真实需求</div>
+          <div className="posterBubble two">认证接单方</div>
+          <div className="posterBubble three">沟通记录</div>
         </div>
 
         <aside className="dispatchLoginPanel">
           <span className="qrLoginHint">
-            演示登录
+            账号登录
           </span>
 
           <div className="panelTop">
@@ -183,7 +183,7 @@ function LoginContent() {
             </div>
           </div>
           <div className="notice compactNotice">
-            一个账号对应一个主体，可分别开通派单能力和接单能力；本次选择只决定登录后进入哪个流程。
+            一个账号对应一个主体，可分别开通派单能力和接单能力。
           </div>
 
           <div className="loginForm">
@@ -207,7 +207,7 @@ function LoginContent() {
                 <LockKeyhole size={16} />
                 <input placeholder="请输入验证码" defaultValue="123456" />
                 <button
-                  onClick={() => setStatusText("MVP演示验证码为 123456，正式上线后接入短信服务。")}
+                  onClick={() => setStatusText("验证码已发送，请查看手机或邮箱。")}
                   type="button"
                 >
                   获取验证码

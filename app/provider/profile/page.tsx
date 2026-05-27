@@ -181,7 +181,7 @@ export default function ProviderProfilePage() {
               <div className="field">
                 <label htmlFor="creator-avatar">头像/Logo</label>
                 <input id="creator-avatar" value={avatarUrl} onChange={(event) => setAvatarUrl(event.target.value)} />
-                <span className="fieldHint">MVP阶段可填头像文字或图片链接。</span>
+                <span className="fieldHint">可填写头像文字、Logo链接或图片链接。</span>
               </div>
               <div className="field">
                 <label htmlFor="creator-location">所在城市</label>
@@ -334,7 +334,7 @@ export default function ProviderProfilePage() {
           </div>
           <CreatorCard creator={preview} />
           <div className="notice">
-            这里是平台撮合资料，不承诺交易履约。具体合作、报价、合同和交付由双方在线下或第三方工具自行确认。
+            这里是你的公开展示资料，派单方会根据服务方向、代表作和联系方式判断是否继续沟通。
           </div>
         </aside>
       </div>
