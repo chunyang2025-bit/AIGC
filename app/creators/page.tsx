@@ -5,11 +5,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Filter, MessageSquarePlus, Plus, RotateCcw, Search, UserCog, UsersRound } from "lucide-react";
 import { CreatorCard } from "@/components/CreatorCard";
 import { categoryLabel } from "@/lib/format";
+import { projectCategories } from "@/lib/project-categories";
 import { inviteCreator, loadMarketplaceData } from "@/lib/store";
 import { ProjectCategory } from "@/lib/types";
 import { isApproved, readAuthSession, roleEntryPath } from "@/lib/auth";
 
-const categories: Array<ProjectCategory | "All"> = ["All", "AI Short Video", "Image Design", "Digital Human"];
+const categories: Array<ProjectCategory | "All"> = ["All", ...projectCategories];
 
 function CreatorsContent() {
   const router = useRouter();

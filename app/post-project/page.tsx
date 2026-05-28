@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import { Bot, CheckCircle2, FileText, SendHorizonal, Sparkles } from "lucide-react";
 import { draftProjectBrief, DraftBriefResult } from "@/lib/brief-agent";
 import { categoryLabel, money } from "@/lib/format";
+import { projectCategoryOptions } from "@/lib/project-categories";
 import { createProject, loadMarketplaceData } from "@/lib/store";
 import { isApproved, readAuthSession } from "@/lib/auth";
+import { ProjectCategory } from "@/lib/types";
 
 export default function PostProjectPage() {
   const router = useRouter();
@@ -23,12 +25,25 @@ export default function PostProjectPage() {
   const [qualificationFile, setQualificationFile] = useState("营业执照与产品授权资料.pdf");
   const [contactEmail, setContactEmail] = useState("mira@northstar.ai");
   const [contactPhone, setContactPhone] = useState("0571-8800-1024");
+  const [tagDraft, setTagDraft] = useState("");
+  const [projectTags, setProjectTags] = useState<string[]>(["小红书种草", "护眼产品", "桌面美学"]);
   const [draft, setDraft] = useState<DraftBriefResult>(() =>
     draftProjectBrief({ rawIdea, productName, audience, channel, style })
   );
 
   function generateDraft() {
     setDraft(draftProjectBrief({ rawIdea, productName, audience, channel, style }));
+  }
+
+  function addProjectTag() {
+    const next = tagDraft.trim();
+    if (!next) return;
+    setProjectTags((current) => current.includes(next) ? current : [...current, next]);
+    setTagDraft("");
+  }
+
+  function removeProjectTag(tag: string) {
+    setProjectTags((current) => current.filter((item) => item !== tag));
   }
 
   return (
@@ -84,6 +99,49 @@ export default function PostProjectPage() {
               <div className="field">
                 <label htmlFor="style">风格偏好</label>
                 <input id="style" value={style} onChange={(event) => setStyle(event.target.value)} />
+              </div>
+            </div>
+            <div className="field">
+              <label htmlFor="project-category">需求类型</label>
+              <select
+                id="project-category"
+                value={draft.category}
+                onChange={(event) => {
+                  const nextCategory = event.target.value as ProjectCategory;
+                  setDraft((current) => ({ ...current, category: nextCategory }));
+                }}
+              >
+                {projectCategoryOptions.map((item) => (
+                  <option key={item.value} value={item.value}>{item.label}</option>
+                ))}
+              </select>
+              <span className="fieldHint">Agent 会自动判断类型，你也可以手动调整。</span>
+            </div>
+            <div className="field">
+              <label htmlFor="project-tags">需求标签</label>
+              <div className="tagEditor">
+                <div className="tagList">
+                  {projectTags.map((tag) => (
+                    <button className="tag removableTag" key={tag} onClick={() => removeProjectTag(tag)} type="button">
+                      {tag} ×
+                    </button>
+                  ))}
+                </div>
+                <div className="tagInputRow">
+                  <input
+                    id="project-tags"
+                    placeholder="输入自定义标签，例如：新品首发"
+                    value={tagDraft}
+                    onChange={(event) => setTagDraft(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        addProjectTag();
+                      }
+                    }}
+                  />
+                  <button className="btn" onClick={addProjectTag} type="button">添加标签</button>
+                </div>
               </div>
             </div>
             <div className="field">
@@ -165,6 +223,7 @@ export default function PostProjectPage() {
                   title: draft.title,
                   description: draft.description,
                   category: draft.category,
+                  tags: projectTags,
                   budget: draft.budget,
                   deadline: draft.deadline,
                   referenceFile,

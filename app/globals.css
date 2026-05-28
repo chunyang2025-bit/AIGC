@@ -1833,6 +1833,25 @@ button {
   height: 58px;
 }
 
+.tagEditor {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfa;
+}
+
+.tagInputRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.removableTag {
+  cursor: pointer;
+}
+
 .compactGrid {
   gap: 12px;
 }

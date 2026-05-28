@@ -39,6 +39,13 @@ export function ProjectCard({
             {project.description.split("\n").slice(0, 2).join(" ")}
           </p>
         </div>
+        {project.tags?.length ? (
+          <div className="tagList">
+            {project.tags.slice(0, 5).map((tag) => (
+              <span className="tag" key={tag}>{tag}</span>
+            ))}
+          </div>
+        ) : null}
         <Link className="row muted" href={session ? `/buyers/${project.buyerId}` : "/login"}>
           <Building2 size={16} /> {buyerName}
         </Link>

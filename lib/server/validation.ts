@@ -1,6 +1,5 @@
 import { ProjectCategory, VerificationType } from "../types";
-
-export const projectCategories: ProjectCategory[] = ["AI Short Video", "Image Design", "Digital Human"];
+import { projectCategories } from "../project-categories";
 
 export const verificationTypes: VerificationType[] = [
   "enterprise",

@@ -136,6 +136,7 @@ export function createProject(input: {
   title: string;
   description: string;
   category: ProjectCategory;
+  tags?: string[];
   budget: number;
   deadline: string;
   referenceFile?: string;
@@ -166,6 +167,7 @@ export function createProject(input: {
     title: input.title,
     description: input.description,
     category: input.category,
+    tags: input.tags ?? [],
     budget: input.budget,
     deadline: input.deadline,
     status: "matching",

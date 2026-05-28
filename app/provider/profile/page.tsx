@@ -5,14 +5,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, BriefcaseBusiness, CheckCircle2, Eye, Save, Sparkles, UserRound } from "lucide-react";
 import { CreatorCard } from "@/components/CreatorCard";
-import { categoryLabel, requiredCredentialLabel, verificationTypeLabel } from "@/lib/format";
+import { requiredCredentialLabel, verificationTypeLabel } from "@/lib/format";
 import { fileNames, readImageFile } from "@/lib/file-upload";
 import { joinProvinceCity, provinceCityOptions, splitProvinceCity } from "@/lib/location-options";
+import { projectCategoryOptions } from "@/lib/project-categories";
 import { loadMarketplaceData, upsertCurrentCreatorProfile } from "@/lib/store";
 import { CreatorProfile, ProjectCategory, VerificationType } from "@/lib/types";
 import { readAuthSession, setAuthCapability } from "@/lib/auth";
 
-const categoryOptions: ProjectCategory[] = ["AI Short Video", "Image Design", "Digital Human"];
 const verificationTypes: VerificationType[] = [
   "enterprise",
   "individual_business",
@@ -50,6 +50,7 @@ export default function ProviderProfilePage() {
   const [bio, setBio] = useState(currentProfile?.bio ?? "");
   const [resume, setResume] = useState(currentProfile?.resume ?? "");
   const [skills, setSkills] = useState((currentProfile?.skills ?? []).join(", "));
+  const [skillDraft, setSkillDraft] = useState("");
   const [portfolio, setPortfolio] = useState((currentProfile?.portfolio ?? []).join("\n"));
   const [priceMin, setPriceMin] = useState(currentProfile ? String(currentProfile.priceMin) : "");
   const [priceMax, setPriceMax] = useState(currentProfile ? String(currentProfile.priceMax) : "");
@@ -105,6 +106,20 @@ export default function ProviderProfilePage() {
     setCategories((current) =>
       current.includes(category) ? current.filter((item) => item !== category) : [...current, category]
     );
+  }
+
+  function addSkillTag() {
+    const next = skillDraft.trim();
+    if (!next) return;
+    const current = splitList(skills);
+    if (!current.includes(next)) {
+      setSkills([...current, next].join(", "));
+    }
+    setSkillDraft("");
+  }
+
+  function removeSkillTag(tag: string) {
+    setSkills(splitList(skills).filter((item) => item !== tag).join(", "));
   }
 
   function handleAvatarUpload(files: FileList | null) {
@@ -278,7 +293,7 @@ export default function ProviderProfilePage() {
             <div className="field">
               <label>可接需求类型</label>
               <div className="checkPillGrid">
-                {categoryOptions.map((category) => (
+                {projectCategoryOptions.map(({ value: category, label }) => (
                   <button
                     className={categories.includes(category) ? "checkPill active" : "checkPill"}
                     key={category}
@@ -286,7 +301,7 @@ export default function ProviderProfilePage() {
                     type="button"
                   >
                     <CheckCircle2 size={15} />
-                    {categoryLabel(category)}
+                    {label}
                   </button>
                 ))}
               </div>
@@ -294,8 +309,31 @@ export default function ProviderProfilePage() {
 
             <div className="field">
               <label htmlFor="creator-skills">技能标签</label>
-              <input id="creator-skills" value={skills} onChange={(event) => setSkills(event.target.value)} />
-              <span className="fieldHint">用逗号分隔，例如：AI短视频、数字人口播、商品图。</span>
+              <div className="tagEditor">
+                <div className="tagList">
+                  {splitList(skills).map((tag) => (
+                    <button className="tag removableTag" key={tag} onClick={() => removeSkillTag(tag)} type="button">
+                      {tag} ×
+                    </button>
+                  ))}
+                </div>
+                <div className="tagInputRow">
+                  <input
+                    id="creator-skills"
+                    placeholder="输入自定义标签，例如：小红书种草"
+                    value={skillDraft}
+                    onChange={(event) => setSkillDraft(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        addSkillTag();
+                      }
+                    }}
+                  />
+                  <button className="btn" onClick={addSkillTag} type="button">添加标签</button>
+                </div>
+              </div>
+              <span className="fieldHint">预设类型用于筛选匹配，自定义标签用于展示更细能力；点击标签可删除。</span>
             </div>
 
             <div className="grid two compactGrid">

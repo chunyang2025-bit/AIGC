@@ -1,6 +1,18 @@
 export type UserRole = "buyer" | "creator" | "admin";
 
-export type ProjectCategory = "AI Short Video" | "Image Design" | "Digital Human";
+export type ProjectCategory =
+  | "AI Short Video"
+  | "Image Design"
+  | "Digital Human"
+  | "AI Copywriting"
+  | "Ecommerce Content"
+  | "Social Media Content"
+  | "Brand Visual"
+  | "Prompt Engineering"
+  | "AI Model Training"
+  | "AI Voice"
+  | "AI PPT"
+  | "AI Course";
 
 export type ProjectStatus = "open" | "matching" | "in_progress" | "completed";
 
@@ -91,6 +103,7 @@ export type Project = {
   title: string;
   description: string;
   category: ProjectCategory;
+  tags?: string[];
   budget: number;
   deadline: string;
   status: ProjectStatus;

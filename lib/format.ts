@@ -1,3 +1,5 @@
+import { categoryLabel as projectCategoryLabel } from "./project-categories";
+
 export function money(value: number) {
   return new Intl.NumberFormat("zh-CN", {
     style: "currency",
@@ -15,12 +17,7 @@ export function compactDate(value: string) {
 }
 
 export function categoryLabel(value: string) {
-  const labels: Record<string, string> = {
-    "AI Short Video": "AI短视频",
-    "Image Design": "图片设计",
-    "Digital Human": "数字人口播"
-  };
-  return labels[value] ?? value;
+  return projectCategoryLabel(value);
 }
 
 export function projectStatusLabel(value: string) {

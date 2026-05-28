@@ -157,6 +157,7 @@ export function createProject(data: MarketplaceData, input: Record<string, unkno
     title: String(input.title || "未命名需求"),
     description: String(input.description || ""),
     category: asProjectCategory(input.category),
+    tags: asStringArray(input.tags),
     budget: asNumber(input.budget, 3000),
     deadline: String(input.deadline || today()),
     status: "matching",

@@ -70,6 +70,13 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                   {project.description}
                 </p>
               </div>
+              {project.tags?.length ? (
+                <div className="tagList">
+                  {project.tags.map((tag) => (
+                    <span className="tag" key={tag}>{tag}</span>
+                  ))}
+                </div>
+              ) : null}
               <div className="grid four">
                 <div className="metric">
                   <strong>{money(project.budget)}</strong>
