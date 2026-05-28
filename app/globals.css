@@ -971,6 +971,7 @@ button {
 .modernAuthPanel {
   gap: 22px;
   min-height: 720px;
+  width: min(760px, 100%);
   padding: 56px 64px;
   background: #fff;
 }
@@ -983,7 +984,7 @@ button {
 .authPanelHeader h1 {
   margin: 0;
   color: #050505;
-  font-size: 40px;
+  font-size: 38px;
   line-height: 1.15;
 }
 
@@ -996,7 +997,7 @@ button {
 .authMethodTabs {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 34px;
+  gap: 18px;
   align-items: end;
   margin-top: 10px;
 }
@@ -1007,8 +1008,9 @@ button {
   border: 0;
   color: #8b8d91;
   background: transparent;
-  font-size: 22px;
+  font-size: 21px;
   font-weight: 900;
+  white-space: nowrap;
   text-align: left;
 }
 
@@ -1020,7 +1022,7 @@ button {
   position: absolute;
   left: 0;
   bottom: 0;
-  width: 88px;
+  width: 92px;
   height: 4px;
   border-radius: 999px;
   background: #147eea;
@@ -1039,6 +1041,7 @@ button {
   justify-content: center;
   gap: 8px;
   min-height: 42px;
+  padding: 0 12px;
   border: 1px solid #e2e7e5;
   border-radius: 8px;
   color: #68716d;
@@ -1054,6 +1057,7 @@ button {
 
 .authSelectedRole {
   margin-top: 0;
+  min-height: 118px;
 }
 
 .wechatLoginBox,
@@ -2043,17 +2047,41 @@ button {
   }
 
   .dispatchLoginMain {
-    width: min(100% - 28px, 1180px);
-    gap: 18px;
+    width: min(100% - 32px, 760px);
+    gap: 0;
+    align-items: start;
+    padding-top: 16px;
   }
 
   .dispatchPoster {
-    min-height: 360px;
+    display: none;
   }
 
   .dispatchLoginPanel {
     min-height: auto;
-    padding: 24px;
+    padding: 40px;
+  }
+
+  .modernAuthPanel {
+    padding: 44px 48px;
+  }
+
+  .authPanelHeader h1 {
+    font-size: 48px;
+  }
+
+  .authPanelHeader p {
+    max-width: 620px;
+    font-size: 20px;
+    line-height: 1.55;
+  }
+
+  .authMethodTabs {
+    gap: 12px;
+  }
+
+  .authMethodTabs button {
+    font-size: 26px;
   }
 
   .posterBadge,
@@ -2128,5 +2156,113 @@ button {
   .table {
     display: block;
     overflow-x: auto;
+  }
+
+  .dispatchLoginShell {
+    background: #fff;
+  }
+
+  .dispatchLoginTop {
+    display: none;
+  }
+
+  .dispatchLoginMain {
+    width: 100%;
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  .dispatchLoginPanel,
+  .modernAuthPanel {
+    width: 100%;
+    padding: 34px 22px;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .authPanelHeader h1 {
+    font-size: 36px;
+  }
+
+  .authPanelHeader p {
+    font-size: 17px;
+  }
+
+  .authMethodTabs {
+    gap: 8px;
+  }
+
+  .authMethodTabs button {
+    min-height: 42px;
+    font-size: 18px;
+    text-align: center;
+  }
+
+  .authMethodTabs button.active::after {
+    left: 50%;
+    width: 72px;
+    transform: translateX(-50%);
+  }
+
+  .authRoleSwitch {
+    gap: 8px;
+  }
+
+  .authRoleSwitch button {
+    min-height: 50px;
+    font-size: 17px;
+  }
+
+  .authSelectedRole {
+    min-height: auto;
+  }
+
+  .mockQr {
+    width: 220px;
+    height: 220px;
+  }
+
+  .wechatAction {
+    font-size: 18px;
+  }
+
+  .thirdPartyButtons {
+    gap: 18px;
+  }
+
+  .authInput {
+    min-height: 58px;
+  }
+
+  .authInput input {
+    font-size: 18px;
+  }
+
+  .passwordSetupShell {
+    padding-top: 0;
+  }
+
+  .passwordSetupPanel {
+    width: 100%;
+    min-height: 100vh;
+    padding: 58px 28px;
+    border-radius: 0;
+  }
+
+  .passwordSetupPanel h1 {
+    font-size: 36px;
+  }
+
+  .passwordLine input {
+    font-size: 22px;
+  }
+
+  .passwordSetupPanel p {
+    font-size: 18px;
+  }
+
+  .passwordPrimary {
+    min-height: 60px;
+    font-size: 22px;
   }
 }
