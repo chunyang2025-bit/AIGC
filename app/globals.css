@@ -1214,6 +1214,22 @@ button {
   line-height: 1.5;
 }
 
+.registerPrompt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  color: #59615d;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.registerPrompt a {
+  color: #147eea;
+  font-weight: 900;
+}
+
 .modernAgreement {
   position: relative;
   display: flex;
@@ -1314,6 +1330,15 @@ button {
   border-radius: 8px;
   background: #f1f4f7;
   font-weight: 750;
+}
+
+.registerMain {
+  grid-template-columns: minmax(420px, 760px);
+  justify-content: center;
+}
+
+.registerPanel {
+  min-height: auto;
 }
 
 .publicBoardHero {

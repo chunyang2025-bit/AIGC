@@ -51,10 +51,6 @@ function passwordValid(value: string) {
   return /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d\S]{8,32}$/.test(value);
 }
 
-function looksLikePhone(value: string) {
-  return /^1\d{10}$/.test(value.trim());
-}
-
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -70,6 +66,7 @@ function LoginContent() {
   const [code, setCode] = useState("");
   const [agreed, setAgreed] = useState(false);
   const [statusText, setStatusText] = useState("");
+  const [showRegisterPrompt, setShowRegisterPrompt] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [pendingSession, setPendingSession] = useState<AuthSession | null>(null);
@@ -85,6 +82,7 @@ function LoginContent() {
   function requireAgreement() {
     if (agreed) return true;
     setStatusText("请先阅读并勾选协议后继续。");
+    setShowRegisterPrompt(false);
     return false;
   }
 
@@ -92,6 +90,7 @@ function LoginContent() {
     if (!requireAgreement()) return;
     if (!account.trim() || !password.trim()) {
       setStatusText("请输入手机号/邮箱和密码。");
+      setShowRegisterPrompt(false);
       return;
     }
     try {
@@ -104,19 +103,16 @@ function LoginContent() {
         name: account.trim()
       });
       setStatusText("登录成功，正在进入对应工作台。");
+      setShowRegisterPrompt(false);
       router.push(nextPath(session));
     } catch (error) {
       const message = error instanceof Error ? error.message : "登录失败，请稍后再试。";
       if (activeRoleValue !== "admin" && (message.includes("未找到") || message.includes("先注册"))) {
-        if (looksLikePhone(account)) {
-          setPhone(account.trim());
-        }
-        setPassword("");
-        setCode("");
-        setMethod("code");
-        setStatusText("未找到账号，已为你切换到验证码注册/登录。获取验证码后即可自动创建账号。");
+        setStatusText("未找到账号，请先注册。");
+        setShowRegisterPrompt(true);
       } else {
         setStatusText(message);
+        setShowRegisterPrompt(false);
       }
     } finally {
       setIsSubmitting(false);
@@ -127,10 +123,12 @@ function LoginContent() {
     if (!requireAgreement()) return;
     if (!phone.trim()) {
       setStatusText("请输入手机号。");
+      setShowRegisterPrompt(false);
       return;
     }
     if (!/^\d{6}$/.test(code.trim())) {
       setStatusText("请输入6位短信验证码。");
+      setShowRegisterPrompt(false);
       return;
     }
     try {
@@ -147,8 +145,10 @@ function LoginContent() {
       setPassword("");
       setConfirmPassword("");
       setStatusText("验证码登录成功，请先设置密码，便于下次账号密码登录。");
+      setShowRegisterPrompt(false);
     } catch (error) {
       setStatusText(error instanceof Error ? error.message : "验证码登录失败，请稍后再试。");
+      setShowRegisterPrompt(false);
     } finally {
       setIsSubmitting(false);
     }
@@ -372,11 +372,19 @@ function LoginContent() {
           ) : null}
 
           {statusText ? <div className="authStatus">{statusText}</div> : null}
+          {showRegisterPrompt ? (
+            <div className="registerPrompt">
+              <span>没有账号？</span>
+              <Link href={`/register?role=${activeKey}&account=${encodeURIComponent(account.trim())}`}>
+                先注册
+              </Link>
+            </div>
+          ) : null}
 
           <label className="modernAgreement">
             <input checked={agreed} onChange={(event) => setAgreed(event.target.checked)} type="checkbox" />
             <span>
-              我已阅读并同意 AIGClancer <Link href="/terms">许可协议</Link> 和 <Link href="/privacy">隐私政策</Link>，未注册账号登录时会自动创建账号
+              我已阅读并同意 AIGClancer <Link href="/terms">许可协议</Link> 和 <Link href="/privacy">隐私政策</Link>
             </span>
           </label>
 
