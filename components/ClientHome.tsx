@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowRight, BriefcaseBusiness, CheckCircle2, FileBadge2, LogIn, Plus, Search, Sparkles, UsersRound } from "lucide-react";
 import { CreatorCard } from "./CreatorCard";
 import { ProjectCard } from "./ProjectCard";
+import { isImageValue } from "@/lib/file-upload";
 import { loadMarketplaceData } from "@/lib/store";
 import { roleEntryPath } from "@/lib/auth";
 
@@ -85,7 +86,9 @@ export function ClientHome() {
             </div>
             {featured.map((creator, index) => (
               <div className="matchRow" key={creator.id}>
-                <span className="avatar">{creator.name.slice(0, 1)}</span>
+                <span className="avatar">
+                  {isImageValue(creator.avatarUrl) ? <img alt={creator.name} src={creator.avatarUrl} /> : (creator.avatarUrl || creator.name).slice(0, 1)}
+                </span>
                 <div>
                   <strong>{creator.name}</strong>
                   <span>{creator.title}</span>

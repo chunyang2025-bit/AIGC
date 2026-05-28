@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { ArrowRight, BriefcaseBusiness, CheckCircle2, Eye, Save, Sparkles, UserRound } from "lucide-react";
 import { CreatorCard } from "@/components/CreatorCard";
 import { categoryLabel, requiredCredentialLabel, verificationTypeLabel } from "@/lib/format";
+import { fileNames, readImageFile } from "@/lib/file-upload";
+import { joinProvinceCity, provinceCityOptions, splitProvinceCity } from "@/lib/location-options";
 import { loadMarketplaceData, upsertCurrentCreatorProfile } from "@/lib/store";
 import { CreatorProfile, ProjectCategory, VerificationType } from "@/lib/types";
 import { readAuthSession, setAuthCapability } from "@/lib/auth";
@@ -42,7 +44,9 @@ export default function ProviderProfilePage() {
   const [avatarUrl, setAvatarUrl] = useState(currentProfile?.avatarUrl ?? subjectName.slice(0, 1));
   const [profileSlogan, setProfileSlogan] = useState(currentProfile?.profileSlogan ?? "");
   const [title, setTitle] = useState(currentProfile?.title ?? "");
-  const [location, setLocation] = useState(currentProfile?.location ?? "");
+  const initialLocation = splitProvinceCity(currentProfile?.location ?? "");
+  const [province, setProvince] = useState(initialLocation.province);
+  const [city, setCity] = useState(initialLocation.city);
   const [bio, setBio] = useState(currentProfile?.bio ?? "");
   const [resume, setResume] = useState(currentProfile?.resume ?? "");
   const [skills, setSkills] = useState((currentProfile?.skills ?? []).join(", "));
@@ -59,6 +63,8 @@ export default function ProviderProfilePage() {
   const [socialUrl, setSocialUrl] = useState(currentProfile?.socialUrl ?? "");
   const [serviceArea, setServiceArea] = useState(currentProfile?.serviceArea ?? "");
   const [categories, setCategories] = useState<ProjectCategory[]>(currentProfile?.categories ?? ["AI Short Video"]);
+  const cityOptions = provinceCityOptions.find((item) => item.province === province)?.cities ?? [];
+  const location = joinProvinceCity(province, city);
 
   const preview = useMemo<CreatorProfile>(
     () => ({
@@ -99,6 +105,27 @@ export default function ProviderProfilePage() {
     setCategories((current) =>
       current.includes(category) ? current.filter((item) => item !== category) : [...current, category]
     );
+  }
+
+  function handleAvatarUpload(files: FileList | null) {
+    const file = files?.[0];
+    if (file) {
+      readImageFile(file, setAvatarUrl);
+    }
+  }
+
+  function handleCredentialUpload(files: FileList | null) {
+    const [fileName] = fileNames(files);
+    if (fileName) {
+      setCredentialFile(fileName);
+    }
+  }
+
+  function handleQualificationUpload(files: FileList | null) {
+    const names = fileNames(files);
+    if (names.length) {
+      setQualificationFiles((current) => [...splitList(current), ...names].join("\n"));
+    }
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -179,13 +206,43 @@ export default function ProviderProfilePage() {
 
             <div className="grid two compactGrid">
               <div className="field">
-                <label htmlFor="creator-avatar">头像/Logo</label>
-                <input id="creator-avatar" value={avatarUrl} onChange={(event) => setAvatarUrl(event.target.value)} />
-                <span className="fieldHint">可填写头像文字、Logo链接或图片链接。</span>
+                <label htmlFor="creator-avatar-file">头像/Logo</label>
+                <div className="uploadBox">
+                  <span className="avatar previewAvatar">
+                    {avatarUrl.startsWith("data:image/") || avatarUrl.startsWith("http") ? <img alt="头像预览" src={avatarUrl} /> : avatarUrl.slice(0, 1) || displayName.slice(0, 1)}
+                  </span>
+                  <div>
+                    <input id="creator-avatar-file" accept="image/*" type="file" onChange={(event) => handleAvatarUpload(event.target.files)} />
+                    <span className="fieldHint">支持 JPG、PNG 等图片，上传后会用于创作者展示页。</span>
+                  </div>
+                </div>
               </div>
               <div className="field">
-                <label htmlFor="creator-location">所在城市</label>
-                <input id="creator-location" value={location} onChange={(event) => setLocation(event.target.value)} required />
+                <label>所在城市</label>
+                <div className="grid two compactGrid">
+                  <select
+                    aria-label="省份"
+                    value={province}
+                    onChange={(event) => {
+                      const nextProvince = event.target.value;
+                      const nextCities = provinceCityOptions.find((item) => item.province === nextProvince)?.cities ?? [];
+                      setProvince(nextProvince);
+                      setCity(nextCities[0] ?? "");
+                    }}
+                    required
+                  >
+                    <option value="">选择省份</option>
+                    {provinceCityOptions.map((item) => (
+                      <option key={item.province} value={item.province}>{item.province}</option>
+                    ))}
+                  </select>
+                  <select aria-label="城市" value={city} onChange={(event) => setCity(event.target.value)} required>
+                    <option value="">选择城市</option>
+                    {cityOptions.map((item) => (
+                      <option key={item} value={item}>{item}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -286,14 +343,16 @@ export default function ProviderProfilePage() {
 
             <div className="field">
               <label htmlFor="creator-credential">{requiredCredentialLabel(identityType)}</label>
-              <input id="creator-credential" value={credentialFile} onChange={(event) => setCredentialFile(event.target.value)} required />
-              <span className="fieldHint">请填写已上传或待审核的资质文件名称，提交后由平台审核。</span>
+              <input id="creator-credential" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" type="file" onChange={(event) => handleCredentialUpload(event.target.files)} />
+              <input value={credentialFile} onChange={(event) => setCredentialFile(event.target.value)} placeholder="上传后自动填入文件名" required />
+              <span className="fieldHint">支持 PDF、图片或文档。当前 demo 保存文件名，接入 Supabase Storage 后可保存文件地址。</span>
             </div>
 
             <div className="field">
               <label htmlFor="creator-qualifications">其他资质/证明材料</label>
+              <input id="creator-qualifications-file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" multiple type="file" onChange={(event) => handleQualificationUpload(event.target.files)} />
               <textarea id="creator-qualifications" value={qualificationFiles} onChange={(event) => setQualificationFiles(event.target.value)} />
-              <span className="fieldHint">每行一个资质，例如品牌授权、过往案例授权、行业证书等。</span>
+              <span className="fieldHint">可多选文件；每行一个资质，例如品牌授权、过往案例授权、行业证书等。</span>
             </div>
 
             <div className="field">

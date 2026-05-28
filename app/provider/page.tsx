@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Banknote, BriefcaseBusiness, CheckCircle2, FileText, FileUp, Inbox, Search, Star, UserRound } from "lucide-react";
 import { categoryLabel, money, orderStatusLabel } from "@/lib/format";
+import { isImageValue } from "@/lib/file-upload";
 import { loadMarketplaceData } from "@/lib/store";
 import { isApproved, readAuthSession } from "@/lib/auth";
 
@@ -87,7 +88,9 @@ export default function ProviderPortalPage() {
         <div className="providerProfile card">
           <div className="cardBody stack">
             <div className="row">
-              <span className="avatar">{creator.name.slice(0, 1)}</span>
+              <span className="avatar">
+                {isImageValue(creator.avatarUrl) ? <img alt={creator.name} src={creator.avatarUrl} /> : (creator.avatarUrl || creator.name).slice(0, 1)}
+              </span>
               <div>
                 <strong>{creator.name}</strong>
                 <div className="muted">{creator.title}</div>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound, useRouter } from "next/navigation";
 import { ArrowLeft, BriefcaseBusiness, Building2, CheckCircle2, ExternalLink, FileBadge2, Globe2, Mail, MapPin, Phone, Sparkles } from "lucide-react";
 import { categoryLabel, compactDate, money, verificationTypeLabel } from "@/lib/format";
+import { isImageValue } from "@/lib/file-upload";
 import { loadMarketplaceData } from "@/lib/store";
 import { readAuthSession } from "@/lib/auth";
 
@@ -38,7 +39,9 @@ export default function BuyerDetailPage({ params }: { params: { id: string } }) 
 
       <section className="creatorDetailHero">
         <div className="creatorDetailCover" style={{ "--media-bg": profile.cover } as React.CSSProperties}>
-          <span className="avatar largeAvatar">{(profile.avatarUrl || profile.displayName || profile.companyName).slice(0, 1)}</span>
+          <span className="avatar largeAvatar">
+            {isImageValue(profile.avatarUrl) ? <img alt={profile.displayName ?? profile.companyName} src={profile.avatarUrl} /> : (profile.avatarUrl || profile.displayName || profile.companyName).slice(0, 1)}
+          </span>
         </div>
         <div className="stack">
           <div className="spaceBetween">

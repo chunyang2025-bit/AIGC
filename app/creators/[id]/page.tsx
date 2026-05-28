@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound, useRouter } from "next/navigation";
 import { ArrowLeft, BriefcaseBusiness, CheckCircle2, Clock, ExternalLink, FileBadge2, FileText, Globe2, Mail, MapPin, Phone, Star } from "lucide-react";
 import { categoryLabel, money, verificationTypeLabel } from "@/lib/format";
+import { isImageValue } from "@/lib/file-upload";
 import { loadMarketplaceData } from "@/lib/store";
 import { readAuthSession } from "@/lib/auth";
 
@@ -35,7 +36,9 @@ export default function CreatorDetailPage({ params }: { params: { id: string } }
 
       <section className="creatorDetailHero">
         <div className="creatorDetailCover" style={{ "--media-bg": creator.cover } as React.CSSProperties}>
-          <span className="avatar largeAvatar">{(creator.avatarUrl || creator.displayName || creator.name).slice(0, 1)}</span>
+          <span className="avatar largeAvatar">
+            {isImageValue(creator.avatarUrl) ? <img alt={creator.displayName ?? creator.name} src={creator.avatarUrl} /> : (creator.avatarUrl || creator.displayName || creator.name).slice(0, 1)}
+          </span>
         </div>
         <div className="stack">
           <div className="spaceBetween">

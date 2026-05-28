@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { CheckCircle2, Clock, Star } from "lucide-react";
 import { money, verificationTypeLabel } from "@/lib/format";
+import { isImageValue } from "@/lib/file-upload";
 import { CreatorProfile } from "@/lib/types";
 import { readAuthSession } from "@/lib/auth";
 
@@ -25,7 +26,7 @@ export function CreatorCard({ creator, matchScore, reason, risk, nextStep, onInv
       <div className="cardMedia" style={{ "--media-bg": creator.cover } as React.CSSProperties}>
         <div>
           <div className="row">
-            <span className="avatar">{avatar.slice(0, 1)}</span>
+            <span className="avatar">{isImageValue(avatar) ? <img alt={displayName} src={avatar} /> : avatar.slice(0, 1)}</span>
             <div>
               <strong>{displayName}</strong>
               <div>{creator.profileSlogan ?? creator.title}</div>
