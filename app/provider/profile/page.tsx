@@ -286,14 +286,14 @@ export default function ProviderProfilePage() {
 
             <div className="field">
               <label htmlFor="creator-credential">{requiredCredentialLabel(identityType)}</label>
-              <input id="creator-credential" value={credentialFile} onChange={(event) => setCredentialFile(event.target.value)} />
-              <span className="fieldHint">可先留空完成基础入驻，后续补充资质后由运营后台审核。</span>
+              <input id="creator-credential" value={credentialFile} onChange={(event) => setCredentialFile(event.target.value)} required />
+              <span className="fieldHint">请填写已上传或待审核的资质文件名称，提交后由平台审核。</span>
             </div>
 
             <div className="field">
               <label htmlFor="creator-qualifications">其他资质/证明材料</label>
               <textarea id="creator-qualifications" value={qualificationFiles} onChange={(event) => setQualificationFiles(event.target.value)} />
-              <span className="fieldHint">可后续补充。每行一个资质，例如品牌授权、过往案例授权、行业证书等。</span>
+              <span className="fieldHint">每行一个资质，例如品牌授权、过往案例授权、行业证书等。</span>
             </div>
 
             <div className="field">

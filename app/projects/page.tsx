@@ -16,14 +16,14 @@ export default function ProjectsPage() {
       <div className="pageHeader">
         <div>
           <h1>公开需求大厅</h1>
-          <p>接单方登录后进入这里浏览企业发布的AIGC内容需求，查看详情后可表达合作意向。</p>
+          <p>接单方登录后进入这里浏览需求发布方开放的AIGC内容需求，查看详情后可表达合作意向。</p>
         </div>
         <div className="toolbarGroup">
           <Link className="btn" href={creatorEntry}>
             <UserCog size={16} /> 我的接单后台
           </Link>
           <Link className="btn primary" href={buyerEntry}>
-            <Plus size={16} /> 企业发布需求
+            <Plus size={16} /> 发布需求
           </Link>
         </div>
       </div>
@@ -33,7 +33,7 @@ export default function ProjectsPage() {
           <span className="eyebrow">
             <BriefcaseBusiness size={15} /> 类招聘平台的公开机会列表
           </span>
-          <h2>企业需求大厅</h2>
+          <h2>需求大厅</h2>
           <p>需求标题、预算、沟通期限和内容品类集中展示，适合接单方快速筛选可沟通项目。</p>
         </div>
         <div className="publicSearch">

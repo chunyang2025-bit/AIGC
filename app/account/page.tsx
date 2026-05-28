@@ -43,11 +43,11 @@ export default function AccountPage() {
       <section className="portalHero">
         <div className="stack">
           <span className="eyebrow">
-            <ShieldCheck size={15} /> 主体中心
+            <ShieldCheck size={15} /> 主体总控台
           </span>
           <div>
             <h1>{subjectName}</h1>
-            <p>一个账号对应一个主体。你可以分别管理派单能力和接单能力，在这里查看我的派单、我的接单和审核状态。</p>
+            <p>一个账号对应一个主体，同一主体可以同时开通派单能力和接单能力。在这里统一查看我的派单、我的接单和审核状态。</p>
           </div>
         </div>
         <div className="portalStats">
@@ -60,8 +60,8 @@ export default function AccountPage() {
             <span>接单能力</span>
           </div>
           <div className="metric">
-            <strong>{[buyerProfile, creatorProfile].filter(Boolean).length}</strong>
-            <span>已开通能力</span>
+            <strong>{[buyerProfile?.verified, creatorProfile?.verified].filter(Boolean).length}</strong>
+            <span>已通过能力</span>
           </div>
         </div>
       </section>
@@ -77,7 +77,7 @@ export default function AccountPage() {
             </div>
             <div>
               <h2 style={{ margin: 0 }}>派单能力</h2>
-              <p className="muted">发布需求、启动 Brief Agent、查看匹配推荐并邀请创作者沟通。</p>
+              <p className="muted">完善主体认证后发布需求、查看匹配推荐，并邀请接单方沟通。</p>
             </div>
             <div className="toolbarGroup">
               <Link className="btn primary" href={buyerProfile?.verified ? "/buyer" : "/buyer/profile"}>
@@ -100,7 +100,7 @@ export default function AccountPage() {
             </div>
             <div>
               <h2 style={{ margin: 0 }}>接单能力</h2>
-              <p className="muted">装修创作者展示页，进入需求大厅，向派单方发送主页、简历和代表作。</p>
+              <p className="muted">完善展示页和资质认证后进入需求大厅，向派单方发送主页、简历和代表作。</p>
             </div>
             <div className="toolbarGroup">
               <Link className="btn primary" href={creatorProfile?.verified ? "/provider" : "/provider/profile"}>
