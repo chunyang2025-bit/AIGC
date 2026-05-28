@@ -968,6 +968,350 @@ button {
   font-size: 14px;
 }
 
+.modernAuthPanel {
+  gap: 22px;
+  min-height: 720px;
+  padding: 56px 64px;
+  background: #fff;
+}
+
+.authPanelHeader {
+  display: grid;
+  gap: 10px;
+}
+
+.authPanelHeader h1 {
+  margin: 0;
+  color: #050505;
+  font-size: 40px;
+  line-height: 1.15;
+}
+
+.authPanelHeader p {
+  margin: 0;
+  color: #8c9094;
+  font-weight: 700;
+}
+
+.authMethodTabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 34px;
+  align-items: end;
+  margin-top: 10px;
+}
+
+.authMethodTabs button {
+  position: relative;
+  min-height: 44px;
+  border: 0;
+  color: #8b8d91;
+  background: transparent;
+  font-size: 22px;
+  font-weight: 900;
+  text-align: left;
+}
+
+.authMethodTabs button.active {
+  color: #050505;
+}
+
+.authMethodTabs button.active::after {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 88px;
+  height: 4px;
+  border-radius: 999px;
+  background: #147eea;
+  content: "";
+}
+
+.authRoleSwitch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.authRoleSwitch button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  border: 1px solid #e2e7e5;
+  border-radius: 8px;
+  color: #68716d;
+  background: #fff;
+  font-weight: 850;
+}
+
+.authRoleSwitch button.active {
+  border-color: #16724f;
+  color: #0d3929;
+  background: #effaf3;
+}
+
+.authSelectedRole {
+  margin-top: 0;
+}
+
+.wechatLoginBox,
+.authForm {
+  display: grid;
+  gap: 18px;
+}
+
+.mockQr {
+  display: grid;
+  place-items: center;
+  justify-self: center;
+  width: 260px;
+  height: 260px;
+  border-radius: 8px;
+  color: #111;
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.08) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(0, 0, 0, 0.08) 1px, transparent 1px),
+    #f6f6f6;
+  background-size: 18px 18px;
+}
+
+.mockQr.locked {
+  position: relative;
+  overflow: hidden;
+}
+
+.mockQr.locked svg {
+  filter: blur(8px);
+  opacity: 0.28;
+}
+
+.mockQr.locked strong {
+  position: absolute;
+  max-width: 190px;
+  color: #111;
+  font-size: 20px;
+  line-height: 1.65;
+  text-align: center;
+}
+
+.wechatAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 48px;
+  border: 0;
+  color: #050505;
+  background: transparent;
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.wechatAction svg {
+  color: #11b84e;
+}
+
+.thirdPartyLogin {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 22px;
+  align-items: center;
+  color: #a4a7ab;
+  font-weight: 750;
+}
+
+.thirdPartyLogin span {
+  height: 1px;
+  background: #e3e4e6;
+}
+
+.thirdPartyLogin em {
+  font-style: normal;
+}
+
+.thirdPartyButtons {
+  display: flex;
+  justify-content: center;
+  gap: 32px;
+}
+
+.thirdPartyButtons button {
+  width: 66px;
+  height: 66px;
+  border: 1px solid #dfe2e5;
+  border-radius: 999px;
+  color: #111;
+  background: #fff;
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.authForm label {
+  display: grid;
+  gap: 8px;
+  color: #343a40;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.authInput {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 54px;
+  padding: 0 14px;
+  border: 1px solid #dfe5e2;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.authInput:focus-within {
+  border-color: #147eea;
+  box-shadow: 0 0 0 3px rgba(20, 126, 234, 0.1);
+}
+
+.authInput input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  font-size: 16px;
+}
+
+.authInput button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: max-content;
+  border: 0;
+  color: #147eea;
+  background: transparent;
+  font-weight: 850;
+}
+
+.authPrimary {
+  min-height: 54px;
+  border: 1px solid #147eea;
+  border-radius: 8px;
+  color: #fff;
+  background: #147eea;
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.authStatus {
+  padding: 12px 14px;
+  border-radius: 8px;
+  color: #242424;
+  background: #f1f4f7;
+  font-weight: 750;
+  line-height: 1.5;
+}
+
+.modernAgreement {
+  position: relative;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  color: #4d5156;
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.modernAgreement input {
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+}
+
+.modernAgreement a {
+  color: #147eea;
+  font-weight: 850;
+}
+
+.passwordSetupShell {
+  display: grid;
+  place-items: start center;
+  min-height: 100vh;
+  padding-top: 72px;
+  background: linear-gradient(115deg, #f2dcff 0%, #eef0ff 48%, #e7fbff 100%);
+}
+
+.passwordSetupPanel {
+  display: grid;
+  gap: 34px;
+  width: min(800px, calc(100% - 48px));
+  min-height: 760px;
+  padding: 84px 80px;
+  border-radius: 14px 14px 0 0;
+  background: #fff;
+}
+
+.passwordSetupPanel h1 {
+  margin: 0 0 20px;
+  color: #050505;
+  font-size: 44px;
+}
+
+.passwordLine {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 58px;
+  border-bottom: 2px solid #d9dde4;
+}
+
+.passwordLine:focus-within {
+  border-color: #147eea;
+}
+
+.passwordLine input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  color: #111;
+  font-size: 26px;
+  font-weight: 650;
+}
+
+.passwordLine input::placeholder {
+  color: #9a9da3;
+}
+
+.passwordLine button {
+  display: inline-flex;
+  border: 0;
+  color: #555;
+  background: transparent;
+}
+
+.passwordSetupPanel p {
+  margin: 0;
+  color: #050505;
+  font-size: 24px;
+  font-weight: 850;
+}
+
+.passwordPrimary {
+  min-height: 72px;
+  border: 0;
+  border-radius: 8px;
+  color: #fff;
+  background: #147eea;
+  font-size: 28px;
+  font-weight: 900;
+}
+
+.passwordStatus {
+  padding: 14px 16px;
+  border-radius: 8px;
+  background: #f1f4f7;
+  font-weight: 750;
+}
+
 .publicBoardHero {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(360px, 0.45fr);

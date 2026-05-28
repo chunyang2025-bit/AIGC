@@ -1,4 +1,4 @@
-import { loginUser } from "../../../../lib/server/actions";
+import { loginUser, publicUser } from "../../../../lib/server/actions";
 import { getMarketplaceData, saveMarketplaceData } from "../../../../lib/server/data";
 import { apiFail, apiOk, readJson } from "../../../../lib/server/response";
 
@@ -14,5 +14,5 @@ export async function POST(request: Request) {
   }
 
   await saveMarketplaceData(data);
-  return apiOk(user);
+  return apiOk(publicUser(user));
 }

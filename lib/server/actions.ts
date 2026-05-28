@@ -34,6 +34,18 @@ function addActivity(
   });
 }
 
+export function publicUser<T extends { password?: string }>(user: T) {
+  const { password: _password, ...safeUser } = user;
+  return safeUser;
+}
+
+export function publicMarketplaceData(data: MarketplaceData): MarketplaceData {
+  return {
+    ...data,
+    users: data.users.map((user) => publicUser(user))
+  };
+}
+
 export function getPublicMarketplace(data: MarketplaceData) {
   return {
     projects: data.projects.filter((project) => project.status === "open" || project.status === "matching"),
@@ -89,13 +101,26 @@ export function loginUser(data: MarketplaceData, input: Record<string, unknown>)
   const authMethod = String(input.authMethod || "password");
   const password = String(input.password || "");
   const code = String(input.code || "");
-  const user = data.users.find((item) =>
+  let user = data.users.find((item) =>
     (item.email === account || item.account === account || item.phone === account) &&
     (role === "admin" ? item.role === "admin" : item.role !== "admin")
   );
 
-  const passwordMatches = user ? user.password ? user.password === password : password.length >= 6 : false;
   const codeMatches = authMethod === "code" && /^\d{6}$/.test(code) && account && !account.includes("@");
+  if (!user && codeMatches && role && role !== "admin") {
+    user = {
+      id: id("u"),
+      name: String(input.name || account || "新用户"),
+      account,
+      phone: account,
+      email: `${account}@phone.aigclancer.local`,
+      role,
+      createdAt: today()
+    };
+    data.users.unshift(user);
+  }
+
+  const passwordMatches = user ? user.password ? user.password === password : password.length >= 6 : false;
   if (user && (authMethod === "code" ? codeMatches : passwordMatches)) {
     addActivity(data, {
       userId: user.id,
@@ -105,6 +130,23 @@ export function loginUser(data: MarketplaceData, input: Record<string, unknown>)
   }
 
   return user && (authMethod === "code" ? codeMatches : passwordMatches) ? user : null;
+}
+
+export function setUserPassword(data: MarketplaceData, input: Record<string, unknown>) {
+  const userId = String(input.userId || "");
+  const password = String(input.password || "");
+  if (!userId || !/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d\S]{8,32}$/.test(password)) return null;
+
+  const user = data.users.find((item) => item.id === userId);
+  if (!user || user.role === "admin") return null;
+
+  user.password = password;
+  addActivity(data, {
+    userId: user.id,
+    role: user.role,
+    eventType: "login"
+  });
+  return user;
 }
 
 export function createProject(data: MarketplaceData, input: Record<string, unknown>) {
