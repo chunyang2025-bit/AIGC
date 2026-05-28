@@ -51,6 +51,10 @@ function passwordValid(value: string) {
   return /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d\S]{8,32}$/.test(value);
 }
 
+function looksLikePhone(value: string) {
+  return /^1\d{10}$/.test(value.trim());
+}
+
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -102,7 +106,18 @@ function LoginContent() {
       setStatusText("登录成功，正在进入对应工作台。");
       router.push(nextPath(session));
     } catch (error) {
-      setStatusText(error instanceof Error ? error.message : "登录失败，请稍后再试。");
+      const message = error instanceof Error ? error.message : "登录失败，请稍后再试。";
+      if (activeRoleValue !== "admin" && (message.includes("未找到") || message.includes("先注册"))) {
+        if (looksLikePhone(account)) {
+          setPhone(account.trim());
+        }
+        setPassword("");
+        setCode("");
+        setMethod("code");
+        setStatusText("未找到账号，已为你切换到验证码注册/登录。获取验证码后即可自动创建账号。");
+      } else {
+        setStatusText(message);
+      }
     } finally {
       setIsSubmitting(false);
     }
