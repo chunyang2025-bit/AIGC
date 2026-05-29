@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Building2, CheckCircle2, FileBadge2, Globe2, Mail, Phone, Save, ShieldCheck } from "lucide-react";
 import { fileNames, isImageValue, readImageFile } from "@/lib/file-upload";
-import { compactDate, money, requiredCredentialLabel, verificationTypeLabel } from "@/lib/format";
+import { compactDate, credentialRequirementHint, credentialUploadOptional, money, publicCredentialSummary, requiredCredentialLabel, verificationTypeLabel } from "@/lib/format";
 import { joinProvinceCity, provinceCityOptions, splitProvinceCity } from "@/lib/location-options";
 import { loadMarketplaceData, upsertUnifiedSubjectProfile } from "@/lib/store";
 import { VerificationType } from "@/lib/types";
@@ -58,6 +58,7 @@ export default function AccountProfilePage() {
   const [qualificationFiles, setQualificationFiles] = useState((buyerProfile?.qualificationFiles ?? creatorProfile?.qualificationFiles ?? []).join("\n"));
   const cityOptions = provinceCityOptions.find((item) => item.province === province)?.cities ?? [];
   const location = joinProvinceCity(province, city);
+  const credentialOptional = credentialUploadOptional(verificationType);
 
   const history = useMemo(
     () => data.projects.filter((project) => project.buyerId === session?.userId).slice(0, 4),
@@ -199,7 +200,7 @@ export default function AccountProfilePage() {
                     key={type}
                     onClick={() => {
                       setVerificationType(type);
-                      setBusinessLicenseFile(`${requiredCredentialLabel(type)}.pdf`);
+                      setBusinessLicenseFile(type === "individual" ? "" : `${requiredCredentialLabel(type)}.pdf`);
                     }}
                     type="button"
                   >
@@ -242,10 +243,15 @@ export default function AccountProfilePage() {
             </div>
 
             <div className="field">
-              <label htmlFor="license">{requiredCredentialLabel(verificationType)}</label>
-              <input id="license" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" type="file" onChange={(event) => handleMainCredentialUpload(event.target.files)} />
-              <input value={businessLicenseFile} onChange={(event) => setBusinessLicenseFile(event.target.value)} placeholder="上传后自动填入文件名" required />
-              <span className="fieldHint">主体资质只需提交一次，后续开通派单或接单能力共用这份审核材料。</span>
+              <label htmlFor="license">{requiredCredentialLabel(verificationType)}{credentialOptional ? "（可选）" : ""}</label>
+              {credentialOptional ? null : <input id="license" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" type="file" onChange={(event) => handleMainCredentialUpload(event.target.files)} />}
+              <input
+                value={businessLicenseFile}
+                onChange={(event) => setBusinessLicenseFile(event.target.value)}
+                placeholder={credentialOptional ? "个人主体可填写作品页、平台主页或实名备注" : "上传后自动填入文件名"}
+                required={!credentialOptional}
+              />
+              <span className="fieldHint">{credentialRequirementHint(verificationType)}</span>
             </div>
 
             <div className="field">
@@ -304,7 +310,7 @@ export default function AccountProfilePage() {
                 <Phone size={16} /> {contactPhone || "联系电话"}
               </div>
               <div className="notice">
-                <FileBadge2 size={15} /> {businessLicenseFile || `待上传${requiredCredentialLabel(verificationType)}`}
+                <FileBadge2 size={15} /> {publicCredentialSummary(verificationType, Boolean(buyerProfile?.verified || creatorProfile?.verified))}
               </div>
             </div>
           </section>

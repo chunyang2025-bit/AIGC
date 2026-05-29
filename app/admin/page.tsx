@@ -212,6 +212,7 @@ export default function AdminPage() {
                 <th>主体</th>
                 <th>类型</th>
                 <th>联系方式</th>
+                <th>后台材料</th>
                 <th>状态</th>
                 <th>操作</th>
               </tr>
@@ -222,6 +223,10 @@ export default function AdminPage() {
                   <td>{profile.displayName ?? profile.companyName}</td>
                   <td>{verificationTypeLabel(profile.verificationType ?? "other")}</td>
                   <td>{profile.contactEmail || profile.contactPhone || "-"}</td>
+                  <td>
+                    <div className="muted">{profile.businessLicenseFile || "个人主体可无证件照片"}</div>
+                    {profile.qualificationFiles.length ? <div className="muted">{profile.qualificationFiles.join("、")}</div> : null}
+                  </td>
                   <td>
                     <span className={profile.verified ? "tag green" : "tag gold"}>{profile.verified ? "已认证" : "待审核"}</span>
                     {!profile.verified && profile.rejectedReason ? <div className="muted">{profile.rejectedReason}</div> : null}
@@ -270,6 +275,7 @@ export default function AdminPage() {
                 <th>创作者</th>
                 <th>服务品类</th>
                 <th>评分</th>
+                <th>后台材料</th>
                 <th>状态</th>
                 <th>操作</th>
               </tr>
@@ -280,6 +286,10 @@ export default function AdminPage() {
                   <td>{creator.name}</td>
                   <td>{creator.categories.map(categoryLabel).join("、")}</td>
                   <td>{creator.rating.toFixed(1)}</td>
+                  <td>
+                    <div className="muted">{creator.credentialFile || "个人主体可无证件照片"}</div>
+                    {creator.qualificationFiles?.length ? <div className="muted">{creator.qualificationFiles.join("、")}</div> : null}
+                  </td>
                   <td>
                     <span className={creator.verified ? "tag green" : "tag gold"}>{creator.verified ? "已认证" : "待审核"}</span>
                     {!creator.verified && creator.rejectedReason ? <div className="muted">{creator.rejectedReason}</div> : null}

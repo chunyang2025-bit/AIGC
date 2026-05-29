@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, BriefcaseBusiness, CheckCircle2, Eye, Save, Sparkles, UserRound } from "lucide-react";
 import { CreatorCard } from "@/components/CreatorCard";
-import { requiredCredentialLabel, verificationTypeLabel } from "@/lib/format";
+import { credentialRequirementHint, credentialUploadOptional, requiredCredentialLabel, verificationTypeLabel } from "@/lib/format";
 import { fileNames, readImageFile } from "@/lib/file-upload";
 import { joinProvinceCity, provinceCityOptions, splitProvinceCity } from "@/lib/location-options";
 import { projectCategoryOptions } from "@/lib/project-categories";
@@ -67,6 +67,7 @@ export default function ProviderProfilePage() {
   const [categories, setCategories] = useState<ProjectCategory[]>(currentProfile?.categories ?? ["AI Short Video"]);
   const cityOptions = provinceCityOptions.find((item) => item.province === province)?.cities ?? [];
   const location = joinProvinceCity(province, city);
+  const credentialOptional = credentialUploadOptional(identityType);
 
   const preview = useMemo<CreatorProfile>(
     () => ({
@@ -281,7 +282,7 @@ export default function ProviderProfilePage() {
                     key={type}
                     onClick={() => {
                       setIdentityType(type);
-                      setCredentialFile(`${requiredCredentialLabel(type)}.pdf`);
+                      setCredentialFile(type === "individual" ? "" : `${requiredCredentialLabel(type)}.pdf`);
                     }}
                     type="button"
                   >
@@ -381,10 +382,15 @@ export default function ProviderProfilePage() {
             </div>
 
             <div className="field">
-              <label htmlFor="creator-credential">{requiredCredentialLabel(identityType)}</label>
-              <input id="creator-credential" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" type="file" onChange={(event) => handleCredentialUpload(event.target.files)} />
-              <input value={credentialFile} onChange={(event) => setCredentialFile(event.target.value)} placeholder="上传后自动填入文件名" required />
-              <span className="fieldHint">支持 PDF、图片或文档。当前 demo 保存文件名，接入 Supabase Storage 后可保存文件地址。</span>
+              <label htmlFor="creator-credential">{requiredCredentialLabel(identityType)}{credentialOptional ? "（可选）" : ""}</label>
+              {credentialOptional ? null : <input id="creator-credential" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" type="file" onChange={(event) => handleCredentialUpload(event.target.files)} />}
+              <input
+                value={credentialFile}
+                onChange={(event) => setCredentialFile(event.target.value)}
+                placeholder={credentialOptional ? "个人主体可填写作品页、平台主页或实名备注" : "上传后自动填入文件名"}
+                required={!credentialOptional}
+              />
+              <span className="fieldHint">{credentialRequirementHint(identityType)}</span>
             </div>
 
             <div className="field">

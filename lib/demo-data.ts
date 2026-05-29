@@ -164,7 +164,7 @@ export const demoData: MarketplaceData = {
       verified: true,
       identityType: "individual",
       verificationType: "individual",
-      credentialFile: "露娜视觉身份证明.pdf",
+      credentialFile: "露娜视觉个人实名核验记录",
       qualificationFiles: ["平台作品展示授权.pdf"],
       avatarUrl: "露",
       displayName: "露娜视觉",

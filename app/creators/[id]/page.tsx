@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { notFound, useRouter } from "next/navigation";
 import { ArrowLeft, BriefcaseBusiness, CheckCircle2, Clock, ExternalLink, FileBadge2, FileText, Globe2, Mail, MapPin, Phone, Star } from "lucide-react";
-import { categoryLabel, money, verificationTypeLabel } from "@/lib/format";
+import { categoryLabel, money, publicCredentialSummary, verificationTypeLabel } from "@/lib/format";
 import { isImageValue } from "@/lib/file-upload";
 import { loadMarketplaceData } from "@/lib/store";
 import { readAuthSession } from "@/lib/auth";
@@ -116,13 +116,13 @@ export default function CreatorDetailPage({ params }: { params: { id: string } }
           <div className="panelTop">
             <div>
               <strong>主体资质与联系方式</strong>
-              <div className="muted">用于派单方判断创作者身份和后续沟通方式。</div>
+              <div className="muted">公开页只展示认证状态和联系方式，不展示身份证、证照原件或完整证件号码。</div>
             </div>
             <Clock size={18} />
           </div>
           <div className="cardBody stack">
             <div className="row muted">
-              <FileBadge2 size={16} /> {creator.credentialFile ?? "待补充主体资质"}
+              <FileBadge2 size={16} /> {publicCredentialSummary(creator.verificationType ?? creator.identityType, creator.verified)}
             </div>
             <div className="row muted">
               <Mail size={16} /> {creator.contactEmail ?? "待补充邮箱"}
@@ -143,11 +143,9 @@ export default function CreatorDetailPage({ params }: { params: { id: string } }
             <div className="row muted">
               <FileText size={16} /> 展示页链接可由接单方发送给派单方
             </div>
-            {(creator.qualificationFiles ?? []).map((file) => (
-              <div className="row muted" key={file}>
-                <CheckCircle2 size={16} /> {file}
-              </div>
-            ))}
+            <div className="row muted">
+              <CheckCircle2 size={16} /> 原始证明材料仅平台运营后台可见
+            </div>
             <div className="notice">后续简历、真实作品链接和联系方式，可在沟通线索里由创作者主动发送。</div>
           </div>
         </section>

@@ -69,7 +69,7 @@ export function requiredCredentialLabel(value?: string) {
   const labels: Record<string, string> = {
     enterprise: "营业执照",
     individual_business: "个体工商户营业执照",
-    individual: "个人身份证明",
+    individual: "个人实名信息",
     government: "统一社会信用代码证书/机关证明",
     public_institution: "事业单位法人证书",
     social_organization: "社会团体法人登记证书",
@@ -79,6 +79,23 @@ export function requiredCredentialLabel(value?: string) {
     other: "有效主体资质"
   };
   return value ? labels[value] ?? "有效主体资质" : "有效主体资质";
+}
+
+export function credentialUploadOptional(value?: string) {
+  return value === "individual";
+}
+
+export function credentialRequirementHint(value?: string) {
+  if (value === "individual") {
+    return "个人主体默认不要求上传身份证照片，可通过手机号、邮箱、公开作品页或平台账号辅助审核。原始实名信息仅用于后台核验，不对外展示。";
+  }
+
+  return "原始证明材料仅供平台运营后台审核，公开主页只展示认证类型和认证状态，不展示证照原件或完整证件号码。";
+}
+
+export function publicCredentialSummary(value?: string, verified?: boolean) {
+  const type = verificationTypeLabel(value);
+  return verified ? `${type}已完成平台核验` : `${type}资质待平台审核`;
 }
 
 export function activityEventLabel(value: string) {
