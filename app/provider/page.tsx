@@ -15,7 +15,7 @@ export default function ProviderPortalPage() {
   const session = readAuthSession();
   const creator = data.creators.find((item) => item.userId === session?.userId);
   useEffect(() => {
-    if (!session || session.role !== "creator") {
+    if (!session) {
       router.push("/login?role=accept");
       return;
     }
@@ -25,7 +25,7 @@ export default function ProviderPortalPage() {
     }
   }, [creator, router, session]);
 
-  if (!session || session.role !== "creator" || !creator) {
+  if (!session || !creator) {
     return null;
   }
 

@@ -12,7 +12,7 @@ export default function BuyerPortalPage() {
   const router = useRouter();
   const data = loadMarketplaceData();
   const session = readAuthSession();
-  const buyerId = session?.role === "buyer" ? session.userId : "";
+  const buyerId = session?.userId ?? "";
   const buyerProfile = data.buyerProfiles?.find((profile) => profile.userId === buyerId);
   const approved = buyerProfile?.verified ?? isApproved(session);
   const projects = data.projects.filter((project) => project.buyerId === buyerId);
@@ -21,7 +21,7 @@ export default function BuyerPortalPage() {
   const agentProjects = projects.filter((project) => project.agentBrief);
 
   useEffect(() => {
-    if (!session || session.role !== "buyer") {
+    if (!session) {
       router.push("/login?role=dispatch");
       return;
     }
@@ -31,7 +31,7 @@ export default function BuyerPortalPage() {
     }
   }, [buyerProfile, router, session]);
 
-  if (!session || session.role !== "buyer" || !buyerProfile) {
+  if (!session || !buyerProfile) {
     return null;
   }
 
