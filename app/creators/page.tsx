@@ -8,7 +8,7 @@ import { categoryLabel } from "@/lib/format";
 import { projectCategories } from "@/lib/project-categories";
 import { inviteCreator, loadMarketplaceData } from "@/lib/store";
 import { ProjectCategory } from "@/lib/types";
-import { isApproved, readAuthSession, roleEntryPath } from "@/lib/auth";
+import { isApproved, loginNextPath, readAuthSession } from "@/lib/auth";
 
 const categories: Array<ProjectCategory | "All"> = ["All", ...projectCategories];
 
@@ -23,8 +23,8 @@ function CreatorsContent() {
   const [budget, setBudget] = useState("all");
   const [sort, setSort] = useState("recommended");
   const [query, setQuery] = useState("");
-  const creatorEntry = roleEntryPath("creator", "/provider");
-  const buyerEntry = roleEntryPath("buyer", "/post-project");
+  const creatorEntry = loginNextPath("creator", "/provider");
+  const buyerEntry = loginNextPath("buyer", "/post-project");
 
   const creators = useMemo(() => {
     const filtered = data.creators.filter((creator) => {

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ArrowRight, Bot, Building2, CalendarDays, WalletCards } from "lucide-react";
 import { categoryLabel, compactDate, money, projectStatusLabel } from "@/lib/format";
 import { Project } from "@/lib/types";
-import { readAuthSession } from "@/lib/auth";
+import { loginNextPath, readAuthSession } from "@/lib/auth";
 
 export function ProjectCard({
   project,
@@ -17,7 +17,7 @@ export function ProjectCard({
 }) {
   const statusClass = project.status === "completed" ? "green" : project.status === "open" ? "blue" : "gold";
   const session = readAuthSession();
-  const detailHref = session ? `/projects/${project.id}` : "/login";
+  const detailHref = session ? `/projects/${project.id}` : loginNextPath("creator", `/projects/${project.id}`);
 
   return (
     <article className={publicMode ? "projectJobCard" : "card"}>
@@ -46,7 +46,7 @@ export function ProjectCard({
             ))}
           </div>
         ) : null}
-        <Link className="row muted" href={session ? `/buyers/${project.buyerId}` : "/login"}>
+        <Link className="row muted" href={session ? `/buyers/${project.buyerId}` : loginNextPath("creator", `/buyers/${project.buyerId}`)}>
           <Building2 size={16} /> {buyerName}
         </Link>
         <div className="spaceBetween">

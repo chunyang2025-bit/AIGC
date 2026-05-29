@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -17,7 +17,7 @@ import {
   Sparkles,
   UserCog
 } from "lucide-react";
-import { AuthSession, loginAccount, roleProfilePath, roleWorkbenchPath } from "@/lib/auth";
+import { AuthSession, loginAccount, readAuthSession, roleProfilePath, roleWorkbenchPath } from "@/lib/auth";
 import { UserRole } from "@/lib/types";
 
 const adminRole = {
@@ -34,6 +34,7 @@ function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const requestedRole = searchParams.get("role");
+  const requestedNext = searchParams.get("next");
   const [method, setMethod] = useState<LoginMethod>(requestedRole === "admin" ? "password" : "wechat");
   const [account, setAccount] = useState("");
   const [phone, setPhone] = useState("");
@@ -48,8 +49,16 @@ function LoginContent() {
   const registerAccount = account.trim() || phone.trim();
 
   function nextPath(session: AuthSession) {
+    if (requestedNext && requestedNext.startsWith("/")) return requestedNext;
     return session.status === "approved" ? roleWorkbenchPath(session.role) : roleProfilePath(session.role);
   }
+
+  useEffect(() => {
+    const session = readAuthSession();
+    if (session && requestedNext?.startsWith("/")) {
+      router.replace(requestedNext);
+    }
+  }, [requestedNext, router]);
 
   function requireAgreement() {
     if (agreed) return true;

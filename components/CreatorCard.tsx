@@ -5,7 +5,7 @@ import { CheckCircle2, Clock, Star } from "lucide-react";
 import { money, verificationTypeLabel } from "@/lib/format";
 import { isImageValue } from "@/lib/file-upload";
 import { CreatorProfile } from "@/lib/types";
-import { readAuthSession } from "@/lib/auth";
+import { loginNextPath, readAuthSession } from "@/lib/auth";
 
 type CreatorCardProps = {
   creator: CreatorProfile;
@@ -70,7 +70,7 @@ export function CreatorCard({ creator, matchScore, reason, risk, nextStep, onInv
           </strong>
           <span className="muted">已完成{creator.completedProjects}单</span>
         </div>
-        <Link className="btn" href={session ? `/creators/${creator.id}` : "/login"}>
+        <Link className="btn" href={session ? `/creators/${creator.id}` : loginNextPath("buyer", `/creators/${creator.id}`)}>
           {session ? "查看展示页" : "登录后查看展示页"}
         </Link>
         {typeof matchScore === "number" ? (

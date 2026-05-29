@@ -41,7 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Link href="/projects">
                 <BriefcaseBusiness size={16} /> 公开需求
               </Link>
-              <Link href="/account">
+              <Link href="/login?next=%2Faccount">
                 <LogIn size={16} /> 主体中心
               </Link>
             </nav>

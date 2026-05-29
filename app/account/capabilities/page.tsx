@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BriefcaseBusiness, CheckCircle2, MessageSquare, ShieldCheck, UserRound } from "lucide-react";
 import { loadMarketplaceData, upsertCurrentBuyerProfile } from "@/lib/store";
-import { readAuthSession, setAuthCapability } from "@/lib/auth";
+import { loginNextPath, readAuthSession, setAuthCapability } from "@/lib/auth";
 
 function statusText(enabled: boolean, verified?: boolean) {
   if (!enabled) return "未开通";
@@ -114,7 +114,7 @@ export default function AccountCapabilitiesPage() {
             <button className="btn primary" onClick={openBuyerCapability} type="button">
               {subject.verified ? "进入派单工作台" : "开通派单能力并等待审核"}
             </button>
-            <Link className="btn" href="/post-project">发布需求</Link>
+            <Link className="btn" href={loginNextPath("buyer", "/post-project")}>发布需求</Link>
           </div>
         </section>
 

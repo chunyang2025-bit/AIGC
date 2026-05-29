@@ -6,7 +6,7 @@ import { ArrowLeft, BriefcaseBusiness, Building2, CheckCircle2, ExternalLink, Fi
 import { categoryLabel, compactDate, money, publicCredentialSummary, verificationTypeLabel } from "@/lib/format";
 import { isImageValue } from "@/lib/file-upload";
 import { loadMarketplaceData } from "@/lib/store";
-import { readAuthSession } from "@/lib/auth";
+import { loginNextPath, readAuthSession } from "@/lib/auth";
 
 export default function BuyerDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -20,7 +20,7 @@ export default function BuyerDetailPage({ params }: { params: { id: string } }) 
   }
 
   if (!session) {
-    router.push("/login");
+    router.push(loginNextPath("buyer", `/buyers/${params.id}`));
     return null;
   }
 
@@ -32,7 +32,7 @@ export default function BuyerDetailPage({ params }: { params: { id: string } }) 
         <Link className="btn" href="/projects">
           <ArrowLeft size={16} /> 返回需求大厅
         </Link>
-        <Link className="btn primary" href="/post-project">
+        <Link className="btn primary" href={loginNextPath("buyer", "/post-project")}>
           <BriefcaseBusiness size={16} /> 发布需求
         </Link>
       </div>

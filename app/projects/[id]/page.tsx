@@ -6,7 +6,7 @@ import { ArrowLeft, Bot, Building2, CheckCircle2, FileBadge2, FileText, Link2, S
 import Link from "next/link";
 import { categoryLabel, compactDate, money, projectStatusLabel } from "@/lib/format";
 import { expressInterestInProject, loadMarketplaceData } from "@/lib/store";
-import { isApproved, readAuthSession } from "@/lib/auth";
+import { isApproved, loginNextPath, readAuthSession } from "@/lib/auth";
 
 export default function ProjectDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -23,7 +23,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
   }
 
   if (!session) {
-    router.push("/login");
+    router.push(loginNextPath("creator", `/projects/${params.id}`));
     return null;
   }
 
@@ -185,7 +185,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                     </div>
                   )}
                 </form>
-              ) : session?.role === "creator" ? (
+              ) : session ? (
                 <Link className="btn primary" href="/provider/profile">
                   完善展示页后邀约
                 </Link>

@@ -232,3 +232,7 @@ export function roleEntryPath(role: UserRole, approvedPath: string) {
   if (inferAccountStatus(session.userId, role) !== "approved") return roleProfilePath(role);
   return approvedPath;
 }
+
+export function loginNextPath(role: UserRole, next: string) {
+  return `${roleLoginPath(role)}&next=${encodeURIComponent(next)}`;
+}

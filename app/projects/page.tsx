@@ -4,12 +4,12 @@ import Link from "next/link";
 import { BriefcaseBusiness, Filter, Plus, Search, UserCog } from "lucide-react";
 import { ProjectCard } from "@/components/ProjectCard";
 import { loadMarketplaceData } from "@/lib/store";
-import { roleEntryPath } from "@/lib/auth";
+import { loginNextPath } from "@/lib/auth";
 
 export default function ProjectsPage() {
   const data = loadMarketplaceData();
-  const creatorEntry = roleEntryPath("creator", "/provider");
-  const buyerEntry = roleEntryPath("buyer", "/post-project");
+  const creatorEntry = loginNextPath("creator", "/provider");
+  const buyerEntry = loginNextPath("buyer", "/post-project");
 
   return (
     <main className="main">

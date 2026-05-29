@@ -6,14 +6,14 @@ import { CreatorCard } from "./CreatorCard";
 import { ProjectCard } from "./ProjectCard";
 import { isImageValue } from "@/lib/file-upload";
 import { loadMarketplaceData } from "@/lib/store";
-import { roleEntryPath } from "@/lib/auth";
+import { loginNextPath } from "@/lib/auth";
 
 export function ClientHome() {
   const data = loadMarketplaceData();
   const featured = data.creators.slice(0, 3);
   const projects = data.projects.slice(0, 3);
-  const buyerEntry = roleEntryPath("buyer", "/post-project");
-  const creatorEntry = roleEntryPath("creator", "/provider");
+  const buyerEntry = loginNextPath("buyer", "/post-project");
+  const creatorEntry = loginNextPath("creator", "/provider");
 
   return (
     <main className="main">
