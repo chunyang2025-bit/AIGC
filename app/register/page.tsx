@@ -4,7 +4,6 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  BriefcaseBusiness,
   CheckCircle2,
   Eye,
   EyeOff,
@@ -16,21 +15,6 @@ import {
 } from "lucide-react";
 import { registerAccount } from "@/lib/auth";
 
-const publicRoles = [
-  {
-    key: "dispatch",
-    icon: BriefcaseBusiness,
-    title: "我要派单",
-    subtitle: "发布真实需求"
-  },
-  {
-    key: "accept",
-    icon: UserCog,
-    title: "我要接单",
-    subtitle: "展示能力并沟通需求"
-  }
-];
-
 function passwordValid(value: string) {
   return /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d\S]{8,32}$/.test(value);
 }
@@ -38,9 +22,6 @@ function passwordValid(value: string) {
 function RegisterContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const requestedRole = searchParams.get("role");
-  const initialRole = publicRoles.some((role) => role.key === requestedRole) ? requestedRole ?? "accept" : "accept";
-  const [activeKey, setActiveKey] = useState(initialRole);
   const [account, setAccount] = useState(searchParams.get("account") ?? "");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -49,9 +30,6 @@ function RegisterContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const activeRole = publicRoles.find((role) => role.key === activeKey) ?? publicRoles[0];
-  const ActiveIcon = activeRole.icon;
-  const activeRoleValue = activeRole.key === "dispatch" ? "buyer" : "creator";
 
   function submitRegister() {
     if (!agreed) {
@@ -73,13 +51,13 @@ function RegisterContent() {
     try {
       setIsSubmitting(true);
       registerAccount({
-        role: activeRoleValue,
+        role: "buyer",
         account: account.trim(),
         password,
         name: account.trim()
       });
       setStatusText("注册成功，请登录后完善主体资料。");
-      router.push(`/login?role=${activeKey}`);
+      router.push("/login");
     } catch (error) {
       setStatusText(error instanceof Error ? error.message : "注册失败，请稍后再试。");
     } finally {
@@ -107,28 +85,16 @@ function RegisterContent() {
         <aside className="dispatchLoginPanel modernAuthPanel registerPanel">
           <div className="authPanelHeader">
             <h1>注册 AIGClancer</h1>
-            <p>先创建主体账号，再完善派单或接单资料并提交审核。</p>
-          </div>
-
-          <div className="authRoleSwitch" role="tablist" aria-label="注册身份">
-            {publicRoles.map((role) => {
-              const RoleIcon = role.icon;
-              return (
-                <button className={role.key === activeKey ? "active" : ""} key={role.key} onClick={() => setActiveKey(role.key)} type="button">
-                  <RoleIcon size={16} />
-                  <span>{role.title}</span>
-                </button>
-              );
-            })}
+            <p>先创建主体账号。登录后进入主体中心，再选择开通派单能力、接单能力或同时开通两种能力。</p>
           </div>
 
           <div className="selectedRole compact authSelectedRole">
             <div className="roleIcon">
-              <ActiveIcon size={22} />
+              <UserCog size={22} />
             </div>
             <div>
-              <strong>{activeRole.title}</strong>
-              <span>{activeRole.subtitle}</span>
+              <strong>主体账号</strong>
+              <span>注册后进入主体中心选择能力</span>
             </div>
           </div>
 
@@ -169,7 +135,7 @@ function RegisterContent() {
 
           <div className="registerPrompt">
             <span>已有账号？</span>
-            <Link href={`/login?role=${activeKey}`}>去登录</Link>
+            <Link href="/login">去登录</Link>
           </div>
 
           <label className="modernAgreement">

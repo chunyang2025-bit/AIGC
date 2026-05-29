@@ -101,25 +101,12 @@ export function loginUser(data: MarketplaceData, input: Record<string, unknown>)
   const authMethod = String(input.authMethod || "password");
   const password = String(input.password || "");
   const code = String(input.code || "");
-  let user = data.users.find((item) =>
+  const user = data.users.find((item) =>
     (item.email === account || item.account === account || item.phone === account) &&
     (role === "admin" ? item.role === "admin" : item.role !== "admin")
   );
 
   const codeMatches = authMethod === "code" && /^\d{6}$/.test(code) && account && !account.includes("@");
-  if (!user && codeMatches && role && role !== "admin") {
-    user = {
-      id: id("u"),
-      name: String(input.name || account || "新用户"),
-      account,
-      phone: account,
-      email: `${account}@phone.aigclancer.local`,
-      role,
-      createdAt: today()
-    };
-    data.users.unshift(user);
-  }
-
   const passwordMatches = user ? user.password ? user.password === password : password.length >= 6 : false;
   if (user && (authMethod === "code" ? codeMatches : passwordMatches)) {
     addActivity(data, {

@@ -146,7 +146,7 @@ export function createProject(input: {
   agentBrief?: Project["agentBrief"];
 }) {
   const session = readAuthSession();
-  const buyerId = session?.role === "buyer" ? session.userId : "u-buyer-1";
+  const buyerId = session?.userId ?? "u-buyer-1";
   const remote = requestJson<{ project: Project; matches: ProjectMatch[] }>("/api/projects", {
     method: "POST",
     body: JSON.stringify({

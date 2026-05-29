@@ -109,7 +109,7 @@ export default function AccountCapabilitiesPage() {
             </div>
             <div>
               <h2 style={{ margin: 0 }}>派单能力</h2>
-              <p className="muted">使用同一主体主页发布真实需求，查看匹配推荐，并主动邀请接单方沟通。</p>
+              <p className="muted">使用同一主体主页发布真实需求，查看匹配推荐，并主动邀请接单方沟通。主体审核通过后即可发布需求。</p>
             </div>
             <button className="btn primary" onClick={openBuyerCapability} type="button">
               {subject.verified ? "进入派单工作台" : "开通派单能力并等待审核"}
@@ -128,7 +128,7 @@ export default function AccountCapabilitiesPage() {
             </div>
             <div>
               <h2 style={{ margin: 0 }}>接单能力</h2>
-              <p className="muted">继承主体主页后，只补充可接需求类型、技能标签、报价区间、简历和代表作。</p>
+              <p className="muted">继承主体主页后，只补充可接需求类型、技能标签、报价区间、简历和代表作。接单资料审核通过后可主动发起沟通。</p>
             </div>
             <Link className="btn primary" href="/provider/profile">
               {creator ? "编辑接单能力" : "开通接单能力"}

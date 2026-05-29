@@ -200,7 +200,7 @@ export function setAuthStatus(status: AccountStatus) {
 export function setAuthCapability(role: UserRole, status: AccountStatus = "pending_review") {
   const session = readAuthSession();
   if (session) {
-    saveAuthSession({ ...session, role, status });
+    saveAuthSession({ ...session, role: session.role === "admin" ? "admin" : "buyer", status });
   }
 }
 
@@ -215,8 +215,7 @@ export function roleProfilePath(role: UserRole) {
 }
 
 export function roleWorkbenchPath(role: UserRole) {
-  if (role === "buyer") return "/buyer";
-  if (role === "creator") return "/provider";
+  if (role !== "admin") return "/account";
   return "/admin";
 }
 

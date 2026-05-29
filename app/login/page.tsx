@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   BriefcaseBusiness,
-  CheckCircle2,
   Eye,
   EyeOff,
   Headphones,
@@ -18,24 +17,8 @@ import {
   Sparkles,
   UserCog
 } from "lucide-react";
-import { AuthSession, loginAccount, roleProfilePath, roleWorkbenchPath, saveAuthSession } from "@/lib/auth";
-
-const publicRoles = [
-  {
-    key: "dispatch",
-    icon: BriefcaseBusiness,
-    title: "我要派单",
-    subtitle: "发布真实需求",
-    helper: "完成主体资料和资质审核后，可发布内容需求并邀请接单方沟通。"
-  },
-  {
-    key: "accept",
-    icon: UserCog,
-    title: "我要接单",
-    subtitle: "展示能力并沟通需求",
-    helper: "创建展示页后可浏览公开需求；审核通过后可主动向派单方发起沟通。"
-  }
-];
+import { AuthSession, loginAccount, roleProfilePath, roleWorkbenchPath } from "@/lib/auth";
+import { UserRole } from "@/lib/types";
 
 const adminRole = {
   key: "admin",
@@ -47,33 +30,22 @@ const adminRole = {
 
 type LoginMethod = "wechat" | "code" | "password";
 
-function passwordValid(value: string) {
-  return /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d\S]{8,32}$/.test(value);
-}
-
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const requestedRole = searchParams.get("role");
-  const visibleRoles = requestedRole === "admin" ? [adminRole] : publicRoles;
-  const initialRole = visibleRoles.some((role) => role.key === requestedRole) ? requestedRole ?? "accept" : "accept";
-  const [activeKey, setActiveKey] = useState(initialRole);
   const [method, setMethod] = useState<LoginMethod>(requestedRole === "admin" ? "password" : "wechat");
   const [account, setAccount] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [code, setCode] = useState("");
   const [agreed, setAgreed] = useState(false);
   const [statusText, setStatusText] = useState("");
   const [showRegisterPrompt, setShowRegisterPrompt] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [pendingSession, setPendingSession] = useState<AuthSession | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const activeRole = visibleRoles.find((role) => role.key === activeKey) ?? visibleRoles[0];
-  const ActiveIcon = activeRole.icon;
-  const activeRoleValue = activeRole.key === "dispatch" ? "buyer" : activeRole.key === "accept" ? "creator" : "admin";
+  const activeRoleValue: UserRole = requestedRole === "admin" ? "admin" : "buyer";
+  const registerAccount = account.trim() || phone.trim();
 
   function nextPath(session: AuthSession) {
     return session.status === "approved" ? roleWorkbenchPath(session.role) : roleProfilePath(session.role);
@@ -102,7 +74,7 @@ function LoginContent() {
         authMethod: "password",
         name: account.trim()
       });
-      setStatusText("登录成功，正在进入对应工作台。");
+      setStatusText("登录成功，正在进入主体中心。");
       setShowRegisterPrompt(false);
       router.push(nextPath(session));
     } catch (error) {
@@ -141,42 +113,18 @@ function LoginContent() {
         authMethod: "code",
         name: phone.trim()
       });
-      setPendingSession(session);
-      setPassword("");
-      setConfirmPassword("");
-      setStatusText("验证码登录成功，请先设置密码，便于下次账号密码登录。");
+      setStatusText("登录成功，正在进入主体中心。");
+      router.push(nextPath(session));
       setShowRegisterPrompt(false);
     } catch (error) {
-      setStatusText(error instanceof Error ? error.message : "验证码登录失败，请稍后再试。");
-      setShowRegisterPrompt(false);
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  async function submitPassword() {
-    if (!pendingSession) return;
-    if (!passwordValid(password)) {
-      setStatusText("密码长度必须是8-32位，并同时包含字母和数字。");
-      return;
-    }
-    if (password !== confirmPassword) {
-      setStatusText("两次输入的密码不一致。");
-      return;
-    }
-    try {
-      setIsSubmitting(true);
-      const response = await fetch("/api/auth/password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: pendingSession.userId, password })
-      });
-      if (!response.ok) throw new Error("密码设置失败，请稍后再试。");
-      saveAuthSession(pendingSession);
-      setStatusText("密码设置成功，正在进入对应工作台。");
-      router.push(nextPath(pendingSession));
-    } catch (error) {
-      setStatusText(error instanceof Error ? error.message : "密码设置失败，请稍后再试。");
+      const message = error instanceof Error ? error.message : "验证码登录失败，请稍后再试。";
+      if (activeRoleValue !== "admin" && (message.includes("未找到") || message.includes("先注册"))) {
+        setStatusText("未找到账号，请先注册。");
+        setShowRegisterPrompt(true);
+      } else {
+        setStatusText(message);
+        setShowRegisterPrompt(false);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -185,43 +133,6 @@ function LoginContent() {
   function wechatLogin() {
     if (!requireAgreement()) return;
     setStatusText("微信扫码登录需要接入微信开放平台。当前 demo 请使用验证码登录。");
-  }
-
-  if (pendingSession) {
-    return (
-      <main className="passwordSetupShell">
-        <section className="passwordSetupPanel">
-          <h1>设置密码</h1>
-          <label className="passwordLine">
-            <input
-              placeholder="请输入新密码"
-              type={showPassword ? "text" : "password"}
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-            <button onClick={() => setShowPassword((value) => !value)} type="button" title={showPassword ? "隐藏密码" : "显示密码"}>
-              {showPassword ? <EyeOff size={22} /> : <Eye size={22} />}
-            </button>
-          </label>
-          <label className="passwordLine">
-            <input
-              placeholder="请再次输入密码"
-              type={showConfirmPassword ? "text" : "password"}
-              value={confirmPassword}
-              onChange={(event) => setConfirmPassword(event.target.value)}
-            />
-            <button onClick={() => setShowConfirmPassword((value) => !value)} type="button" title={showConfirmPassword ? "隐藏密码" : "显示密码"}>
-              {showConfirmPassword ? <EyeOff size={22} /> : <Eye size={22} />}
-            </button>
-          </label>
-          <p>密码长度必须是8-32位，同时包含字母和数字</p>
-          <button className="passwordPrimary" onClick={submitPassword} disabled={isSubmitting} type="button">
-            {isSubmitting ? "正在设置..." : "立即登录"}
-          </button>
-          {statusText ? <div className="passwordStatus">{statusText}</div> : null}
-        </section>
-      </main>
-    );
   }
 
   return (
@@ -262,7 +173,7 @@ function LoginContent() {
         <aside className="dispatchLoginPanel modernAuthPanel">
           <div className="authPanelHeader">
             <h1>登录 AIGClancer</h1>
-            <p>验证码登录会自动完成注册，首次登录后需要设置密码。</p>
+            <p>登录后进入主体中心，可继续开通派单能力、接单能力，或同时开通两种能力。</p>
           </div>
 
           <div className="authMethodTabs" role="tablist" aria-label="登录方式">
@@ -277,25 +188,13 @@ function LoginContent() {
             </button>
           </div>
 
-          <div className="authRoleSwitch" role="tablist" aria-label="账号身份">
-            {visibleRoles.map((role) => {
-              const RoleIcon = role.icon;
-              return (
-                <button className={role.key === activeKey ? "active" : ""} key={role.key} onClick={() => setActiveKey(role.key)} type="button">
-                  <RoleIcon size={16} />
-                  <span>{role.title}</span>
-                </button>
-              );
-            })}
-          </div>
-
           <div className="selectedRole compact authSelectedRole">
             <div className="roleIcon">
-              <ActiveIcon size={22} />
+              {requestedRole === "admin" ? <ShieldCheck size={22} /> : <UserCog size={22} />}
             </div>
             <div>
-              <strong>{activeRole.title}</strong>
-              <span>{activeRole.subtitle}</span>
+              <strong>{requestedRole === "admin" ? adminRole.title : "主体账号"}</strong>
+              <span>{requestedRole === "admin" ? adminRole.subtitle : "登录后选择派单或接单能力"}</span>
             </div>
           </div>
 
@@ -341,7 +240,7 @@ function LoginContent() {
                 </div>
               </label>
               <button className="authPrimary" onClick={loginByCode} disabled={isSubmitting} type="button">
-                {isSubmitting ? "正在登录..." : "登录 / 注册"}
+                {isSubmitting ? "正在登录..." : "登录"}
               </button>
             </div>
           ) : null}
@@ -372,10 +271,10 @@ function LoginContent() {
           ) : null}
 
           {statusText ? <div className="authStatus">{statusText}</div> : null}
-          {showRegisterPrompt ? (
+          {activeRoleValue !== "admin" ? (
             <div className="registerPrompt">
-              <span>没有账号？</span>
-              <Link href={`/register?role=${activeKey}&account=${encodeURIComponent(account.trim())}`}>
+              <span>{showRegisterPrompt ? "未找到账号？" : "没有账号？"}</span>
+              <Link href={`/register?account=${encodeURIComponent(registerAccount)}`}>
                 先注册
               </Link>
             </div>
@@ -389,9 +288,9 @@ function LoginContent() {
           </label>
 
           <div className="dispatchRoleTips">
-            <p>{activeRole.helper}</p>
+            <p>{requestedRole === "admin" ? adminRole.helper : "一个主体账号可以同时开通派单能力和接单能力，能力开通前需先完善主体主页并提交审核。"}</p>
             <div>
-              <CheckCircle2 size={15} />
+              <UserCog size={15} />
               <span>同一主体可同时开通派单和接单能力</span>
             </div>
           </div>

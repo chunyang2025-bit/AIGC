@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bot, CheckCircle2, FileText, SendHorizonal, Sparkles } from "lucide-react";
 import { draftProjectBrief, DraftBriefResult } from "@/lib/brief-agent";
-import { categoryLabel, money } from "@/lib/format";
+import { categoryLabel } from "@/lib/format";
 import { projectCategoryOptions } from "@/lib/project-categories";
 import { createProject, loadMarketplaceData } from "@/lib/store";
 import { isApproved, readAuthSession } from "@/lib/auth";
@@ -35,6 +35,10 @@ export default function PostProjectPage() {
     setDraft(draftProjectBrief({ rawIdea, productName, audience, channel, style }));
   }
 
+  function updateDraftField<K extends keyof DraftBriefResult>(key: K, value: DraftBriefResult[K]) {
+    setDraft((current) => ({ ...current, [key]: value }));
+  }
+
   function addProjectTag() {
     const next = tagDraft.trim();
     if (!next) return;
@@ -51,7 +55,7 @@ export default function PostProjectPage() {
       <div className="pageHeader">
         <div>
           <h1>需求发布 Agent</h1>
-          <p>用对话式输入生成结构化 Brief，再进入创作者智能匹配，系统会先推荐10位可邀约创作者。</p>
+          <p>用对话式输入生成结构化 Brief。你可以手动调整标题、预算和周期，再进入创作者匹配。</p>
         </div>
       </div>
 
@@ -179,21 +183,32 @@ export default function PostProjectPage() {
           <div className="cardBody stack">
             <div>
               <span className="tag blue">{categoryLabel(draft.category)}</span>
-              <h2 style={{ margin: "12px 0 0", fontSize: 26 }}>{draft.title}</h2>
+              <div className="field" style={{ marginTop: 12 }}>
+                <label htmlFor="draft-title">需求标题</label>
+                <input id="draft-title" value={draft.title} onChange={(event) => updateDraftField("title", event.target.value)} />
+              </div>
             </div>
             <div className="grid two">
-              <div className="metric">
-                <strong>{money(draft.budget)}</strong>
-                <span>Agent建议预算</span>
+              <div className="field">
+                <label htmlFor="draft-budget">意向预算</label>
+                <input
+                  id="draft-budget"
+                  inputMode="numeric"
+                  value={draft.budget}
+                  onChange={(event) => updateDraftField("budget", Number(event.target.value) || 0)}
+                />
               </div>
-              <div className="metric">
-                <strong>{draft.deadline.slice(5)}</strong>
-                <span>建议沟通期限</span>
+              <div className="field">
+                <label htmlFor="draft-deadline">沟通期限</label>
+                <input id="draft-deadline" type="date" value={draft.deadline} onChange={(event) => updateDraftField("deadline", event.target.value)} />
               </div>
             </div>
             <div className="briefBlock">
               <strong>结构化需求</strong>
-              <p>{draft.description}</p>
+              <textarea value={draft.description} onChange={(event) => updateDraftField("description", event.target.value)} />
+            </div>
+            <div className="notice">
+              平台只提供信息展示、智能匹配和沟通留痕，不托管资金，不参与合同、交易、交付和售后纠纷。
             </div>
             <div className="briefBlock">
               <strong>成果范围</strong>

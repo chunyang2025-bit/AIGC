@@ -34,6 +34,8 @@ export default function AccountPage() {
   if (!session) return null;
 
   const subjectName = buyerProfile?.displayName ?? creatorProfile?.displayName ?? session.name ?? session.email;
+  const hasSubjectProfile = Boolean(buyerProfile || creatorProfile);
+  const subjectVerified = Boolean(buyerProfile?.verified || creatorProfile?.verified);
   const myProjects = data.projects.filter((project) => project.buyerId === session.userId);
   const myBuyerLeads = data.orders.filter((order) => order.buyerId === session.userId);
   const myCreatorLeads = creatorProfile ? data.orders.filter((order) => order.creatorId === creatorProfile.id) : [];
@@ -47,21 +49,44 @@ export default function AccountPage() {
           </span>
           <div>
             <h1>{subjectName}</h1>
-            <p>一个账号对应一个主体，同一主体可以同时开通派单能力和接单能力。在这里统一查看我的派单、我的接单和审核状态。</p>
+            <p>先维护一份主体主页，再选择开通派单能力、接单能力，或同时开通两种能力。</p>
           </div>
         </div>
         <div className="portalStats">
           <div className="metric">
-            <strong>{buyerProfile ? 1 : 0}</strong>
-            <span>派单能力</span>
+            <strong>{hasSubjectProfile ? 1 : 0}</strong>
+            <span>主体主页</span>
           </div>
           <div className="metric">
-            <strong>{creatorProfile ? 1 : 0}</strong>
-            <span>接单能力</span>
+            <strong>{subjectVerified ? 1 : 0}</strong>
+            <span>主体审核</span>
           </div>
           <div className="metric">
-            <strong>{[buyerProfile?.verified, creatorProfile?.verified].filter(Boolean).length}</strong>
-            <span>已通过能力</span>
+            <strong>{[buyerProfile, creatorProfile].filter(Boolean).length}</strong>
+            <span>已开通能力</span>
+          </div>
+        </div>
+      </section>
+
+      <section className="card">
+        <div className="cardBody stack">
+          <div className="spaceBetween">
+            <ShieldCheck size={22} />
+            <span className={statusClass(hasSubjectProfile, subjectVerified)}>
+              {statusText(hasSubjectProfile, subjectVerified)}
+            </span>
+          </div>
+          <div>
+            <h2 style={{ margin: 0 }}>主体主页</h2>
+            <p className="muted">名称、头像/Logo、主体类型、城市、基本介绍、联系方式和资质材料只维护一次，派单和接单共用。</p>
+          </div>
+          <div className="toolbarGroup">
+            <Link className="btn primary" href="/account/profile">
+              {hasSubjectProfile ? "查看/编辑主体主页" : "创建主体主页"}
+            </Link>
+            <Link className="btn" href="/account/capabilities">
+              选择开通能力
+            </Link>
           </div>
         </div>
       </section>
