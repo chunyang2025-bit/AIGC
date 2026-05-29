@@ -27,7 +27,7 @@ export default function BuyerPortalPage() {
     }
 
     if (!buyerProfile) {
-      router.push("/buyer/profile");
+      router.push("/account/profile");
     }
   }, [buyerProfile, router, session]);
 
@@ -47,10 +47,10 @@ export default function BuyerPortalPage() {
           <p>发布内容需求，启动 Brief Agent，查看匹配结果，并邀请创作者建立沟通线索。</p>
           </div>
           <div className="toolbarGroup">
-            <Link className={approved ? "btn primary" : "btn"} href={approved ? "/post-project" : "/buyer/profile"}>
+            <Link className={approved ? "btn primary" : "btn"} href={approved ? "/post-project" : "/account/profile"}>
               <Plus size={16} /> 启动需求 Agent
             </Link>
-            <Link className="btn" href="/provider/profile">
+            <Link className="btn" href="/account/capabilities">
               <UsersRound size={16} /> 开通接单能力
             </Link>
             <Link className="btn" href="/creators">

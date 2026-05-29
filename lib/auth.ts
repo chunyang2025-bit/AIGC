@@ -209,8 +209,8 @@ export function isApproved(session: AuthSession | null) {
 }
 
 export function roleProfilePath(role: UserRole) {
-  if (role === "buyer") return "/buyer/profile";
-  if (role === "creator") return "/provider/profile";
+  if (role === "buyer") return "/account/profile";
+  if (role === "creator") return "/account/profile";
   return "/admin";
 }
 

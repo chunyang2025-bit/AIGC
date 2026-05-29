@@ -38,16 +38,17 @@ export default function ProviderProfilePage() {
   const data = loadMarketplaceData();
   const session = readAuthSession();
   const currentProfile = data.creators.find((creator) => creator.userId === session?.userId);
-  const subjectName = currentProfile?.name ?? session?.name ?? "";
+  const subjectProfile = data.buyerProfiles?.find((profile) => profile.userId === session?.userId);
+  const subjectName = currentProfile?.name ?? subjectProfile?.companyName ?? session?.name ?? "";
   const [name, setName] = useState(subjectName);
-  const [displayName, setDisplayName] = useState(currentProfile?.displayName ?? subjectName);
-  const [avatarUrl, setAvatarUrl] = useState(currentProfile?.avatarUrl ?? subjectName.slice(0, 1));
-  const [profileSlogan, setProfileSlogan] = useState(currentProfile?.profileSlogan ?? "");
+  const [displayName, setDisplayName] = useState(currentProfile?.displayName ?? subjectProfile?.displayName ?? subjectName);
+  const [avatarUrl, setAvatarUrl] = useState(currentProfile?.avatarUrl ?? subjectProfile?.avatarUrl ?? subjectName.slice(0, 1));
+  const [profileSlogan, setProfileSlogan] = useState(currentProfile?.profileSlogan ?? subjectProfile?.profileSlogan ?? "");
   const [title, setTitle] = useState(currentProfile?.title ?? "");
-  const initialLocation = splitProvinceCity(currentProfile?.location ?? "");
+  const initialLocation = splitProvinceCity(currentProfile?.location ?? subjectProfile?.location ?? "");
   const [province, setProvince] = useState(initialLocation.province);
   const [city, setCity] = useState(initialLocation.city);
-  const [bio, setBio] = useState(currentProfile?.bio ?? "");
+  const [bio, setBio] = useState(currentProfile?.bio ?? subjectProfile?.companyIntro ?? "");
   const [resume, setResume] = useState(currentProfile?.resume ?? "");
   const [skills, setSkills] = useState((currentProfile?.skills ?? []).join(", "));
   const [skillDraft, setSkillDraft] = useState("");
@@ -55,14 +56,14 @@ export default function ProviderProfilePage() {
   const [priceMin, setPriceMin] = useState(currentProfile ? String(currentProfile.priceMin) : "");
   const [priceMax, setPriceMax] = useState(currentProfile ? String(currentProfile.priceMax) : "");
   const [responseTime, setResponseTime] = useState(currentProfile?.responseTime ?? "");
-  const [identityType, setIdentityType] = useState<VerificationType>(currentProfile?.identityType ?? currentProfile?.verificationType ?? "individual");
-  const [credentialFile, setCredentialFile] = useState(currentProfile?.credentialFile ?? "");
-  const [qualificationFiles, setQualificationFiles] = useState((currentProfile?.qualificationFiles ?? []).join("\n"));
-  const [contactEmail, setContactEmail] = useState(currentProfile?.contactEmail ?? session?.email ?? "");
-  const [contactPhone, setContactPhone] = useState(currentProfile?.contactPhone ?? session?.phone ?? "");
-  const [websiteUrl, setWebsiteUrl] = useState(currentProfile?.websiteUrl ?? "");
-  const [socialUrl, setSocialUrl] = useState(currentProfile?.socialUrl ?? "");
-  const [serviceArea, setServiceArea] = useState(currentProfile?.serviceArea ?? "");
+  const [identityType, setIdentityType] = useState<VerificationType>(currentProfile?.identityType ?? currentProfile?.verificationType ?? subjectProfile?.verificationType ?? "individual");
+  const [credentialFile, setCredentialFile] = useState(currentProfile?.credentialFile ?? subjectProfile?.businessLicenseFile ?? "");
+  const [qualificationFiles, setQualificationFiles] = useState((currentProfile?.qualificationFiles ?? subjectProfile?.qualificationFiles ?? []).join("\n"));
+  const [contactEmail, setContactEmail] = useState(currentProfile?.contactEmail ?? subjectProfile?.contactEmail ?? session?.email ?? "");
+  const [contactPhone, setContactPhone] = useState(currentProfile?.contactPhone ?? subjectProfile?.contactPhone ?? session?.phone ?? "");
+  const [websiteUrl, setWebsiteUrl] = useState(currentProfile?.websiteUrl ?? subjectProfile?.websiteUrl ?? "");
+  const [socialUrl, setSocialUrl] = useState(currentProfile?.socialUrl ?? subjectProfile?.socialUrl ?? "");
+  const [serviceArea, setServiceArea] = useState(currentProfile?.serviceArea ?? subjectProfile?.serviceArea ?? "");
   const [categories, setCategories] = useState<ProjectCategory[]>(currentProfile?.categories ?? ["AI Short Video"]);
   const cityOptions = provinceCityOptions.find((item) => item.province === province)?.cities ?? [];
   const location = joinProvinceCity(province, city);
@@ -181,8 +182,8 @@ export default function ProviderProfilePage() {
             <UserRound size={15} /> 接单方入驻
           </span>
           <div>
-            <h1>先完善创作者展示页，再进入需求大厅</h1>
-            <p>派单方会先看你的服务定位、案例方向、报价区间和响应速度。资料越完整，越容易被主动邀请沟通。</p>
+            <h1>开通接单能力</h1>
+            <p>主体主页已共用，这里只需要补充可接需求类型、技能标签、报价区间、简历/履历和代表作。</p>
           </div>
           <div className="profileSteps">
             <span>
@@ -202,8 +203,8 @@ export default function ProviderProfilePage() {
         <section className="card">
           <div className="panelTop">
             <div>
-              <strong>创作者展示页资料</strong>
-              <div className="muted">这些信息会展示给需求发布方，并用于匹配 Agent 进行推荐。</div>
+              <strong>接单能力补充资料</strong>
+              <div className="muted">基础主体资料已从主体主页继承，这些信息用于匹配和接单展示。</div>
             </div>
             <Sparkles size={18} />
           </div>

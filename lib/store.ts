@@ -499,6 +499,69 @@ export function upsertCurrentBuyerProfile(input: {
   return profile;
 }
 
+export function upsertUnifiedSubjectProfile(input: {
+  companyName: string;
+  displayName: string;
+  avatarUrl: string;
+  profileSlogan: string;
+  industry: string;
+  location: string;
+  companyIntro: string;
+  verificationType: VerificationType;
+  contactEmail: string;
+  contactPhone: string;
+  websiteUrl: string;
+  socialUrl: string;
+  serviceArea: string;
+  businessLicenseFile: string;
+  qualificationFiles: string[];
+}) {
+  const buyerProfile = upsertCurrentBuyerProfile(input);
+  const session = readAuthSession();
+  const data = loadMarketplaceData();
+  const creator = data.creators.find((item) => item.userId === session?.userId);
+
+  if (!creator || !session) {
+    return buyerProfile;
+  }
+
+  const mergedCreator = {
+    ...creator,
+    name: input.companyName,
+    displayName: input.displayName,
+    avatarUrl: input.avatarUrl,
+    profileSlogan: input.profileSlogan,
+    location: input.location,
+    bio: creator.bio || input.companyIntro,
+    identityType: input.verificationType,
+    verificationType: input.verificationType,
+    credentialFile: input.businessLicenseFile,
+    qualificationFiles: input.qualificationFiles,
+    contactEmail: input.contactEmail,
+    contactPhone: input.contactPhone,
+    websiteUrl: input.websiteUrl,
+    socialUrl: input.socialUrl,
+    serviceArea: input.serviceArea
+  };
+
+  const remote = requestJson<BuyerProfile>("/api/creators", {
+    method: "POST",
+    body: JSON.stringify(mergedCreator)
+  });
+
+  if (remote) {
+    syncFromApi();
+    return buyerProfile;
+  }
+
+  const next = loadMarketplaceData();
+  saveMarketplaceData({
+    ...next,
+    creators: [mergedCreator, ...next.creators.filter((item) => item.id !== creator.id)]
+  });
+  return buyerProfile;
+}
+
 export function upsertCurrentCreatorProfile(input: {
   name: string;
   title: string;

@@ -14,7 +14,7 @@ import {
   Sparkles,
   UserCog
 } from "lucide-react";
-import { registerAccount, roleProfilePath } from "@/lib/auth";
+import { registerAccount } from "@/lib/auth";
 
 const publicRoles = [
   {

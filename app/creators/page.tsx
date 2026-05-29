@@ -58,7 +58,7 @@ function CreatorsContent() {
     }
     const buyerProfile = data.buyerProfiles?.find((profile) => profile.userId === session?.userId);
     if (!(buyerProfile?.verified ?? isApproved(session))) {
-      router.push("/buyer/profile");
+      router.push("/account/profile");
       return;
     }
     const order = inviteCreator(project.id, creatorId);

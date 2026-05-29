@@ -80,11 +80,11 @@ export default function AccountPage() {
               <p className="muted">完善主体认证后发布需求、查看匹配推荐，并邀请接单方沟通。</p>
             </div>
             <div className="toolbarGroup">
-              <Link className="btn primary" href={buyerProfile?.verified ? "/buyer" : "/buyer/profile"}>
-                {buyerProfile ? "查看/编辑派单资料" : "开通派单能力"}
+              <Link className="btn primary" href={buyerProfile?.verified ? "/buyer" : "/account/capabilities"}>
+                {buyerProfile ? "进入/开通派单能力" : "先完善主体主页"}
               </Link>
-              <Link className="btn" href={buyerProfile?.verified ? "/post-project" : "/buyer/profile"}>
-                {buyerProfile?.verified ? "发布需求" : "补充认证"}
+              <Link className="btn" href={buyerProfile?.verified ? "/post-project" : "/account/profile"}>
+                {buyerProfile?.verified ? "发布需求" : "补充主体资料"}
               </Link>
             </div>
           </div>
@@ -103,8 +103,8 @@ export default function AccountPage() {
               <p className="muted">完善展示页和资质认证后进入需求大厅，向派单方发送主页、简历和代表作。</p>
             </div>
             <div className="toolbarGroup">
-              <Link className="btn primary" href={creatorProfile?.verified ? "/provider" : "/provider/profile"}>
-                {creatorProfile ? "查看/编辑接单资料" : "开通接单能力"}
+              <Link className="btn primary" href={creatorProfile?.verified ? "/provider" : "/account/capabilities"}>
+                {creatorProfile ? "进入/开通接单能力" : "先完善主体主页"}
               </Link>
               <Link className="btn" href="/projects">浏览需求</Link>
             </div>
@@ -140,10 +140,10 @@ export default function AccountPage() {
             ))}
             {myProjects.length === 0 ? <div className="muted">通过审核后发布第一个需求。</div> : null}
             <div className="toolbarGroup">
-              <Link className="btn primary" href={buyerProfile?.verified ? "/buyer" : "/buyer/profile"}>
+              <Link className="btn primary" href={buyerProfile?.verified ? "/buyer" : "/account/capabilities"}>
                 进入我的派单
               </Link>
-              <Link className="btn" href={buyerProfile?.verified ? "/post-project" : "/buyer/profile"}>
+              <Link className="btn" href={buyerProfile?.verified ? "/post-project" : "/account/profile"}>
                 {buyerProfile?.verified ? "发布需求" : "完善派单认证"}
               </Link>
             </div>
@@ -187,7 +187,7 @@ export default function AccountPage() {
               <div className="muted">开通接单能力后，这里会显示你的展示页和沟通线索。</div>
             )}
             <div className="toolbarGroup">
-              <Link className="btn primary" href={creatorProfile?.verified ? "/provider" : "/provider/profile"}>
+              <Link className="btn primary" href={creatorProfile?.verified ? "/provider" : "/account/capabilities"}>
                 进入我的接单
               </Link>
               <Link className="btn" href="/projects">
