@@ -76,7 +76,7 @@ export default function BuyerPortalPage() {
 
       {!approved ? (
         <section className="notice">
-          你已完成基础入驻，可以继续完善主页和浏览创作者信息。审核通过后才能正式发布需求和主动邀请创作者。
+          你的主体资料正在审核中。审核通过后才能正式发布需求和主动邀请创作者；审核期间可以继续完善主页、浏览创作者信息大厅。
         </section>
       ) : null}
 

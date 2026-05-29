@@ -16,6 +16,8 @@ export default function AdminPage() {
   const reachedIntent = data.orders.filter((order) => order.status === "approved").length;
   const buyerMau = monthlyActiveUsers(data, "buyer");
   const creatorMau = monthlyActiveUsers(data, "creator");
+  const verifiedSubjects = (data.buyerProfiles ?? []).filter((profile) => profile.verified).length + data.creators.filter((creator) => creator.verified).length;
+  const pendingSubjects = (data.buyerProfiles ?? []).filter((profile) => !profile.verified).length + data.creators.filter((creator) => !creator.verified).length;
   const [reviewReason, setReviewReason] = useState("资料不完整，请补充主体资质或联系方式后重新提交。");
 
   function exportOperationsReport() {
@@ -125,6 +127,14 @@ export default function AdminPage() {
           <div className="metric">
             <strong>{data.projects.length}</strong>
             <span>需求数量</span>
+          </div>
+          <div className="metric">
+            <strong>{verifiedSubjects}</strong>
+            <span>审核通过主体</span>
+          </div>
+          <div className="metric">
+            <strong>{pendingSubjects}</strong>
+            <span>待审核主体</span>
           </div>
           <div className="metric">
             <strong>{money(intentBudget)}</strong>

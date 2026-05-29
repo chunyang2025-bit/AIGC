@@ -1,7 +1,7 @@
 import { MarketplaceData, UserRole } from "./types";
 
 export function monthlyActiveUsers(data: MarketplaceData, role?: UserRole) {
-  const now = new Date("2026-05-23T00:00:00Z");
+  const now = new Date();
   const windowStart = new Date(now);
   windowStart.setDate(now.getDate() - 30);
 

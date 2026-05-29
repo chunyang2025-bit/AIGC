@@ -104,8 +104,8 @@ export default function ProviderPortalPage() {
               ))}
             </div>
             <div className="spaceBetween">
-              <span className="tag green">
-                <CheckCircle2 size={13} /> 已认证
+              <span className={approved ? "tag green" : "tag gold"}>
+                <CheckCircle2 size={13} /> {approved ? "已认证" : "审核中"}
               </span>
               <span className="muted">评分 {creator.rating.toFixed(1)}</span>
             </div>

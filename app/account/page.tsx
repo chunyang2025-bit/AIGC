@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BriefcaseBusiness, Clock, MessageSquare, ShieldCheck, UserRound } from "lucide-react";
+import { BriefcaseBusiness, CheckCircle2, Clock, FileBadge2, MessageSquare, ShieldCheck, UserRound } from "lucide-react";
 import { compactDate, money, orderStatusLabel, projectStatusLabel } from "@/lib/format";
 import { loadMarketplaceData } from "@/lib/store";
 import { readAuthSession } from "@/lib/auth";
@@ -36,6 +36,7 @@ export default function AccountPage() {
   const subjectName = buyerProfile?.displayName ?? creatorProfile?.displayName ?? session.name ?? session.email;
   const hasSubjectProfile = Boolean(buyerProfile || creatorProfile);
   const subjectVerified = Boolean(buyerProfile?.verified || creatorProfile?.verified);
+  const pendingReview = hasSubjectProfile && !subjectVerified;
   const myProjects = data.projects.filter((project) => project.buyerId === session.userId);
   const myBuyerLeads = data.orders.filter((order) => order.buyerId === session.userId);
   const myCreatorLeads = creatorProfile ? data.orders.filter((order) => order.creatorId === creatorProfile.id) : [];
@@ -65,6 +66,47 @@ export default function AccountPage() {
             <strong>{[buyerProfile, creatorProfile].filter(Boolean).length}</strong>
             <span>已开通能力</span>
           </div>
+        </div>
+      </section>
+
+      <section className="card">
+        <div className="cardBody stack">
+          <div className="spaceBetween">
+            <div>
+              <h2 style={{ margin: 0 }}>入驻进度</h2>
+              <p className="muted">新主体按这个顺序完成入驻。审核通过前可以继续完善资料和浏览公开信息。</p>
+            </div>
+            <span className={subjectVerified ? "tag green" : pendingReview ? "tag gold" : "tag"}>
+              {subjectVerified ? "已完成入驻" : pendingReview ? "审核中" : "待完善"}
+            </span>
+          </div>
+          <div className="grid three">
+            <Link className="metric" href="/account/profile">
+              <FileBadge2 size={18} />
+              <strong>{hasSubjectProfile ? "已提交" : "第1步"}</strong>
+              <span>创建主体主页</span>
+            </Link>
+            <Link className="metric" href={hasSubjectProfile ? "/account/capabilities" : "/account/profile"}>
+              <UserRound size={18} />
+              <strong>{buyerProfile || creatorProfile ? "可选择" : "第2步"}</strong>
+              <span>开通派单/接单能力</span>
+            </Link>
+            <div className="metric">
+              <ShieldCheck size={18} />
+              <strong>{subjectVerified ? "已通过" : pendingReview ? "待审核" : "第3步"}</strong>
+              <span>平台审核</span>
+            </div>
+          </div>
+          {pendingReview ? (
+            <section className="notice">
+              <Clock size={15} /> 资料已提交平台审核。预计1-2个工作日内完成；如被驳回，运营后台会记录原因，你可以回到主体主页修改后再次提交。
+            </section>
+          ) : null}
+          {!hasSubjectProfile ? (
+            <section className="notice">
+              <CheckCircle2 size={15} /> 建议先创建主体主页。主页完成后再选择开通派单能力、接单能力，或两种能力同时开通。
+            </section>
+          ) : null}
         </div>
       </section>
 

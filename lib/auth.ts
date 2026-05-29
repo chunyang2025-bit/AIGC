@@ -35,6 +35,12 @@ export function saveAuthSession(session: AuthSession) {
   }
 }
 
+export function clearAuthSession() {
+  if (typeof window !== "undefined") {
+    window.localStorage.removeItem(AUTH_KEY);
+  }
+}
+
 export function createAuthSession(input: { role: UserRole; phone: string; email: string }) {
   const userId =
     input.role === "buyer" ? "u-buyer-1" : input.role === "creator" ? "u-creator-self" : "u-admin-1";

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import { BriefcaseBusiness, LogIn, Plus, Search, Sparkles } from "lucide-react";
+import { BriefcaseBusiness, LogIn, Search, Sparkles } from "lucide-react";
 import Link from "next/link";
+import { AuthNavActions } from "@/components/AuthNavActions";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -46,12 +47,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </Link>
             </nav>
             <div className="navActions">
-              <Link className="btn ghost" href="/login?role=accept">
-                <LogIn size={16} /> 我要接单
-              </Link>
-              <Link className="btn primary" href="/login?role=dispatch">
-                <Plus size={16} /> 我要派单
-              </Link>
+              <AuthNavActions />
             </div>
           </header>
           {children}
