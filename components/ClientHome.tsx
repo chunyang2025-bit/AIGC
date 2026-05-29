@@ -111,17 +111,17 @@ export function ClientHome() {
           <div className="card">
             <div className="cardBody stack">
               <UsersRound size={22} />
-              <strong>成为接单方</strong>
+              <strong>我要接单</strong>
               <p className="muted" style={{ margin: 0 }}>创建展示页，展示服务定位、联系方式、简历和代表作，获取更多内容需求机会。</p>
               <Link className="btn primary" href={creatorEntry}>
-                <LogIn size={16} /> 成为接单方
+                <LogIn size={16} /> 我要接单
               </Link>
             </div>
           </div>
           <div className="card">
             <div className="cardBody stack">
               <FileBadge2 size={22} />
-              <strong>发布真实需求</strong>
+              <strong>我要派单</strong>
               <p className="muted" style={{ margin: 0 }}>完成主体认证后发布AIGC内容需求，获得接单方推荐，也可以自主检索并邀请沟通。</p>
               <Link className="btn primary" href={buyerEntry}>
                 <Plus size={16} /> 我要派单

@@ -67,10 +67,10 @@ export default function ProviderPortalPage() {
       <section className="portalHero providerHero">
         <div className="stack">
           <span className="eyebrow">
-            <UserRound size={15} /> 需求接受方入口
+            <UserRound size={15} /> 我要接单
           </span>
           <div>
-            <h1>需求接受方后台</h1>
+            <h1>我的接单后台</h1>
             <p>适合创作者、工作室和接单服务商查看邀约、表达合作意向和沉淀沟通线索。</p>
           </div>
           <div className="toolbarGroup">
@@ -187,7 +187,7 @@ export default function ProviderPortalPage() {
           <div className="panelTop">
             <div>
               <strong>沟通线索</strong>
-              <div className="muted">需求接受方查看派单邀约，并决定是否继续沟通。</div>
+              <div className="muted">接单方查看派单邀约，并决定是否继续沟通。</div>
             </div>
             <FileUp size={18} />
           </div>

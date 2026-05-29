@@ -40,10 +40,10 @@ export default function BuyerPortalPage() {
       <section className="portalHero">
         <div className="stack">
           <span className="eyebrow">
-            <BriefcaseBusiness size={15} /> 需求发布方入口
+            <BriefcaseBusiness size={15} /> 我要派单
           </span>
           <div>
-            <h1>需求发布方工作台</h1>
+            <h1>我的派单后台</h1>
           <p>发布内容需求，启动 Brief Agent，查看匹配结果，并邀请创作者建立沟通线索。</p>
           </div>
           <div className="toolbarGroup">
@@ -134,7 +134,7 @@ export default function BuyerPortalPage() {
                       <strong>{project?.title ?? "需求"}</strong>
                       <span className="tag green">{orderStatusLabel(order.status)}</span>
                     </div>
-                    <div className="muted">需求接受方：{creator?.name ?? "创作者"} · {money(order.amount)}</div>
+                    <div className="muted">接单方：{creator?.name ?? "创作者"} · {money(order.amount)}</div>
                   </div>
                 </Link>
               );
