@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { ArrowRight, BriefcaseBusiness, CheckCircle2, Eye, Save, Sparkles, UserRound } from "lucide-react";
 import { CreatorCard } from "@/components/CreatorCard";
 import { credentialRequirementHint, credentialUploadOptional, requiredCredentialLabel, verificationTypeLabel } from "@/lib/format";
-import { fileNames, readImageFile } from "@/lib/file-upload";
+import { uploadCredentialFiles, uploadOrPreviewImage } from "@/lib/file-upload";
 import { joinProvinceCity, provinceCityOptions, splitProvinceCity } from "@/lib/location-options";
 import { projectCategoryOptions } from "@/lib/project-categories";
 import { loadMarketplaceData, upsertCurrentCreatorProfile } from "@/lib/store";
@@ -124,22 +124,22 @@ export default function ProviderProfilePage() {
     setSkills(splitList(skills).filter((item) => item !== tag).join(", "));
   }
 
-  function handleAvatarUpload(files: FileList | null) {
+  async function handleAvatarUpload(files: FileList | null) {
     const file = files?.[0];
     if (file) {
-      readImageFile(file, setAvatarUrl);
+      await uploadOrPreviewImage(file, "avatars", setAvatarUrl);
     }
   }
 
-  function handleCredentialUpload(files: FileList | null) {
-    const [fileName] = fileNames(files);
+  async function handleCredentialUpload(files: FileList | null) {
+    const [fileName] = await uploadCredentialFiles(files, "creator-credentials");
     if (fileName) {
       setCredentialFile(fileName);
     }
   }
 
-  function handleQualificationUpload(files: FileList | null) {
-    const names = fileNames(files);
+  async function handleQualificationUpload(files: FileList | null) {
+    const names = await uploadCredentialFiles(files, "creator-qualifications");
     if (names.length) {
       setQualificationFiles((current) => [...splitList(current), ...names].join("\n"));
     }

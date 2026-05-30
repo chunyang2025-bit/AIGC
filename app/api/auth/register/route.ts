@@ -1,4 +1,5 @@
 import { publicUser, registerUser } from "../../../../lib/server/actions";
+import { registerSupabaseUser } from "../../../../lib/server/auth";
 import { getMarketplaceData, saveMarketplaceData } from "../../../../lib/server/data";
 import { apiFail, apiOk, readJson } from "../../../../lib/server/response";
 import { requiredFields } from "../../../../lib/server/validation";
@@ -25,9 +26,20 @@ export async function POST(request: Request) {
   };
 
   const data = await getMarketplaceData();
-  const user = registerUser(data, normalizedBody);
+  let user;
+
+  try {
+    user = await registerSupabaseUser(normalizedBody);
+  } catch (error) {
+    return apiFail(400, error instanceof Error ? error.message : "注册失败");
+  }
+
+  user = user ?? registerUser(data, normalizedBody);
   if (!user) {
     return apiFail(403, "平台运营账号不开放自助注册");
+  }
+  if (!data.users.some((item) => item.id === user.id)) {
+    data.users.unshift(user);
   }
   await saveMarketplaceData(data);
   return apiOk(publicUser(user));

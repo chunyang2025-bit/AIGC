@@ -13,7 +13,7 @@ npm run dev
 
 打开 `http://localhost:3000`。
 
-当前版本在本地可完整跑通受控 Demo。没有配置 Supabase 时会使用本地演示数据源；准备上线时必须配置 Supabase，并把认证、权限、文件存储切换为生产方案。
+当前版本在本地可完整跑通受控 Demo。没有配置 Supabase 时会使用本地演示数据源；配置 Supabase 后，注册/登录走 Supabase Auth，写入接口会校验 Bearer Token，头像和资质材料会上传到 Supabase Storage。
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=
@@ -24,6 +24,19 @@ SUPABASE_SERVICE_ROLE_KEY=
 ## Supabase
 
 先在 Supabase SQL Editor 执行 `supabase/schema.sql`，再执行 `supabase/seed.sql` 导入演示数据。
+
+需要准备两个 Storage bucket：
+
+- `public-assets`：公开头像、Logo、作品图。
+- `private-verifications`：营业执照、组织证明、授权材料等非公开资质。
+
+部署到 Vercel 时配置：
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+```
 
 ## 已实现
 
@@ -55,9 +68,7 @@ SUPABASE_SERVICE_ROLE_KEY=
 
 ## 上线前必须完成
 
-- 使用 Supabase Auth 或服务端安全认证替代当前演示登录。
-- 密码必须哈希存储，不可明文保存。
-- 所有管理、审核、发布、邀约接口必须增加服务端鉴权和角色权限校验。
-- 证明材料、头像、作品集等文件必须接入 Supabase Storage 或对象存储。
-- 生产环境不得开放演示数据重置接口。
+- 继续把剩余查询类接口迁移到按用户权限过滤。
+- 把 `marketplace_state` JSON 演示状态逐步迁移到结构化业务表和 RLS。
+- 接入短信验证码或微信扫码前，不要在正式页面展示对应登录入口。
 - 隐私政策、用户协议、资质审核规则需要根据实际运营主体做法务审阅。

@@ -67,6 +67,10 @@ function requestJson<T>(path: string, init?: RequestInit): T | null {
   const xhr = new XMLHttpRequest();
   xhr.open(init?.method ?? "GET", `${API_BASE}${path}`, false);
   xhr.setRequestHeader("Accept", "application/json");
+  const session = readAuthSession();
+  if (session?.accessToken) {
+    xhr.setRequestHeader("Authorization", `Bearer ${session.accessToken}`);
+  }
 
   const body = init?.body;
   if (body) {

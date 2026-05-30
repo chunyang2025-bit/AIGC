@@ -10,6 +10,8 @@ export type AuthSession = {
   role: UserRole;
   phone: string;
   email: string;
+  accessToken?: string;
+  refreshToken?: string;
   status: AccountStatus;
   createdAt: string;
 };
@@ -137,8 +139,11 @@ function requestAuthUser(path: string, input: {
       id: string;
       name: string;
       email: string;
+      phone?: string;
       role: UserRole;
       createdAt: string;
+      accessToken?: string;
+      refreshToken?: string;
     };
   };
 
@@ -151,6 +156,8 @@ function saveUserSession(user: {
   email: string;
   phone?: string;
   role: UserRole;
+  accessToken?: string;
+  refreshToken?: string;
 }, input: { account: string; phone?: string; role?: UserRole }) {
   if (!user) {
     throw new Error("账号处理失败，请检查手机号、邮箱和网络状态。");
@@ -161,8 +168,10 @@ function saveUserSession(user: {
     userId: user.id,
     name: user.name,
     role: sessionRole,
-    phone: input.phone || (input.account.includes("@") ? "" : input.account),
+    phone: user.phone || input.phone || (input.account.includes("@") ? "" : input.account),
     email: user.email,
+    accessToken: user.accessToken,
+    refreshToken: user.refreshToken,
     status: inferAccountStatus(user.id, sessionRole),
     createdAt: new Date().toISOString()
   };

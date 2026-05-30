@@ -4,7 +4,7 @@ import { FormEvent, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Building2, CheckCircle2, FileBadge2, Globe2, Mail, Phone, Save, ShieldCheck } from "lucide-react";
-import { fileNames, isImageValue, readImageFile } from "@/lib/file-upload";
+import { isImageValue, uploadCredentialFiles, uploadOrPreviewImage } from "@/lib/file-upload";
 import { compactDate, credentialRequirementHint, credentialUploadOptional, money, publicCredentialSummary, requiredCredentialLabel, verificationTypeLabel } from "@/lib/format";
 import { joinProvinceCity, provinceCityOptions, splitProvinceCity } from "@/lib/location-options";
 import { loadMarketplaceData, upsertUnifiedSubjectProfile } from "@/lib/store";
@@ -65,18 +65,18 @@ export default function AccountProfilePage() {
     [data.projects, session?.userId]
   );
 
-  function handleAvatarUpload(files: FileList | null) {
+  async function handleAvatarUpload(files: FileList | null) {
     const file = files?.[0];
-    if (file) readImageFile(file, setAvatarUrl);
+    if (file) await uploadOrPreviewImage(file, "avatars", setAvatarUrl);
   }
 
-  function handleMainCredentialUpload(files: FileList | null) {
-    const [fileName] = fileNames(files);
+  async function handleMainCredentialUpload(files: FileList | null) {
+    const [fileName] = await uploadCredentialFiles(files, "main-credentials");
     if (fileName) setBusinessLicenseFile(fileName);
   }
 
-  function handleQualificationUpload(files: FileList | null) {
-    const names = fileNames(files);
+  async function handleQualificationUpload(files: FileList | null) {
+    const names = await uploadCredentialFiles(files, "qualifications");
     if (names.length) setQualificationFiles((current) => [...splitList(current), ...names].join("\n"));
   }
 

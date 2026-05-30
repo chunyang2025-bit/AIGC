@@ -142,3 +142,30 @@ create index if not exists orders_buyer_id_idx on orders(buyer_id);
 create index if not exists orders_creator_id_idx on orders(creator_id);
 create index if not exists messages_order_id_idx on messages(order_id);
 create index if not exists activity_events_created_at_idx on activity_events(created_at);
+
+-- Production auth/storage notes:
+-- 1. 用户登录和密码由 Supabase Auth 管理，业务表通过 auth.users.id 关联真实用户。
+-- 2. 头像、Logo、公开作品图放入 public-assets bucket。
+-- 3. 营业执照、组织证明、授权材料等放入 private-verifications bucket。
+
+insert into storage.buckets (id, name, public)
+values
+  ('public-assets', 'public-assets', true),
+  ('private-verifications', 'private-verifications', false)
+on conflict (id) do nothing;
+
+create policy if not exists "公开素材可读取"
+on storage.objects for select
+using (bucket_id = 'public-assets');
+
+create policy if not exists "登录用户上传公开素材"
+on storage.objects for insert
+with check (bucket_id = 'public-assets' and auth.uid()::text = (storage.foldername(name))[1]);
+
+create policy if not exists "用户读取自己的资质材料"
+on storage.objects for select
+using (bucket_id = 'private-verifications' and auth.uid()::text = (storage.foldername(name))[1]);
+
+create policy if not exists "用户上传自己的资质材料"
+on storage.objects for insert
+with check (bucket_id = 'private-verifications' and auth.uid()::text = (storage.foldername(name))[1]);
