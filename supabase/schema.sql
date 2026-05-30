@@ -9,6 +9,8 @@ create table if not exists marketplace_state (
 create table if not exists app_users (
   id text primary key,
   name text not null,
+  account text,
+  phone text,
   email text not null,
   role text not null check (role in ('buyer', 'creator', 'admin')),
   created_at date not null default current_date
@@ -33,6 +35,7 @@ create table if not exists buyer_profiles (
   business_license_file text,
   qualification_files jsonb not null default '[]'::jsonb,
   verified boolean not null default false,
+  rejected_reason text,
   cover text
 );
 
@@ -53,6 +56,7 @@ create table if not exists creator_profiles (
   rating numeric not null default 4.6,
   response_time text,
   verified boolean not null default false,
+  rejected_reason text,
   identity_type text,
   verification_type text,
   credential_file text,
@@ -74,6 +78,7 @@ create table if not exists projects (
   title text not null,
   description text not null,
   category text not null,
+  tags jsonb not null default '[]'::jsonb,
   budget integer not null default 0,
   deadline date not null,
   status text not null default 'open',
@@ -142,6 +147,26 @@ create index if not exists orders_buyer_id_idx on orders(buyer_id);
 create index if not exists orders_creator_id_idx on orders(creator_id);
 create index if not exists messages_order_id_idx on messages(order_id);
 create index if not exists activity_events_created_at_idx on activity_events(created_at);
+
+alter table app_users add column if not exists account text;
+alter table app_users add column if not exists phone text;
+alter table buyer_profiles add column if not exists rejected_reason text;
+alter table creator_profiles add column if not exists rejected_reason text;
+alter table projects add column if not exists tags jsonb not null default '[]'::jsonb;
+
+alter table app_users enable row level security;
+alter table buyer_profiles enable row level security;
+alter table creator_profiles enable row level security;
+alter table projects enable row level security;
+alter table project_matches enable row level security;
+alter table orders enable row level security;
+alter table messages enable row level security;
+alter table reviews enable row level security;
+alter table activity_events enable row level security;
+
+-- 业务表默认不开放给浏览器 anon key 直接访问。
+-- 当前应用统一通过 Next.js API + service role 在服务端做鉴权和写入。
+-- 如果未来改成客户端直接访问 Supabase，再按表补精细化 RLS policy。
 
 -- Production auth/storage notes:
 -- 1. 用户登录和密码由 Supabase Auth 管理，业务表通过 auth.users.id 关联真实用户。

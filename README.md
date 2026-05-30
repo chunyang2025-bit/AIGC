@@ -13,7 +13,7 @@ npm run dev
 
 打开 `http://localhost:3000`。
 
-当前版本在本地可完整跑通受控 Demo。没有配置 Supabase 时会使用本地演示数据源；配置 Supabase 后，注册/登录走 Supabase Auth，写入接口会校验 Bearer Token，头像和资质材料会上传到 Supabase Storage。
+当前版本在本地可完整跑通受控 Demo。没有配置 Supabase 时会使用本地演示数据源；配置 Supabase 后，注册/登录走 Supabase Auth，核心业务数据写入结构化业务表，写入接口会校验 Bearer Token，头像和资质材料会上传到 Supabase Storage。
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=
@@ -58,7 +58,7 @@ SUPABASE_SERVICE_ROLE_KEY=
 - 需求方/创作者工作台
 - 运营后台
 - 需求方月活、创作者月活、活跃线索、活跃事件留痕
-- Supabase Postgres schema、RLS策略和 seed 数据
+- Supabase Postgres 结构化业务表、RLS策略和 seed 数据
 
 ## 暂不包含
 
@@ -70,7 +70,6 @@ SUPABASE_SERVICE_ROLE_KEY=
 
 ## 上线前必须完成
 
-- 继续把剩余查询类接口迁移到按用户权限过滤。
-- 把 `marketplace_state` JSON 演示状态逐步迁移到结构化业务表和 RLS。
+- 继续把后台和线索详情页做更细的运营权限审计。
 - 接入短信验证码或微信扫码前，不要在正式页面展示对应登录入口。
 - 隐私政策、用户协议、资质审核规则需要根据实际运营主体做法务审阅。

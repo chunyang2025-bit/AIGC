@@ -4,7 +4,7 @@
 
 1. 创建 Supabase Project。
 2. 在 SQL Editor 执行 `supabase/schema.sql`。
-3. 可选：执行 `supabase/seed.sql` 导入演示数据。
+3. 可选：执行 `supabase/seed.sql` 导入演示数据。正式运营时可以不导入 seed，只保留真实用户数据。
 4. 在 Project Settings / API 复制：
    - Project URL
    - anon public key
@@ -48,14 +48,19 @@ SUPABASE_SERVICE_ROLE_KEY=
 - 首页可以打开。
 - 可以注册新账号。
 - 可以用账号密码登录。
+- Supabase `app_users` 能看到新增注册用户。
+- Supabase `activity_events` 能记录登录、发布、沟通等活跃事件。
 - 新账号登录后先进入主体主页装修。
 - 可以上传头像。
 - 企业/政府/组织类主体可以上传证明材料。
+- Supabase `buyer_profiles` / `creator_profiles` 能看到提交后的主体资料。
 - 提交主体资料后进入待审核状态。
 - 管理后台可审核主体。
 - 审核后可以开通派单或接单能力。
 - 派单方可以发布真实需求。
+- Supabase `projects` 能看到真实需求。
 - 接单方可以查看公开需求并发起沟通。
+- Supabase `orders` / `messages` 能看到沟通线索。
 
 ## 6. 正式运营前提醒
 
