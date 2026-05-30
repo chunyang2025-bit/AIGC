@@ -7,6 +7,7 @@ import { activeOrders, monthlyActiveUsers } from "@/lib/analytics";
 import { activityEventLabel, categoryLabel, money, orderStatusLabel, roleLabel, targetTypeLabel, verificationTypeLabel } from "@/lib/format";
 import { resetDemoData, loadMarketplaceData, verifySubject } from "@/lib/store";
 import { readAuthSession } from "@/lib/auth";
+import { windowMetrics } from "@/lib/growth";
 
 export default function AdminPage() {
   const router = useRouter();
@@ -39,6 +40,10 @@ export default function AdminPage() {
     { label: "产生沟通主体", value: communicatingUsers.size }
   ];
   const [reviewReason, setReviewReason] = useState("资料不完整，请补充主体资质或联系方式后重新提交。");
+  const [metricWindow, setMetricWindow] = useState<7 | 30>(30);
+  const selectedMetrics = windowMetrics(data, metricWindow);
+  const sevenDayMetrics = windowMetrics(data, 7);
+  const thirtyDayMetrics = windowMetrics(data, 30);
 
   function exportOperationsReport() {
     const report = {
@@ -67,6 +72,10 @@ export default function AdminPage() {
         activityEvents: data.activityEvents.length,
         agentBriefs: data.projects.filter((project) => project.agentBrief).length,
         agentMatches: data.matches.length
+      },
+      windows: {
+        sevenDays: sevenDayMetrics,
+        thirtyDays: thirtyDayMetrics
       },
       pendingReviews: {
         buyers: (data.buyerProfiles ?? []).filter((profile) => !profile.verified).map((profile) => ({
@@ -190,6 +199,45 @@ export default function AdminPage() {
           <div className="metric">
             <strong>{data.activityEvents.length}</strong>
             <span>活跃事件留痕</span>
+          </div>
+        </div>
+      </section>
+
+      <section className="section">
+        <div className="sectionHeader">
+          <div>
+            <h2>{metricWindow}日增长看板</h2>
+            <p>用于上线后观察注册、活跃、需求发布、沟通线索和消息互动。</p>
+          </div>
+          <div className="toolbarGroup">
+            <button className={metricWindow === 7 ? "btn primary" : "btn"} onClick={() => setMetricWindow(7)} type="button">7日</button>
+            <button className={metricWindow === 30 ? "btn primary" : "btn"} onClick={() => setMetricWindow(30)} type="button">30日</button>
+          </div>
+        </div>
+        <div className="grid six">
+          <div className="metric">
+            <strong>{selectedMetrics.registeredUsers}</strong>
+            <span>新增注册</span>
+          </div>
+          <div className="metric">
+            <strong>{selectedMetrics.activeUsers}</strong>
+            <span>活跃用户</span>
+          </div>
+          <div className="metric">
+            <strong>{selectedMetrics.buyerActiveUsers}</strong>
+            <span>派单方活跃</span>
+          </div>
+          <div className="metric">
+            <strong>{selectedMetrics.creatorActiveUsers}</strong>
+            <span>接单方活跃</span>
+          </div>
+          <div className="metric">
+            <strong>{selectedMetrics.projects}</strong>
+            <span>新增需求</span>
+          </div>
+          <div className="metric">
+            <strong>{selectedMetrics.leads}</strong>
+            <span>新增沟通线索</span>
           </div>
         </div>
       </section>

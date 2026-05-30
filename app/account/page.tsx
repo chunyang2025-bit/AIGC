@@ -7,6 +7,7 @@ import { BriefcaseBusiness, CheckCircle2, Clock, FileBadge2, MessageSquare, Shie
 import { compactDate, money, orderStatusLabel, projectStatusLabel } from "@/lib/format";
 import { loadMarketplaceData } from "@/lib/store";
 import { readAuthSession } from "@/lib/auth";
+import { notificationsForUser, onboardingCompleteness } from "@/lib/growth";
 
 function statusText(hasProfile: boolean, verified?: boolean) {
   if (!hasProfile) return "未开通";
@@ -40,14 +41,18 @@ export default function AccountPage() {
   const myProjects = data.projects.filter((project) => project.buyerId === session.userId);
   const myBuyerLeads = data.orders.filter((order) => order.buyerId === session.userId);
   const myCreatorLeads = creatorProfile ? data.orders.filter((order) => order.creatorId === creatorProfile.id) : [];
-  const activationSteps = [
-    { label: "注册账号", done: true, href: "/account" },
-    { label: "完善主体主页", done: hasSubjectProfile, href: "/account/profile" },
-    { label: "提交资质审核", done: hasSubjectProfile, href: "/account/profile" },
-    { label: "平台审核通过", done: subjectVerified, href: "/account" },
-    { label: "开通派单/接单", done: Boolean(buyerProfile || creatorProfile), href: "/account/capabilities" },
-    { label: "完成首次沟通", done: myBuyerLeads.length + myCreatorLeads.length > 0, href: buyerProfile ? "/buyer" : "/provider" }
-  ];
+  const activation = onboardingCompleteness({
+    hasProfile: hasSubjectProfile,
+    submittedReview: hasSubjectProfile,
+    verified: subjectVerified,
+    hasCapability: Boolean(buyerProfile || creatorProfile),
+    hasLead: myBuyerLeads.length + myCreatorLeads.length > 0
+  });
+  const activationSteps = activation.items.map((item, index) => ({
+    ...item,
+    href: index === 1 || index === 2 ? "/account/profile" : index === 4 ? "/account/capabilities" : index === 5 ? buyerProfile ? "/buyer" : "/provider" : "/account"
+  }));
+  const notifications = notificationsForUser(data, session.userId);
 
   return (
     <main className="main">
@@ -85,7 +90,7 @@ export default function AccountPage() {
               <p className="muted">新主体按这个顺序完成入驻。审核通过前可以继续完善资料和浏览公开信息。</p>
             </div>
             <span className={subjectVerified ? "tag green" : pendingReview ? "tag gold" : "tag"}>
-              {subjectVerified ? "已完成入驻" : pendingReview ? "审核中" : "待完善"}
+              完整度 {activation.score}%
             </span>
           </div>
           <div className="grid six">
@@ -107,6 +112,24 @@ export default function AccountPage() {
               <CheckCircle2 size={15} /> 建议先创建主体主页。主页完成后再选择开通派单能力、接单能力，或两种能力同时开通。
             </section>
           ) : null}
+        </div>
+      </section>
+
+      <section className="card">
+        <div className="cardBody stack">
+          <div className="spaceBetween">
+            <div>
+              <h2 style={{ margin: 0 }}>站内通知</h2>
+              <p className="muted">审核结果、沟通线索和匹配推荐会在这里提醒。</p>
+            </div>
+            <span className="tag blue">{notifications.length} 条</span>
+          </div>
+          {notifications.length ? notifications.map((item) => (
+            <Link className="miniLead" href={item.href} key={item.id}>
+              <span>{item.title}</span>
+              <em>{item.body}</em>
+            </Link>
+          )) : <div className="muted">暂无新的通知。</div>}
         </div>
       </section>
 

@@ -9,6 +9,7 @@ import { projectCategoryOptions } from "@/lib/project-categories";
 import { createProject, loadMarketplaceData } from "@/lib/store";
 import { isApproved, readAuthSession } from "@/lib/auth";
 import { ProjectCategory } from "@/lib/types";
+import { projectCompleteness } from "@/lib/growth";
 
 export default function PostProjectPage() {
   const router = useRouter();
@@ -30,6 +31,19 @@ export default function PostProjectPage() {
   const [draft, setDraft] = useState<DraftBriefResult>(() =>
     draftProjectBrief({ rawIdea, productName, audience, channel, style })
   );
+  const completeness = projectCompleteness({
+    title: draft.title,
+    description: draft.description,
+    budget: draft.budget,
+    deadline: draft.deadline,
+    referenceFile,
+    qualificationFile,
+    contactEmail,
+    contactPhone,
+    tags: projectTags,
+    agentBrief: draft.agentBrief
+  });
+  const canPublish = approved && completeness.score >= 80;
 
   function generateDraft() {
     setDraft(draftProjectBrief({ rawIdea, productName, audience, channel, style }));
@@ -211,6 +225,19 @@ export default function PostProjectPage() {
               平台只提供信息展示、智能匹配和沟通留痕，不托管资金，不参与合同、交易、交付和售后纠纷。
             </div>
             <div className="briefBlock">
+              <div className="spaceBetween">
+                <strong>需求完整度</strong>
+                <span className={completeness.score >= 80 ? "tag green" : "tag gold"}>{completeness.score}%</span>
+              </div>
+              <div className="tagList">
+                {completeness.items.map((item) => (
+                  <span className={item.done ? "tag green" : "tag"} key={item.label}>
+                    {item.done ? "已完成" : "待补充"} · {item.label}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="briefBlock">
               <strong>成果范围</strong>
               <div className="tagList">
                 {draft.agentBrief.deliverables.map((item) => (
@@ -233,7 +260,7 @@ export default function PostProjectPage() {
             <button
               className="btn primary"
               onClick={() => {
-                if (!approved) return;
+                if (!canPublish) return;
                 const { project } = createProject({
                   title: draft.title,
                   description: draft.description,
@@ -249,11 +276,12 @@ export default function PostProjectPage() {
                 });
                 router.push(`/buyer/projects/${project.id}`);
               }}
-              disabled={!approved}
+              disabled={!canPublish}
             >
-              <SendHorizonal size={16} /> {approved ? "确认并启动匹配 Agent" : "审核通过后可发布需求"}
+              <SendHorizonal size={16} /> {canPublish ? "确认并启动匹配 Agent" : approved ? "补全需求后发布" : "审核通过后可发布需求"}
             </button>
             {!approved ? <div className="notice">当前主体主页正在审核，审核通过后才能正式发布需求。</div> : null}
+            {approved && completeness.score < 80 ? <div className="notice">需求完整度达到 80% 后才能公开发布。建议补充联系方式、参考资料、资质材料和清晰描述。</div> : null}
           </div>
         </aside>
       </div>
