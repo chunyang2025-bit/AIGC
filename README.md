@@ -25,6 +25,8 @@ SUPABASE_SERVICE_ROLE_KEY=
 
 先在 Supabase SQL Editor 执行 `supabase/schema.sql`，再执行 `supabase/seed.sql` 导入演示数据。
 
+完整上线步骤见 [docs/deploy-checklist.md](docs/deploy-checklist.md)。
+
 需要准备两个 Storage bucket：
 
 - `public-assets`：公开头像、Logo、作品图。

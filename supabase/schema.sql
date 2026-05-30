@@ -154,18 +154,22 @@ values
   ('private-verifications', 'private-verifications', false)
 on conflict (id) do nothing;
 
-create policy if not exists "公开素材可读取"
+drop policy if exists "公开素材可读取" on storage.objects;
+create policy "公开素材可读取"
 on storage.objects for select
 using (bucket_id = 'public-assets');
 
-create policy if not exists "登录用户上传公开素材"
+drop policy if exists "登录用户上传公开素材" on storage.objects;
+create policy "登录用户上传公开素材"
 on storage.objects for insert
 with check (bucket_id = 'public-assets' and auth.uid()::text = (storage.foldername(name))[1]);
 
-create policy if not exists "用户读取自己的资质材料"
+drop policy if exists "用户读取自己的资质材料" on storage.objects;
+create policy "用户读取自己的资质材料"
 on storage.objects for select
 using (bucket_id = 'private-verifications' and auth.uid()::text = (storage.foldername(name))[1]);
 
-create policy if not exists "用户上传自己的资质材料"
+drop policy if exists "用户上传自己的资质材料" on storage.objects;
+create policy "用户上传自己的资质材料"
 on storage.objects for insert
 with check (bucket_id = 'private-verifications' and auth.uid()::text = (storage.foldername(name))[1]);
