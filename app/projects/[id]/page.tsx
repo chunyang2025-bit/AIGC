@@ -7,6 +7,7 @@ import Link from "next/link";
 import { categoryLabel, compactDate, money, projectStatusLabel } from "@/lib/format";
 import { expressInterestInProject, loadMarketplaceData } from "@/lib/store";
 import { isApproved, loginNextPath, readAuthSession } from "@/lib/auth";
+import { creatorProjectScore, decisionScore, projectDecisionItems } from "@/lib/opportunities";
 
 export default function ProjectDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -30,6 +31,15 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
   const projectId = project.id;
   const buyerProfile = (data.buyerProfiles ?? []).find((profile) => profile.userId === project.buyerId);
   const buyerName = buyerProfile?.displayName ?? buyerProfile?.companyName ?? data.users.find((user) => user.id === project.buyerId)?.name ?? "需求发布方";
+  const decisionItems = projectDecisionItems(project, buyerProfile);
+  const suitabilityScore = creatorProjectScore(currentCreator, project);
+  const trustScore = decisionScore(project, buyerProfile);
+  const suggestedIntro = [
+    `你好，我看过「${project.title}」这个需求。`,
+    currentCreator ? `我这边主要做${currentCreator.categories.map(categoryLabel).join("、")}，相关能力包括${currentCreator.skills.slice(0, 4).join("、")}。` : "",
+    project.agentBrief?.deliverables?.length ? `我建议先确认${project.agentBrief.deliverables.slice(0, 2).join("、")}的样式参考和修改轮次。` : "我建议先确认交付范围、参考风格和修改轮次。",
+    currentCreator ? `我的展示页里包含代表作、简历和联系方式，可以先供你判断是否适合继续沟通。` : ""
+  ].filter(Boolean).join("\n");
 
   function submitInterest(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -143,6 +153,31 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                   </div>
                 </div>
               ) : null}
+              <div className="card">
+                <div className="cardBody stack">
+                  <div className="spaceBetween">
+                    <strong>接单判断卡</strong>
+                    <span className={trustScore >= 80 ? "tag green" : "tag gold"}>{trustScore}% 可信信息</span>
+                  </div>
+                  <div className="grid two compactGrid">
+                    <div className="metric">
+                      <strong>{suitabilityScore}%</strong>
+                      <span>与你的能力匹配</span>
+                    </div>
+                    <div className="metric">
+                      <strong>{buyerProfile?.verified ? "已认证" : "待审核"}</strong>
+                      <span>派单方主体</span>
+                    </div>
+                  </div>
+                  <div className="tagList">
+                    {decisionItems.map((item) => (
+                      <span className={item.done ? "tag green" : "tag"} key={item.label}>
+                        {item.done ? "已具备" : "待确认"} · {item.label}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
           </article>
         </section>
@@ -172,6 +207,9 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                     <label htmlFor="interest-intro">沟通留言</label>
                     <textarea id="interest-intro" value={intro} onChange={(event) => setIntro(event.target.value)} />
                   </div>
+                  <button className="btn" onClick={() => setIntro(suggestedIntro)} type="button">
+                    生成沟通话术
+                  </button>
                   <div className="notice">
                     <Link2 size={15} /> 将发送展示页：/creators/{currentCreator.id}
                   </div>

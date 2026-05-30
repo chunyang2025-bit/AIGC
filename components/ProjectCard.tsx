@@ -9,10 +9,12 @@ import { loginNextPath, readAuthSession } from "@/lib/auth";
 export function ProjectCard({
   project,
   buyerName = "需求发布方",
+  matchScore,
   publicMode = false
 }: {
   project: Project;
   buyerName?: string;
+  matchScore?: number;
   publicMode?: boolean;
 }) {
   const statusClass = project.status === "completed" ? "green" : project.status === "open" ? "blue" : "gold";
@@ -30,6 +32,7 @@ export function ProjectCard({
                 <Bot size={13} /> Agent已拆解
               </span>
             ) : null}
+            {matchScore !== undefined ? <span className="tag blue">{matchScore}% 适合我</span> : null}
           </div>
           <span className={`tag ${statusClass}`}>{projectStatusLabel(project.status)}</span>
         </div>

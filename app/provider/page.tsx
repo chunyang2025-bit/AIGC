@@ -8,6 +8,7 @@ import { categoryLabel, money, orderStatusLabel } from "@/lib/format";
 import { isImageValue } from "@/lib/file-upload";
 import { loadMarketplaceData } from "@/lib/store";
 import { isApproved, readAuthSession } from "@/lib/auth";
+import { creatorProjectScore, opportunityPools } from "@/lib/opportunities";
 
 export default function ProviderPortalPage() {
   const router = useRouter();
@@ -39,6 +40,7 @@ export default function ProviderPortalPage() {
     }))
     .filter((item) => item.project);
   const intentAmount = leads.reduce((sum, order) => sum + order.amount, 0);
+  const pools = opportunityPools(data, creator);
   const onboardingTasks = [
     {
       label: "完善展示页",
@@ -212,6 +214,70 @@ export default function ProviderPortalPage() {
           </div>
         </section>
       </div>
+
+      <section className="section">
+        <div className="sectionHeader">
+          <div>
+            <h2>接单机会池</h2>
+            <p>系统按你的服务类型、技能、报价区间和需求质量整理机会，方便你持续跟进。</p>
+          </div>
+        </div>
+        <div className="grid three">
+          <section className="card">
+            <div className="panelTop">
+              <div>
+                <strong>推荐给我</strong>
+                <div className="muted">优先看能力和品类匹配的需求。</div>
+              </div>
+              <Search size={18} />
+            </div>
+            <div className="cardBody stack">
+              {pools.recommended.slice(0, 4).map((project) => (
+                <Link className="miniLead" href={`/projects/${project.id}`} key={project.id}>
+                  <span>{project.title}</span>
+                  <em>{creatorProjectScore(creator, project)}% 适合我 · {money(project.budget)}</em>
+                </Link>
+              ))}
+              {!pools.recommended.length ? <div className="muted">暂无推荐机会，先完善技能和可接类型。</div> : null}
+            </div>
+          </section>
+          <section className="card">
+            <div className="panelTop">
+              <div>
+                <strong>高预算机会</strong>
+                <div className="muted">适合挑选更高价值的沟通机会。</div>
+              </div>
+              <Banknote size={18} />
+            </div>
+            <div className="cardBody stack">
+              {pools.highBudget.slice(0, 4).map((project) => (
+                <Link className="miniLead" href={`/projects/${project.id}`} key={project.id}>
+                  <span>{project.title}</span>
+                  <em>{money(project.budget)} · {categoryLabel(project.category)}</em>
+                </Link>
+              ))}
+            </div>
+          </section>
+          <section className="card">
+            <div className="panelTop">
+              <div>
+                <strong>已沟通机会</strong>
+                <div className="muted">已经建立联系的项目，适合继续跟进。</div>
+              </div>
+              <FileUp size={18} />
+            </div>
+            <div className="cardBody stack">
+              {pools.contacted.slice(0, 4).map((project) => (
+                <Link className="miniLead" href={`/projects/${project.id}`} key={project.id}>
+                  <span>{project.title}</span>
+                  <em>已发起沟通 · {money(project.budget)}</em>
+                </Link>
+              ))}
+              {!pools.contacted.length ? <div className="muted">还没有发起沟通的机会。</div> : null}
+            </div>
+          </section>
+        </div>
+      </section>
     </main>
   );
 }
