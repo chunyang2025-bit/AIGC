@@ -418,7 +418,7 @@ export function createMessage(data: MarketplaceData, orderId: string, input: Rec
 
 export function updateOrderStatus(data: MarketplaceData, orderId: string, input: Record<string, unknown>) {
   const status = String(input.status || "") as OrderStatus;
-  if (!["active", "delivered", "revision", "approved"].includes(status)) return null;
+  if (!["active", "delivered", "revision", "approved", "not_fit"].includes(status)) return null;
 
   const order = data.orders.find((item) => item.id === orderId);
   if (!order) return null;
@@ -426,7 +426,7 @@ export function updateOrderStatus(data: MarketplaceData, orderId: string, input:
   data.orders = data.orders.map((item) => (item.id === orderId ? { ...item, status } : item));
   addActivity(data, {
     userId: order.buyerId,
-    role: status === "approved" ? "buyer" : "creator",
+    role: status === "approved" || status === "not_fit" ? "buyer" : "creator",
     eventType: status === "approved" ? "approve_order" : status === "delivered" ? "deliver_order" : "send_message",
     targetType: "order",
     targetId: orderId

@@ -3,16 +3,17 @@
 import { useState } from "react";
 import { notFound, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2, CircleDotDashed, MessageSquare, PhoneCall, RotateCcw } from "lucide-react";
+import { ArrowLeft, CheckCircle2, CircleDotDashed, MessageSquare, PhoneCall, RotateCcw, XCircle } from "lucide-react";
 import { compactDate, money, orderStatusLabel } from "@/lib/format";
 import { createOrderMessage, loadMarketplaceData, updateOrderStatus } from "@/lib/store";
 import { readAuthSession } from "@/lib/auth";
 import { OrderStatus } from "@/lib/types";
 
 const statusActions: Array<{ label: string; status: OrderStatus; icon: React.ReactNode }> = [
-  { label: "已发送资料", status: "delivered", icon: <MessageSquare size={16} /> },
-  { label: "继续沟通", status: "revision", icon: <RotateCcw size={16} /> },
-  { label: "标记已达成意向", status: "approved", icon: <CheckCircle2 size={16} /> }
+  { label: "标记已交换资料", status: "delivered", icon: <MessageSquare size={16} /> },
+  { label: "继续沟通中", status: "revision", icon: <RotateCcw size={16} /> },
+  { label: "标记不合适", status: "not_fit", icon: <XCircle size={16} /> },
+  { label: "标记已线下合作", status: "approved", icon: <CheckCircle2 size={16} /> }
 ];
 
 export default function OrderPage({ params }: { params: { id: string } }) {
@@ -34,7 +35,7 @@ export default function OrderPage({ params }: { params: { id: string } }) {
   return (
     <main className="main">
       <div className="toolbar">
-        <Link className="btn" href={project ? `/projects/${project.id}` : "/projects"}>
+        <Link className="btn" href={session?.role === "buyer" && project ? `/buyer/projects/${project.id}` : project ? `/projects/${project.id}` : "/projects"}>
           <ArrowLeft size={16} /> 返回需求
         </Link>
       </div>
@@ -106,7 +107,7 @@ export default function OrderPage({ params }: { params: { id: string } }) {
               </div>
               {statusActions.map((action) => (
                 <button
-                  className={action.status === "approved" ? "btn primary" : "btn"}
+                  className={action.status === "approved" ? "btn primary" : action.status === "not_fit" ? "btn danger" : "btn"}
                   key={action.status}
                   onClick={() => {
                     updateOrderStatus(order.id, action.status);

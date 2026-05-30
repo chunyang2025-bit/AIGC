@@ -1478,6 +1478,12 @@ button {
   background: transparent;
 }
 
+.btn.danger {
+  border-color: rgba(180, 55, 55, 0.35);
+  color: #9b1c1c;
+  background: #fff5f5;
+}
+
 .btn.iconOnly {
   width: 40px;
   padding: 0;

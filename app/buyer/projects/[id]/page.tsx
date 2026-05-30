@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { notFound, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Bot, CheckCircle2, FileBadge2, FileText, Search, Sparkles, UsersRound } from "lucide-react";
@@ -7,6 +8,7 @@ import { CreatorCard } from "@/components/CreatorCard";
 import { categoryLabel, compactDate, money, orderStatusLabel, projectStatusLabel } from "@/lib/format";
 import { getProjectMatches, inviteCreator, loadMarketplaceData } from "@/lib/store";
 import { isApproved, readAuthSession } from "@/lib/auth";
+import { isCandidateCreator, readCandidateCreatorIds, toggleCandidateCreator } from "@/lib/candidates";
 
 export default function BuyerProjectDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -19,6 +21,10 @@ export default function BuyerProjectDetailPage({ params }: { params: { id: strin
   }
 
   const matches = getProjectMatches(data, project.id);
+  const [candidateIds, setCandidateIds] = useState(readCandidateCreatorIds(project.id));
+  const candidateCreators = candidateIds
+    .map((id) => data.creators.find((creator) => creator.id === id))
+    .filter(Boolean);
   const leads = data.orders.filter((order) => order.projectId === project.id);
   const buyerProfile = data.buyerProfiles?.find((profile) => profile.userId === session?.userId);
   const approved = buyerProfile?.verified ?? isApproved(session);
@@ -147,6 +153,8 @@ export default function BuyerProjectDetailPage({ params }: { params: { id: strin
                     reason={match.reason}
                     risk={match.risk}
                     nextStep={match.nextStep}
+                    onToggleCandidate={() => setCandidateIds(toggleCandidateCreator(project.id, creator.id))}
+                    candidateSelected={isCandidateCreator(project.id, creator.id)}
                     onInvite={
                       approved
                         ? () => {
@@ -162,6 +170,53 @@ export default function BuyerProjectDetailPage({ params }: { params: { id: strin
               })}
             </div>
             {!approved ? <div className="notice">当前主体主页正在审核，审核通过后才能邀请创作者。</div> : null}
+          </section>
+
+          <section className="card">
+            <div className="panelTop">
+              <div>
+                <strong>推荐接单方对比表</strong>
+                <div className="muted">按评分、报价、响应速度、履约记录和匹配理由快速比较。</div>
+              </div>
+              <UsersRound size={18} />
+            </div>
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>接单方</th>
+                  <th>报价</th>
+                  <th>评分</th>
+                  <th>响应</th>
+                  <th>履约</th>
+                  <th>匹配</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                {matches.slice(0, 10).map((match) => {
+                  const creator = data.creators.find((item) => item.id === match.creatorId);
+                  if (!creator) return null;
+                  return (
+                    <tr key={match.id}>
+                      <td>
+                        <Link href={`/creators/${creator.id}`}>{creator.displayName ?? creator.name}</Link>
+                        <div className="muted">{creator.verified ? "已认证" : "待审核"}</div>
+                      </td>
+                      <td>{money(creator.priceMin)}-{money(creator.priceMax)}</td>
+                      <td>{creator.rating.toFixed(1)}</td>
+                      <td>{creator.responseTime}</td>
+                      <td>{creator.completedProjects} 项</td>
+                      <td>{match.score}%</td>
+                      <td>
+                        <button className="btn" onClick={() => setCandidateIds(toggleCandidateCreator(project.id, creator.id))} type="button">
+                          {isCandidateCreator(project.id, creator.id) ? "移出候选" : "加入候选"}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </section>
         </section>
 
@@ -190,6 +245,35 @@ export default function BuyerProjectDetailPage({ params }: { params: { id: strin
           </div>
         </aside>
       </div>
+
+      <section className="section">
+        <div className="sectionHeader">
+          <div>
+            <h2>我的候选创作者池</h2>
+            <p>先把合适的人加入候选，再逐个查看展示页或邀请沟通。</p>
+          </div>
+          <Link className="btn" href={`/creators?project=${project.id}`}>去信息大厅继续添加</Link>
+        </div>
+        <div className="grid">
+          {candidateCreators.map((creator) => creator ? (
+            <CreatorCard
+              creator={creator}
+              key={creator.id}
+              onInvite={
+                approved
+                  ? () => {
+                      const order = inviteCreator(project.id, creator.id);
+                      if (order) router.push(`/orders/${order.id}`);
+                    }
+                  : undefined
+              }
+              onToggleCandidate={() => setCandidateIds(toggleCandidateCreator(project.id, creator.id))}
+              candidateSelected
+            />
+          ) : null)}
+          {!candidateCreators.length ? <div className="notice">还没有候选创作者。你可以从推荐列表或创作者信息大厅加入候选。</div> : null}
+        </div>
+      </section>
     </main>
   );
 }

@@ -16,7 +16,7 @@ export type ProjectCategory =
 
 export type ProjectStatus = "open" | "matching" | "in_progress" | "completed";
 
-export type OrderStatus = "active" | "delivered" | "revision" | "approved";
+export type OrderStatus = "active" | "delivered" | "revision" | "approved" | "not_fit";
 
 export type VerificationType =
   | "enterprise"

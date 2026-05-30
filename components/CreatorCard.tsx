@@ -14,9 +14,11 @@ type CreatorCardProps = {
   risk?: string;
   nextStep?: string;
   onInvite?: () => void;
+  onToggleCandidate?: () => void;
+  candidateSelected?: boolean;
 };
 
-export function CreatorCard({ creator, matchScore, reason, risk, nextStep, onInvite }: CreatorCardProps) {
+export function CreatorCard({ creator, matchScore, reason, risk, nextStep, onInvite, onToggleCandidate, candidateSelected }: CreatorCardProps) {
   const displayName = creator.displayName ?? creator.name;
   const avatar = creator.avatarUrl || displayName.slice(0, 1);
   const session = readAuthSession();
@@ -87,6 +89,11 @@ export function CreatorCard({ creator, matchScore, reason, risk, nextStep, onInv
         {onInvite ? (
           <button className="btn primary" onClick={onInvite}>
             邀请沟通
+          </button>
+        ) : null}
+        {onToggleCandidate ? (
+          <button className={candidateSelected ? "btn primary" : "btn"} onClick={onToggleCandidate} type="button">
+            {candidateSelected ? "已加入候选" : "加入候选"}
           </button>
         ) : null}
       </div>

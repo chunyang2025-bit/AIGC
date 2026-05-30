@@ -9,6 +9,7 @@ import { projectCategories } from "@/lib/project-categories";
 import { inviteCreator, loadMarketplaceData } from "@/lib/store";
 import { ProjectCategory } from "@/lib/types";
 import { isApproved, loginNextPath, readAuthSession } from "@/lib/auth";
+import { isCandidateCreator, readCandidateCreatorIds, toggleCandidateCreator } from "@/lib/candidates";
 
 const categories: Array<ProjectCategory | "All"> = ["All", ...projectCategories];
 
@@ -23,6 +24,7 @@ function CreatorsContent() {
   const [budget, setBudget] = useState("all");
   const [sort, setSort] = useState("recommended");
   const [query, setQuery] = useState("");
+  const [candidateIds, setCandidateIds] = useState<string[]>(project ? readCandidateCreatorIds(project.id) : []);
   const creatorEntry = loginNextPath("creator", "/provider");
   const buyerEntry = loginNextPath("buyer", "/post-project");
 
@@ -95,6 +97,9 @@ function CreatorsContent() {
           </div>
           <button className="btn primary" onClick={() => router.push(`/projects/${project.id}`)}>
             返回匹配结果
+          </button>
+          <button className="btn" onClick={() => router.push(`/buyer/projects/${project.id}`)} type="button">
+            候选池 {candidateIds.length}
           </button>
         </section>
       ) : null}
@@ -179,6 +184,8 @@ function CreatorsContent() {
             creator={creator}
             key={creator.id}
             onInvite={project ? () => invite(creator.id) : undefined}
+            onToggleCandidate={project ? () => setCandidateIds(toggleCandidateCreator(project.id, creator.id)) : undefined}
+            candidateSelected={project ? isCandidateCreator(project.id, creator.id) : false}
           />
         ))}
       </div>

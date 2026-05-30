@@ -35,7 +35,8 @@ export function orderStatusLabel(value: string) {
     active: "已发起沟通",
     delivered: "已交换资料",
     revision: "继续沟通中",
-    approved: "已线下合作"
+    approved: "已线下合作",
+    not_fit: "不合适"
   };
   return labels[value] ?? value;
 }
