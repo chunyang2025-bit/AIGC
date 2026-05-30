@@ -18,6 +18,26 @@ export default function AdminPage() {
   const creatorMau = monthlyActiveUsers(data, "creator");
   const verifiedSubjects = (data.buyerProfiles ?? []).filter((profile) => profile.verified).length + data.creators.filter((creator) => creator.verified).length;
   const pendingSubjects = (data.buyerProfiles ?? []).filter((profile) => !profile.verified).length + data.creators.filter((creator) => !creator.verified).length;
+  const subjectProfiles = new Set([
+    ...(data.buyerProfiles ?? []).map((profile) => profile.userId),
+    ...data.creators.map((creator) => creator.userId)
+  ]);
+  const submittedReviews = (data.buyerProfiles?.length ?? 0) + data.creators.length;
+  const publishedProjectUsers = new Set(data.projects.map((project) => project.buyerId));
+  const communicatingUsers = new Set([
+    ...data.orders.map((order) => order.buyerId),
+    ...data.orders
+      .map((order) => data.creators.find((creator) => creator.id === order.creatorId)?.userId)
+      .filter(Boolean)
+  ]);
+  const funnel = [
+    { label: "注册账号", value: data.users.filter((user) => user.role !== "admin").length },
+    { label: "完善主体主页", value: subjectProfiles.size },
+    { label: "提交审核资料", value: submittedReviews },
+    { label: "审核通过主体", value: verifiedSubjects },
+    { label: "发布需求主体", value: publishedProjectUsers.size },
+    { label: "产生沟通主体", value: communicatingUsers.size }
+  ];
   const [reviewReason, setReviewReason] = useState("资料不完整，请补充主体资质或联系方式后重新提交。");
 
   function exportOperationsReport() {
@@ -171,6 +191,23 @@ export default function AdminPage() {
             <strong>{data.activityEvents.length}</strong>
             <span>活跃事件留痕</span>
           </div>
+        </div>
+      </section>
+
+      <section className="section">
+        <div className="sectionHeader">
+          <div>
+            <h2>入驻转化漏斗</h2>
+            <p>从注册到资料完善、审核、发布需求和发起沟通，判断用户在哪一步流失。</p>
+          </div>
+        </div>
+        <div className="grid six">
+          {funnel.map((item, index) => (
+            <div className="metric" key={item.label}>
+              <strong>{item.value}</strong>
+              <span>{index + 1}. {item.label}</span>
+            </div>
+          ))}
         </div>
       </section>
 

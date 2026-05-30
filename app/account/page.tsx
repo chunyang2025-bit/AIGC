@@ -40,6 +40,14 @@ export default function AccountPage() {
   const myProjects = data.projects.filter((project) => project.buyerId === session.userId);
   const myBuyerLeads = data.orders.filter((order) => order.buyerId === session.userId);
   const myCreatorLeads = creatorProfile ? data.orders.filter((order) => order.creatorId === creatorProfile.id) : [];
+  const activationSteps = [
+    { label: "注册账号", done: true, href: "/account" },
+    { label: "完善主体主页", done: hasSubjectProfile, href: "/account/profile" },
+    { label: "提交资质审核", done: hasSubjectProfile, href: "/account/profile" },
+    { label: "平台审核通过", done: subjectVerified, href: "/account" },
+    { label: "开通派单/接单", done: Boolean(buyerProfile || creatorProfile), href: "/account/capabilities" },
+    { label: "完成首次沟通", done: myBuyerLeads.length + myCreatorLeads.length > 0, href: buyerProfile ? "/buyer" : "/provider" }
+  ];
 
   return (
     <main className="main">
@@ -80,22 +88,14 @@ export default function AccountPage() {
               {subjectVerified ? "已完成入驻" : pendingReview ? "审核中" : "待完善"}
             </span>
           </div>
-          <div className="grid three">
-            <Link className="metric" href="/account/profile">
-              <FileBadge2 size={18} />
-              <strong>{hasSubjectProfile ? "已提交" : "第1步"}</strong>
-              <span>创建主体主页</span>
-            </Link>
-            <Link className="metric" href={hasSubjectProfile ? "/account/capabilities" : "/account/profile"}>
-              <UserRound size={18} />
-              <strong>{buyerProfile || creatorProfile ? "可选择" : "第2步"}</strong>
-              <span>开通派单/接单能力</span>
-            </Link>
-            <div className="metric">
-              <ShieldCheck size={18} />
-              <strong>{subjectVerified ? "已通过" : pendingReview ? "待审核" : "第3步"}</strong>
-              <span>平台审核</span>
-            </div>
+          <div className="grid six">
+            {activationSteps.map((step, index) => (
+              <Link className="metric" href={step.href} key={step.label}>
+                {index === 0 ? <CheckCircle2 size={18} /> : index === 1 ? <FileBadge2 size={18} /> : index === 3 ? <ShieldCheck size={18} /> : <UserRound size={18} />}
+                <strong>{step.done ? "已完成" : `第${index + 1}步`}</strong>
+                <span>{step.label}</span>
+              </Link>
+            ))}
           </div>
           {pendingReview ? (
             <section className="notice">

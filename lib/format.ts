@@ -32,10 +32,10 @@ export function projectStatusLabel(value: string) {
 
 export function orderStatusLabel(value: string) {
   const labels: Record<string, string> = {
-    active: "已建立联系",
-    delivered: "已发送资料",
-    revision: "继续沟通",
-    approved: "已达成意向"
+    active: "已发起沟通",
+    delivered: "已交换资料",
+    revision: "继续沟通中",
+    approved: "已线下合作"
   };
   return labels[value] ?? value;
 }

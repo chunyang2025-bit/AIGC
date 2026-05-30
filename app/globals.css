@@ -1497,6 +1497,10 @@ button {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.grid.six {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
 .card {
   overflow: hidden;
   border: 1px solid var(--line);
@@ -2050,6 +2054,7 @@ button {
   .grid,
   .grid.two,
   .grid.four,
+  .grid.six,
   .checkPillGrid {
     grid-template-columns: 1fr;
   }
