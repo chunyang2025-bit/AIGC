@@ -100,15 +100,14 @@ export function loginUser(data: MarketplaceData, input: Record<string, unknown>)
   const account = String(input.account || input.email || input.phone || "").trim();
   const authMethod = String(input.authMethod || "password");
   const password = String(input.password || "");
-  const code = String(input.code || "");
   const user = data.users.find((item) =>
     (item.email === account || item.account === account || item.phone === account) &&
     (role === "admin" ? item.role === "admin" : item.role !== "admin")
   );
 
-  const codeMatches = authMethod === "code" && /^\d{6}$/.test(code) && account && !account.includes("@");
+  if (authMethod === "code") return null;
   const passwordMatches = user ? user.password ? user.password === password : password.length >= 6 : false;
-  if (user && (authMethod === "code" ? codeMatches : passwordMatches)) {
+  if (user && passwordMatches) {
     addActivity(data, {
       userId: user.id,
       role: role ?? user.role,
@@ -116,7 +115,7 @@ export function loginUser(data: MarketplaceData, input: Record<string, unknown>)
     });
   }
 
-  return user && (authMethod === "code" ? codeMatches : passwordMatches) ? user : null;
+  return user && passwordMatches ? user : null;
 }
 
 export function setUserPassword(data: MarketplaceData, input: Record<string, unknown>) {

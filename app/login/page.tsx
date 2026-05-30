@@ -10,9 +10,7 @@ import {
   Headphones,
   HelpCircle,
   LockKeyhole,
-  MessageCircle,
   Phone,
-  QrCode,
   ShieldCheck,
   Sparkles,
   UserCog
@@ -28,25 +26,20 @@ const adminRole = {
   helper: "仅平台内部人员使用，查看审核、用户、需求、线索和月活数据。"
 };
 
-type LoginMethod = "wechat" | "code" | "password";
-
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const requestedRole = searchParams.get("role");
   const requestedNext = searchParams.get("next");
-  const [method, setMethod] = useState<LoginMethod>(requestedRole === "admin" ? "password" : "wechat");
   const [account, setAccount] = useState("");
-  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
-  const [code, setCode] = useState("");
   const [agreed, setAgreed] = useState(false);
   const [statusText, setStatusText] = useState("");
   const [showRegisterPrompt, setShowRegisterPrompt] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const activeRoleValue: UserRole = requestedRole === "admin" ? "admin" : "buyer";
-  const registerAccount = account.trim() || phone.trim();
+  const registerAccount = account.trim();
 
   function nextPath(session: AuthSession) {
     if (requestedNext && requestedNext.startsWith("/")) return requestedNext;
@@ -100,50 +93,6 @@ function LoginContent() {
     }
   }
 
-  function loginByCode() {
-    if (!requireAgreement()) return;
-    if (!phone.trim()) {
-      setStatusText("请输入手机号。");
-      setShowRegisterPrompt(false);
-      return;
-    }
-    if (!/^\d{6}$/.test(code.trim())) {
-      setStatusText("请输入6位短信验证码。");
-      setShowRegisterPrompt(false);
-      return;
-    }
-    try {
-      setIsSubmitting(true);
-      const session = loginAccount({
-        role: activeRoleValue,
-        account: phone.trim(),
-        phone: phone.trim(),
-        code: code.trim(),
-        authMethod: "code",
-        name: phone.trim()
-      });
-      setStatusText("登录成功，正在进入主体中心。");
-      router.push(nextPath(session));
-      setShowRegisterPrompt(false);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "验证码登录失败，请稍后再试。";
-      if (activeRoleValue !== "admin" && (message.includes("未找到") || message.includes("先注册"))) {
-        setStatusText("未找到账号，请先注册。");
-        setShowRegisterPrompt(true);
-      } else {
-        setStatusText(message);
-        setShowRegisterPrompt(false);
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  function wechatLogin() {
-    if (!requireAgreement()) return;
-    setStatusText("微信扫码登录需要接入微信开放平台。当前 demo 请使用验证码登录。");
-  }
-
   return (
     <main className="dispatchLoginShell">
       <header className="dispatchLoginTop">
@@ -185,18 +134,6 @@ function LoginContent() {
             <p>登录后进入主体中心，可继续开通派单能力、接单能力，或同时开通两种能力。</p>
           </div>
 
-          <div className="authMethodTabs" role="tablist" aria-label="登录方式">
-            <button className={method === "wechat" ? "active" : ""} onClick={() => setMethod("wechat")} type="button">
-              微信登录
-            </button>
-            <button className={method === "code" ? "active" : ""} onClick={() => setMethod("code")} type="button">
-              验证码登录
-            </button>
-            <button className={method === "password" ? "active" : ""} onClick={() => setMethod("password")} type="button">
-              密码登录
-            </button>
-          </div>
-
           <div className="selectedRole compact authSelectedRole">
             <div className="roleIcon">
               {requestedRole === "admin" ? <ShieldCheck size={22} /> : <UserCog size={22} />}
@@ -207,77 +144,28 @@ function LoginContent() {
             </div>
           </div>
 
-          {method === "wechat" ? (
-            <div className="wechatLoginBox">
-              <div className={agreed ? "mockQr" : "mockQr locked"}>
-                <QrCode size={118} />
-                {!agreed ? <strong>请先同意并勾选许可协议和隐私政策</strong> : null}
+          <div className="authForm">
+            <label>
+              <span>账号</span>
+              <div className="authInput">
+                <Phone size={18} />
+                <input placeholder="手机号 / 邮箱" value={account} onChange={(event) => setAccount(event.target.value)} />
               </div>
-              <button className="wechatAction" onClick={wechatLogin} type="button">
-                <MessageCircle size={22} /> 微信扫码即可完成注册登录
-              </button>
-              <div className="thirdPartyLogin">
-                <span />
-                <em>使用其他方式登录</em>
-                <span />
+            </label>
+            <label>
+              <span>密码</span>
+              <div className="authInput">
+                <LockKeyhole size={18} />
+                <input placeholder="请输入密码" type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} />
+                <button onClick={() => setShowPassword((value) => !value)} type="button" title={showPassword ? "隐藏密码" : "显示密码"}>
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
-              <div className="thirdPartyButtons" aria-label="其他登录方式">
-                <button onClick={() => setStatusText("QQ 登录暂未接入，请使用验证码登录。")} type="button">Q</button>
-                <button onClick={() => setStatusText("Apple 登录暂未接入，请使用验证码登录。")} type="button">A</button>
-                <button onClick={() => setStatusText("抖音登录暂未接入，请使用验证码登录。")} type="button">抖</button>
-              </div>
-            </div>
-          ) : null}
-
-          {method === "code" ? (
-            <div className="authForm">
-              <label>
-                <span>手机号</span>
-                <div className="authInput">
-                  <Phone size={18} />
-                  <input placeholder="请输入手机号" value={phone} onChange={(event) => setPhone(event.target.value)} />
-                </div>
-              </label>
-              <label>
-                <span>验证码</span>
-                <div className="authInput codeInput">
-                  <LockKeyhole size={18} />
-                  <input placeholder="请输入6位验证码" value={code} onChange={(event) => setCode(event.target.value)} />
-                  <button onClick={() => setStatusText("验证码已发送。测试阶段可输入任意6位数字。")} type="button">
-                    获取验证码
-                  </button>
-                </div>
-              </label>
-              <button className="authPrimary" onClick={loginByCode} disabled={isSubmitting} type="button">
-                {isSubmitting ? "正在登录..." : "登录"}
-              </button>
-            </div>
-          ) : null}
-
-          {method === "password" ? (
-            <div className="authForm">
-              <label>
-                <span>账号</span>
-                <div className="authInput">
-                  <Phone size={18} />
-                  <input placeholder="手机号 / 邮箱" value={account} onChange={(event) => setAccount(event.target.value)} />
-                </div>
-              </label>
-              <label>
-                <span>密码</span>
-                <div className="authInput">
-                  <LockKeyhole size={18} />
-                  <input placeholder="请输入密码" type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} />
-                  <button onClick={() => setShowPassword((value) => !value)} type="button" title={showPassword ? "隐藏密码" : "显示密码"}>
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-              </label>
-              <button className="authPrimary" onClick={loginByPassword} disabled={isSubmitting} type="button">
-                {isSubmitting ? "正在登录..." : "登录"}
-              </button>
-            </div>
-          ) : null}
+            </label>
+            <button className="authPrimary" onClick={loginByPassword} disabled={isSubmitting} type="button">
+              {isSubmitting ? "正在登录..." : "登录"}
+            </button>
+          </div>
 
           {statusText ? <div className="authStatus">{statusText}</div> : null}
           {activeRoleValue !== "admin" ? (
