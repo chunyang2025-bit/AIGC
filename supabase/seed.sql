@@ -53,15 +53,43 @@ name = excluded.name,
 title = excluded.title,
 verified = excluded.verified;
 
+update creator_profiles
+set
+  categories = '["Digital Human","AIGC Training"]'::jsonb,
+  training_profile = '{"topics":["数字人实战","AI课程内容","AI营销视频"],"formats":["online","workshop","offline"],"audience":["市场团队","课程团队","企业培训负责人"],"cities":["全国线上","北京","天津"],"caseStudies":["为在线教育团队完成数字人口播工作坊，25人，1天实操","为SaaS客户成功团队设计AI讲解视频内训"],"materials":["课件","练习素材","工具清单","课后答疑"],"pricingNote":"支持半日工作坊、1天内训和按项目陪跑报价。","customizable":true}'::jsonb
+where id = 'c-4';
+
+update creator_profiles
+set
+  categories = '["Digital Human","AI Short Video","AIGC Training"]'::jsonb,
+  training_profile = '{"topics":["AI办公提效","HR培训视频","零售门店培训","数字人课件"],"formats":["online","offline","coaching"],"audience":["HR团队","零售培训团队","运营团队"],"cities":["全国线上","武汉","长沙","杭州"],"caseStudies":["为HR团队制作入职培训数字人流程并辅导内部更新","为零售团队完成门店培训短片和课后资料包"],"materials":["课件","录播","练习任务","字幕模板"],"pricingNote":"支持按场、按天或长期内容更新陪跑。","customizable":true}'::jsonb
+where id = 'c-9';
+
 insert into projects (id, buyer_id, title, description, category, tags, budget, deadline, status, reference_file, created_at) values
 ('p-1', 'u-buyer-1', '智能台灯新品首发15秒AI短视频', '需要三版开头钩子、产品特写、字幕和竖屏成片，用于信息流投放。', 'AI Short Video', '["智能硬件","信息流","新品首发"]'::jsonb, 5200, '2026-06-02', 'matching', 'lamp-brief.pdf', '2026-05-10'),
 ('p-2', 'u-buyer-2', '浴室置物架电商商品图套装', '为淘宝详情页制作干净的使用场景图、主图和一张活动横幅。', 'Image Design', '["商品图","家居日用","淘宝"]'::jsonb, 2600, '2026-06-10', 'open', 'rack-photos.zip', '2026-05-12'),
 ('p-3', 'u-buyer-1', 'B端SaaS入门说明数字人视频', '需要一条商务风格数字人口播，包含脚本润色、中性配音和中文字幕。', 'Digital Human', '["SaaS","数字人","说明视频"]'::jsonb, 9800, '2026-06-08', 'in_progress', null, '2026-05-14'),
 ('p-4', 'u-buyer-2', '夏季咖啡活动AI海报系列', '需要统一视觉方向和6张海报，用于微信、小红书和店内屏幕。', 'Image Design', '["海报","小红书","本地品牌"]'::jsonb, 6800, '2026-06-05', 'matching', null, '2026-05-16'),
-('p-5', 'u-buyer-3', '线上课程数字人预热视频', '制作亲和力数字人预告，突出课程价值点和社群转化，两轮修改。', 'Digital Human', '["在线课程","预热视频","数字人"]'::jsonb, 7600, '2026-06-01', 'completed', null, '2026-05-01')
+('p-5', 'u-buyer-3', '线上课程数字人预热视频', '制作亲和力数字人预告，突出课程价值点和社群转化，两轮修改。', 'Digital Human', '["在线课程","预热视频","数字人"]'::jsonb, 7600, '2026-06-01', 'completed', null, '2026-05-01'),
+('p-6', 'u-buyer-2', '电商团队AIGC商品内容内训', '希望找一位讲师为运营和设计团队做AIGC商品图、短视频脚本和提示词实操培训，最好能结合家居日用商品案例。', 'AIGC Training', '["企业内训","AI商品图","提示词","工作坊"]'::jsonb, 15000, '2026-06-18', 'open', '家居日用商品案例与品牌资料.zip', '2026-05-27')
 on conflict (id) do update set
 title = excluded.title,
 status = excluded.status;
+
+update projects
+set
+  use_case = 'training',
+  deliverable_types = '["other"]'::jsonb,
+  urgency = 'this_week',
+  need_invoice = true,
+  long_term = true,
+  accept_platform_recommend = true,
+  training_requirement = '{"topics":["AI商品图","提示词工程","AI短视频脚本"],"audience":"电商运营和设计团队","headcount":28,"format":"offline","city":"上海","duration":"1天工作坊","goal":"让团队掌握商品图生成、卖点脚本和素材复用流程，形成可复用模板。","needCustomCases":true,"needMaterials":true}'::jsonb,
+  qualification_file = '城野生活电商营业执照.pdf',
+  contact_email = 'leo@urbanline.co',
+  contact_phone = '021-6800-2210',
+  agent_brief = '{"objective":"为电商团队寻找AIGC培训讲师，完成商品图、提示词和短视频脚本实操训练。","audience":"电商运营、设计和内容团队","style":"实操、案例驱动、可落地","deliverables":["培训方案","1天线下工作坊","商品案例练习","课件和工具清单"],"acceptanceCriteria":["结合家居日用真实商品案例","学员能独立完成商品图提示词和短视频脚本","提供可复用模板和课后材料"],"suggestedQuestions":["是否能基于我们的商品案例定制练习？","是否提供课件和工具清单？","是否支持课后答疑或陪跑？"]}'::jsonb
+where id = 'p-6';
 
 insert into project_matches (id, project_id, creator_id, score, reason) values
 ('m-1', 'p-1', 'c-2', 94, '短视频品类匹配，具备广告测试经验。'),
@@ -69,8 +97,22 @@ insert into project_matches (id, project_id, creator_id, score, reason) values
 ('m-3', 'p-1', 'c-5', 86, '电商内容包经验适配。'),
 ('m-4', 'p-2', 'c-8', 92, '商品场景图与目录图经验突出。'),
 ('m-5', 'p-2', 'c-3', 89, '商品图和精修能力匹配。'),
-('m-6', 'p-2', 'c-10', 81, '预算适配且可做组合内容包。')
+('m-6', 'p-2', 'c-10', 81, '预算适配且可做组合内容包。'),
+('m-10', 'p-6', 'c-9', 93, '培训主题、数字人课件和线下工作坊经验匹配。'),
+('m-11', 'p-6', 'c-4', 88, '数字人与课程培训经验匹配，支持企业定制案例。')
 on conflict (id) do update set score = excluded.score, reason = excluded.reason;
+
+update project_matches
+set
+  risk = '讲师主体待审核，建议先确认企业内训案例和可开票方式。',
+  next_step = '建议先确认培训对象、1天工作坊安排和家居商品案例范围。'
+where id = 'm-10';
+
+update project_matches
+set
+  risk = '报价可能接近预算上限，建议先确认半日/全天范围。',
+  next_step = '建议确认课件、练习材料和课后答疑方式。'
+where id = 'm-11';
 
 insert into orders (id, project_id, buyer_id, creator_id, amount, status, deliverable_url, created_at) values
 ('o-1', 'p-3', 'u-buyer-1', 'c-4', 9800, 'active', null, '2026-05-17'),

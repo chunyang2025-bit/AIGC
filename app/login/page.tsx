@@ -31,6 +31,7 @@ function LoginContent() {
   const searchParams = useSearchParams();
   const requestedRole = searchParams.get("role");
   const requestedNext = searchParams.get("next");
+  const requestedIntent = searchParams.get("intent");
   const [account, setAccount] = useState("");
   const [password, setPassword] = useState("");
   const [agreed, setAgreed] = useState(false);
@@ -43,7 +44,8 @@ function LoginContent() {
 
   function nextPath(session: AuthSession) {
     if (requestedNext && requestedNext.startsWith("/")) return requestedNext;
-    return session.status === "approved" ? roleWorkbenchPath(session.role) : roleProfilePath(session.role);
+    if (session.status === "approved") return roleWorkbenchPath(session.role);
+    return requestedIntent ? `${roleProfilePath(session.role)}?intent=${requestedIntent}` : roleProfilePath(session.role);
   }
 
   useEffect(() => {
@@ -76,7 +78,7 @@ function LoginContent() {
         authMethod: "password",
         name: account.trim()
       });
-      setStatusText("登录成功，正在进入主体中心。");
+      setStatusText(activeRoleValue === "admin" ? "登录成功，正在进入运营后台。" : "登录成功，正在进入主体中心。");
       setShowRegisterPrompt(false);
       router.push(nextPath(session));
     } catch (error) {
@@ -131,7 +133,7 @@ function LoginContent() {
         <aside className="dispatchLoginPanel modernAuthPanel">
           <div className="authPanelHeader">
             <h1>登录 AIGClancer</h1>
-            <p>登录后进入主体中心，可继续开通派单能力、接单能力，或同时开通两种能力。</p>
+            <p>登录后按你刚才选择的入口继续：发布需求、完善服务主页、发布培训需求或完善培训主页。</p>
           </div>
 
           <div className="selectedRole compact authSelectedRole">
@@ -140,7 +142,7 @@ function LoginContent() {
             </div>
             <div>
               <strong>{requestedRole === "admin" ? adminRole.title : "主体账号"}</strong>
-              <span>{requestedRole === "admin" ? adminRole.subtitle : "登录后选择派单或接单能力"}</span>
+              <span>{requestedRole === "admin" ? adminRole.subtitle : "登录后继续当前业务路径"}</span>
             </div>
           </div>
 
@@ -171,11 +173,18 @@ function LoginContent() {
           {activeRoleValue !== "admin" ? (
             <div className="registerPrompt">
               <span>{showRegisterPrompt ? "未找到账号？" : "没有账号？"}</span>
-              <Link href={`/register?account=${encodeURIComponent(registerAccount)}`}>
+              <Link href={`/register?account=${encodeURIComponent(registerAccount)}${requestedNext ? `&next=${encodeURIComponent(requestedNext)}` : ""}${requestedIntent ? `&intent=${encodeURIComponent(requestedIntent)}` : ""}`}>
                 先注册
               </Link>
             </div>
-          ) : null}
+          ) : (
+            <div className="registerPrompt">
+              <span>没有后台账号？</span>
+              <Link href={`/register?role=admin&account=${encodeURIComponent(registerAccount)}`}>
+                使用邀请码注册
+              </Link>
+            </div>
+          )}
 
           <label className="modernAgreement">
             <input checked={agreed} onChange={(event) => setAgreed(event.target.checked)} type="checkbox" />
@@ -185,10 +194,10 @@ function LoginContent() {
           </label>
 
           <div className="dispatchRoleTips">
-            <p>{requestedRole === "admin" ? adminRole.helper : "一个主体账号可以同时开通派单能力和接单能力，能力开通前需先完善主体主页并提交审核。"}</p>
+            <p>{requestedRole === "admin" ? adminRole.helper : "一个主体账号可以作为需求方，也可以作为服务方。先完成当前路径，以后再添加其他业务。"}</p>
             <div>
               <UserCog size={15} />
-              <span>同一主体可同时开通派单和接单能力</span>
+              <span>同一主体可复用资质和主页</span>
             </div>
           </div>
         </aside>

@@ -3,6 +3,7 @@ import { draftProjectBrief } from "../brief-agent";
 import { recommendCreators } from "../matching";
 import {
   ActivityEvent,
+  AbuseReport,
   BuyerProfile,
   CreatorProfile,
   MarketplaceData,
@@ -11,9 +12,20 @@ import {
   OrderStatus,
   Project,
   ProjectCategory,
+  TrialFeedback,
   UserRole
 } from "../types";
-import { asNumber, asProjectCategory, asStringArray, asVerificationType } from "./validation";
+import { ServerAuthUser } from "./auth";
+import {
+  asBoolean,
+  asDeliverableTypes,
+  asNumber,
+  asProjectCategory,
+  asProjectUrgency,
+  asProjectUseCase,
+  asStringArray,
+  asVerificationType
+} from "./validation";
 
 function id(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
@@ -23,9 +35,23 @@ function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
+export function paginate<T>(items: T[], searchParams: URLSearchParams, defaultLimit = 20) {
+  const limit = Math.min(Math.max(Number(searchParams.get("limit") || defaultLimit) || defaultLimit, 1), 100);
+  const offset = Math.max(Number(searchParams.get("offset") || 0) || 0, 0);
+  return {
+    items: items.slice(offset, offset + limit),
+    meta: {
+      total: items.length,
+      limit,
+      offset,
+      hasMore: offset + limit < items.length
+    }
+  };
+}
+
 function addActivity(
   data: MarketplaceData,
-  input: Pick<ActivityEvent, "userId" | "role" | "eventType" | "targetType" | "targetId">
+  input: Pick<ActivityEvent, "userId" | "role" | "eventType" | "targetType" | "targetId"> & { note?: string }
 ) {
   data.activityEvents.unshift({
     id: id("a"),
@@ -39,6 +65,10 @@ export function publicUser<T extends { password?: string }>(user: T) {
   return safeUser;
 }
 
+export function isSuspendedUser(user?: { status?: string } | null) {
+  return user?.status === "suspended";
+}
+
 export function publicMarketplaceData(data: MarketplaceData): MarketplaceData {
   return {
     ...data,
@@ -46,21 +76,70 @@ export function publicMarketplaceData(data: MarketplaceData): MarketplaceData {
   };
 }
 
+export function scopeMarketplaceData(data: MarketplaceData, actor: ServerAuthUser | null): MarketplaceData {
+  const safeUsers = data.users.map((user) => publicUser(user));
+  if (actor?.role === "admin") {
+    return {
+      ...data,
+      users: safeUsers
+    };
+  }
+
+  const publicProjects = data.projects.filter((project) => isPublicProject(project));
+  const publicProjectIds = new Set(publicProjects.map((project) => project.id));
+  const ownProjects = actor ? data.projects.filter((project) => project.buyerId === actor.id) : [];
+  const ownProjectIds = new Set(ownProjects.map((project) => project.id));
+  const ownCreator = actor ? data.creators.find((creator) => creator.userId === actor.id) : undefined;
+  const allowedOrders = actor
+    ? data.orders.filter((order) => order.buyerId === actor.id || order.creatorId === ownCreator?.id)
+    : [];
+  const allowedOrderIds = new Set(allowedOrders.map((order) => order.id));
+  const visibleProjectsById = new Map<string, Project>();
+  [...publicProjects, ...ownProjects].forEach((project) => visibleProjectsById.set(project.id, project));
+
+  const visibleBuyerIds = new Set([
+    ...publicProjects.map((project) => project.buyerId),
+    ...ownProjects.map((project) => project.buyerId),
+    ...allowedOrders.map((order) => order.buyerId)
+  ]);
+  const visibleCreatorIds = new Set([
+    ...data.creators.filter((creator) => creator.verified).map((creator) => creator.id),
+    ...(ownCreator ? [ownCreator.id] : []),
+    ...allowedOrders.map((order) => order.creatorId)
+  ]);
+  const visibleFeedback = actor ? data.feedback.filter((feedback) => feedback.userId === actor.id).slice(0, 100) : [];
+
+  return {
+    users: safeUsers.filter((user) => user.id === actor?.id || visibleBuyerIds.has(user.id)),
+    buyerProfiles: (data.buyerProfiles ?? []).filter((profile) => visibleBuyerIds.has(profile.userId) || profile.userId === actor?.id),
+    creators: data.creators.filter((creator) => visibleCreatorIds.has(creator.id)),
+    projects: Array.from(visibleProjectsById.values()),
+    matches: data.matches.filter((match) => publicProjectIds.has(match.projectId) || ownProjectIds.has(match.projectId)),
+    orders: allowedOrders,
+    messages: data.messages.filter((message) => allowedOrderIds.has(message.orderId)),
+    reviews: data.reviews.filter((review) => allowedOrderIds.has(review.orderId)),
+    reports: actor ? data.reports.filter((report) => report.reporterId === actor.id).slice(0, 100) : [],
+    feedback: visibleFeedback,
+    activityEvents: actor ? data.activityEvents.filter((event) => event.userId === actor.id).slice(0, 100) : []
+  };
+}
+
 export function getPublicMarketplace(data: MarketplaceData) {
   return {
-    projects: data.projects.filter((project) => project.status === "open" || project.status === "matching"),
+    projects: data.projects.filter((project) => isPublicProject(project)),
     creators: data.creators.filter((creator) => creator.verified),
     metrics: getAdminMetrics(data)
   };
+}
+
+export function isPublicProject(project: Project) {
+  return project.status === "open" || project.status === "matching";
 }
 
 export function registerUser(data: MarketplaceData, input: Record<string, unknown>) {
   const role = ["buyer", "creator", "admin"].includes(String(input.role))
     ? (String(input.role) as UserRole)
     : "buyer";
-  if (role === "admin") {
-    return null;
-  }
   const account = String(input.account || input.email || input.phone || "").trim();
   const password = String(input.password || "");
   if (!account || password.length < 6) return null;
@@ -80,6 +159,7 @@ export function registerUser(data: MarketplaceData, input: Record<string, unknow
     password,
     email,
     role,
+    status: "active" as const,
     createdAt: today()
   };
 
@@ -107,6 +187,8 @@ export function loginUser(data: MarketplaceData, input: Record<string, unknown>)
 
   if (authMethod === "code") return null;
   const passwordMatches = user ? user.password ? user.password === password : password.length >= 6 : false;
+  if (user && passwordMatches && isSuspendedUser(user)) return null;
+
   if (user && passwordMatches) {
     addActivity(data, {
       userId: user.id,
@@ -144,14 +226,22 @@ export function createProject(data: MarketplaceData, input: Record<string, unkno
     description: String(input.description || ""),
     category: asProjectCategory(input.category),
     tags: asStringArray(input.tags),
+    useCase: asProjectUseCase(input.useCase ?? input.use_case),
+    deliverableTypes: asDeliverableTypes(input.deliverableTypes ?? input.deliverable_types),
+    urgency: asProjectUrgency(input.urgency),
+    needInvoice: asBoolean(input.needInvoice ?? input.need_invoice),
+    longTerm: asBoolean(input.longTerm ?? input.long_term),
+    acceptPlatformRecommend: asBoolean(input.acceptPlatformRecommend ?? input.accept_platform_recommend, true),
+    trainingRequirement: input.trainingRequirement as Project["trainingRequirement"],
     budget: asNumber(input.budget, 3000),
     deadline: String(input.deadline || today()),
-    status: "matching",
+    status: "pending_review",
     referenceFile: input.referenceFile ? String(input.referenceFile) : undefined,
     qualificationFile: input.qualificationFile ? String(input.qualificationFile) : undefined,
     contactEmail: input.contactEmail ? String(input.contactEmail) : undefined,
     contactPhone: input.contactPhone ? String(input.contactPhone) : undefined,
     agentBrief: input.agentBrief as Project["agentBrief"],
+    rejectedReason: input.rejectedReason ? String(input.rejectedReason) : undefined,
     createdAt: today()
   };
   const matches = recommendCreators(project, data.creators, 10);
@@ -169,6 +259,58 @@ export function createProject(data: MarketplaceData, input: Record<string, unkno
   return { project, matches };
 }
 
+export function updateProject(data: MarketplaceData, projectId: string, input: Record<string, unknown>) {
+  const project = data.projects.find((item) => item.id === projectId);
+  if (!project) return null;
+
+  const nextProject: Project = {
+    ...project,
+    title: String(input.title || project.title),
+    description: String(input.description || project.description),
+    category: input.category ? asProjectCategory(input.category) : project.category,
+    tags: input.tags ? asStringArray(input.tags) : project.tags ?? [],
+    useCase: input.useCase || input.use_case ? asProjectUseCase(input.useCase ?? input.use_case) : project.useCase,
+    deliverableTypes: input.deliverableTypes || input.deliverable_types ? asDeliverableTypes(input.deliverableTypes ?? input.deliverable_types) : project.deliverableTypes ?? [],
+    urgency: input.urgency ? asProjectUrgency(input.urgency) : project.urgency,
+    needInvoice: input.needInvoice === undefined && input.need_invoice === undefined ? project.needInvoice : asBoolean(input.needInvoice ?? input.need_invoice),
+    longTerm: input.longTerm === undefined && input.long_term === undefined ? project.longTerm : asBoolean(input.longTerm ?? input.long_term),
+    acceptPlatformRecommend:
+      input.acceptPlatformRecommend === undefined && input.accept_platform_recommend === undefined
+        ? project.acceptPlatformRecommend
+        : asBoolean(input.acceptPlatformRecommend ?? input.accept_platform_recommend, true),
+    trainingRequirement:
+      input.trainingRequirement === undefined
+        ? project.trainingRequirement
+        : input.trainingRequirement as Project["trainingRequirement"],
+    budget: input.budget === undefined ? project.budget : asNumber(input.budget, project.budget),
+    deadline: input.deadline ? String(input.deadline) : project.deadline,
+    status: "pending_review",
+    referenceFile: input.referenceFile ? String(input.referenceFile) : undefined,
+    qualificationFile: input.qualificationFile ? String(input.qualificationFile) : undefined,
+    contactEmail: input.contactEmail ? String(input.contactEmail) : undefined,
+    contactPhone: input.contactPhone ? String(input.contactPhone) : undefined,
+    agentBrief: input.agentBrief as Project["agentBrief"],
+    rejectedReason: undefined
+  };
+
+  data.projects = data.projects.map((item) => (item.id === projectId ? nextProject : item));
+  data.matches = data.matches.filter((match) => match.projectId !== projectId);
+  data.matches.unshift(...recommendCreators(nextProject, data.creators, 10));
+  addActivity(data, {
+    userId: nextProject.buyerId,
+    role: "buyer",
+    eventType: "post_project",
+    targetType: "project",
+    targetId: nextProject.id,
+    note: "重新提交需求审核"
+  });
+
+  return {
+    project: nextProject,
+    matches: data.matches.filter((match) => match.projectId === projectId)
+  };
+}
+
 export function listProjects(data: MarketplaceData, searchParams: URLSearchParams) {
   const q = String(searchParams.get("q") || "").trim().toLowerCase();
   const category = searchParams.get("category") as ProjectCategory | null;
@@ -180,8 +322,13 @@ export function listProjects(data: MarketplaceData, searchParams: URLSearchParam
       : true;
     const matchedCategory = category ? project.category === category : true;
     const matchedStatus = status ? project.status === status : true;
-    return matchedQ && matchedCategory && matchedStatus;
+    const matchedVisibility = isPublicProject(project);
+    return matchedQ && matchedCategory && matchedStatus && matchedVisibility;
   });
+}
+
+export function pagedProjects(data: MarketplaceData, searchParams: URLSearchParams) {
+  return paginate(listProjects(data, searchParams), searchParams, 20);
 }
 
 export function getProjectMatches(data: MarketplaceData, projectId: string) {
@@ -200,7 +347,7 @@ export function inviteCreator(data: MarketplaceData, projectId: string, input: R
   const creatorId = String(input.creatorId || "");
   const project = data.projects.find((item) => item.id === projectId);
   const creator = data.creators.find((item) => item.id === creatorId);
-  if (!project || !creator) return null;
+  if (!project || !creator || !isPublicProject(project)) return null;
 
   const order: Order = {
     id: id("o"),
@@ -239,7 +386,7 @@ export function expressInterest(data: MarketplaceData, projectId: string, input:
   const creatorId = String(input.creatorId || "c-self");
   const project = data.projects.find((item) => item.id === projectId);
   const creator = data.creators.find((item) => item.id === creatorId);
-  if (!project || !creator) return null;
+  if (!project || !creator || !isPublicProject(project)) return null;
 
   const existing = data.orders.find((item) => item.projectId === projectId && item.creatorId === creatorId);
   const order =
@@ -296,8 +443,12 @@ export function listCreators(data: MarketplaceData, searchParams: URLSearchParam
       : true;
     const matchedCategory = category ? creator.categories.includes(category) : true;
     const matchedVerified = verified ? String(creator.verified) === verified : true;
-    return matchedQ && matchedCategory && matchedVerified;
+    return matchedQ && matchedCategory && matchedVerified && creator.verified;
   });
+}
+
+export function pagedCreators(data: MarketplaceData, searchParams: URLSearchParams) {
+  return paginate(listCreators(data, searchParams), searchParams, 24);
 }
 
 export function upsertCreator(data: MarketplaceData, input: Record<string, unknown>) {
@@ -312,6 +463,8 @@ export function upsertCreator(data: MarketplaceData, input: Record<string, unkno
     skills: asStringArray(input.skills),
     categories: asStringArray(input.categories).map(asProjectCategory),
     portfolio: asStringArray(input.portfolio),
+    portfolioItems: Array.isArray(input.portfolioItems) ? input.portfolioItems as CreatorProfile["portfolioItems"] : undefined,
+    servicePackages: Array.isArray(input.servicePackages) ? input.servicePackages as CreatorProfile["servicePackages"] : undefined,
     priceMin: asNumber(input.priceMin, 0),
     priceMax: asNumber(input.priceMax, 0),
     completedProjects: asNumber(input.completedProjects, 0),
@@ -330,6 +483,7 @@ export function upsertCreator(data: MarketplaceData, input: Record<string, unkno
     serviceArea: input.serviceArea ? String(input.serviceArea) : undefined,
     contactEmail: input.contactEmail ? String(input.contactEmail) : undefined,
     contactPhone: input.contactPhone ? String(input.contactPhone) : undefined,
+    trainingProfile: input.trainingProfile as CreatorProfile["trainingProfile"],
     cover: String(input.cover || "linear-gradient(135deg, #153f31, #2f7c5f 46%, #f0b35a)")
   };
 
@@ -391,6 +545,146 @@ export function listOrders(data: MarketplaceData, searchParams: URLSearchParams)
   });
 }
 
+export function pagedOrders(data: MarketplaceData, searchParams: URLSearchParams) {
+  return paginate(listOrders(data, searchParams), searchParams, 20);
+}
+
+export function createReport(data: MarketplaceData, input: Record<string, unknown>) {
+  const reporterId = String(input.reporterId || "");
+  const targetType = String(input.targetType || "") as AbuseReport["targetType"];
+  const targetId = String(input.targetId || "");
+  const reason = String(input.reason || "").trim();
+  if (!reporterId || !["project", "creator", "buyer_profile", "order", "message"].includes(targetType) || !targetId || reason.length < 5) {
+    return null;
+  }
+
+  const report: AbuseReport = {
+    id: id("rpt"),
+    reporterId,
+    targetType,
+    targetId,
+    reason: reason.slice(0, 1000),
+    status: "open",
+    createdAt: new Date().toISOString()
+  };
+  data.reports.unshift(report);
+  const reporter = data.users.find((user) => user.id === reporterId);
+  addActivity(data, {
+    userId: reporterId,
+    role: reporter?.role === "admin" ? "admin" : reporter?.role === "creator" ? "creator" : "buyer",
+    eventType: "report_abuse",
+    targetType,
+    targetId,
+    note: reason.slice(0, 200)
+  });
+  return report;
+}
+
+export function createFeedback(data: MarketplaceData, input: Record<string, unknown>) {
+  const content = String(input.content || "").trim();
+  const category = String(input.category || "suggestion") as TrialFeedback["category"];
+  const status = "open" as const;
+  if (content.length < 3 || !["suggestion", "bug", "confusing", "missing_feature", "other"].includes(category)) {
+    return null;
+  }
+
+  const userId = input.userId ? String(input.userId) : undefined;
+  const user = userId ? data.users.find((item) => item.id === userId) : undefined;
+  const feedback: TrialFeedback = {
+    id: id("fb"),
+    userId,
+    role: user?.role,
+    page: String(input.page || ""),
+    rating: input.rating === undefined || input.rating === null || input.rating === "" ? undefined : Math.min(Math.max(Number(input.rating) || 0, 1), 5),
+    category,
+    content: content.slice(0, 1200),
+    status,
+    createdAt: new Date().toISOString()
+  };
+
+  data.feedback.unshift(feedback);
+  if (userId) {
+    addActivity(data, {
+      userId,
+      role: user?.role === "admin" ? "admin" : user?.role === "creator" ? "creator" : "buyer",
+      eventType: "submit_feedback",
+      targetType: "feedback",
+      targetId: feedback.id,
+      note: content.slice(0, 200)
+    });
+  }
+  return feedback;
+}
+
+export function resolveFeedback(data: MarketplaceData, input: Record<string, unknown>) {
+  const idValue = String(input.id || input.feedbackId || "");
+  const status = String(input.status || "resolved") as TrialFeedback["status"];
+  const resolution = String(input.resolution || input.note || "");
+  if (!idValue || !["reviewing", "resolved", "dismissed"].includes(status)) return null;
+
+  data.feedback = data.feedback.map((feedback) =>
+    feedback.id === idValue ? { ...feedback, status, resolution: resolution || feedback.resolution } : feedback
+  );
+  const feedback = data.feedback.find((item) => item.id === idValue);
+  if (feedback) {
+    addActivity(data, {
+      userId: feedback.userId || "u-admin-1",
+      role: "admin",
+      eventType: "resolve_feedback",
+      targetType: "feedback",
+      targetId: feedback.id,
+      note: resolution.slice(0, 200)
+    });
+  }
+  return feedback ?? null;
+}
+
+export function resolveReport(data: MarketplaceData, input: Record<string, unknown>) {
+  const idValue = String(input.id || input.reportId || "");
+  const status = String(input.status || "resolved") as AbuseReport["status"];
+  const resolution = String(input.resolution || input.note || "");
+  if (!idValue || !["reviewing", "resolved", "dismissed"].includes(status)) return null;
+
+  data.reports = data.reports.map((report) =>
+    report.id === idValue ? { ...report, status, resolution: resolution || report.resolution } : report
+  );
+  const report = data.reports.find((item) => item.id === idValue);
+  if (report) {
+    addActivity(data, {
+      userId: report.reporterId,
+      role: "admin",
+      eventType: "resolve_report",
+      targetType: "report",
+      targetId: report.id,
+      note: resolution || status
+    });
+  }
+  return report;
+}
+
+export function suspendUser(data: MarketplaceData, input: Record<string, unknown>) {
+  const idValue = String(input.id || input.userId || "");
+  const suspended = input.suspended === undefined ? true : Boolean(input.suspended);
+  const reason = suspended ? String(input.reason || input.suspendedReason || "违反平台规则，账号已被限制。") : undefined;
+  if (!idValue) return null;
+
+  data.users = data.users.map((user) =>
+    user.id === idValue ? { ...user, status: suspended ? "suspended" : "active", suspendedReason: reason } : user
+  );
+  const user = data.users.find((item) => item.id === idValue);
+  if (user) {
+    addActivity(data, {
+      userId: user.id,
+      role: "admin",
+      eventType: "suspend_user",
+      targetType: "user",
+      targetId: user.id,
+      note: suspended ? reason : "解除封禁"
+    });
+  }
+  return user;
+}
+
 export function createMessage(data: MarketplaceData, orderId: string, input: Record<string, unknown>) {
   const order = data.orders.find((item) => item.id === orderId);
   if (!order) return null;
@@ -418,18 +712,33 @@ export function createMessage(data: MarketplaceData, orderId: string, input: Rec
 
 export function updateOrderStatus(data: MarketplaceData, orderId: string, input: Record<string, unknown>) {
   const status = String(input.status || "") as OrderStatus;
-  if (!["active", "delivered", "revision", "approved", "not_fit"].includes(status)) return null;
+  if (!["active", "contacted", "meeting_scheduled", "delivered", "revision", "approved", "not_fit", "no_response", "cancelled"].includes(status)) return null;
 
   const order = data.orders.find((item) => item.id === orderId);
   if (!order) return null;
 
-  data.orders = data.orders.map((item) => (item.id === orderId ? { ...item, status } : item));
+  const resultReason = String(input.resultReason || input.reason || "").trim();
+  const resultNote = String(input.resultNote || input.note || "").trim();
+  const needsReason = ["not_fit", "no_response", "cancelled"].includes(status);
+
+  data.orders = data.orders.map((item) => (
+    item.id === orderId
+      ? {
+          ...item,
+          status,
+          resultReason: resultReason || item.resultReason,
+          resultNote: resultNote || item.resultNote,
+          resultUpdatedAt: new Date().toISOString()
+        }
+      : item
+  ));
   addActivity(data, {
     userId: order.buyerId,
-    role: status === "approved" || status === "not_fit" ? "buyer" : "creator",
+    role: status === "approved" || status === "not_fit" || status === "no_response" || status === "cancelled" ? "buyer" : "creator",
     eventType: status === "approved" ? "approve_order" : status === "delivered" ? "deliver_order" : "send_message",
     targetType: "order",
-    targetId: orderId
+    targetId: orderId,
+    note: needsReason ? resultReason || resultNote || status : status
   });
   return data.orders.find((item) => item.id === orderId);
 }
@@ -465,13 +774,68 @@ export function verifySubject(data: MarketplaceData, input: Record<string, unkno
     data.buyerProfiles = (data.buyerProfiles ?? []).map((profile) =>
       profile.id === idValue || profile.userId === idValue ? { ...profile, verified, rejectedReason } : profile
     );
-    return data.buyerProfiles.find((profile) => profile.id === idValue || profile.userId === idValue);
+    const profile = data.buyerProfiles.find((item) => item.id === idValue || item.userId === idValue);
+    if (profile) {
+      addActivity(data, {
+        userId: profile.userId,
+        role: "admin",
+        eventType: "review_subject",
+        targetType: "buyer_profile",
+        targetId: profile.id,
+        note: verified ? "审核通过" : rejectedReason
+      });
+    }
+    return profile;
   }
 
   data.creators = data.creators.map((creator) =>
     creator.id === idValue || creator.userId === idValue ? { ...creator, verified, rejectedReason } : creator
   );
-  return data.creators.find((creator) => creator.id === idValue || creator.userId === idValue);
+  const creator = data.creators.find((item) => item.id === idValue || item.userId === idValue);
+  if (creator) {
+    addActivity(data, {
+      userId: creator.userId,
+      role: "admin",
+      eventType: "review_subject",
+      targetType: "creator",
+      targetId: creator.id,
+      note: verified ? "审核通过" : rejectedReason
+    });
+  }
+  return creator;
+}
+
+export function reviewProject(data: MarketplaceData, input: Record<string, unknown>) {
+  const idValue = String(input.id || input.projectId || "");
+  const status = String(input.status || "");
+  if (!idValue || !["open", "rejected", "removed"].includes(status)) return null;
+
+  const project = data.projects.find((item) => item.id === idValue);
+  if (!project) return null;
+
+  const rejectedReason =
+    status === "rejected" || status === "removed"
+      ? String(input.rejectedReason || input.reason || "需求信息不完整，请补充资质、联系方式或需求说明后重新提交。")
+      : undefined;
+
+  data.projects = data.projects.map((item) =>
+    item.id === idValue
+      ? {
+          ...item,
+          status: status as Project["status"],
+          rejectedReason
+        }
+      : item
+  );
+  addActivity(data, {
+    userId: project.buyerId,
+    role: "admin",
+    eventType: status === "removed" ? "remove_project" : "review_project",
+    targetType: "project",
+    targetId: idValue,
+    note: status === "open" ? "审核通过" : rejectedReason
+  });
+  return data.projects.find((item) => item.id === idValue);
 }
 
 export function draftBrief(input: Record<string, unknown>) {

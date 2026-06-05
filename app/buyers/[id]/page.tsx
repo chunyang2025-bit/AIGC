@@ -1,15 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { notFound, useRouter } from "next/navigation";
+import { notFound } from "next/navigation";
 import { ArrowLeft, BriefcaseBusiness, Building2, CheckCircle2, ExternalLink, FileBadge2, Globe2, Mail, MapPin, Phone, Sparkles } from "lucide-react";
 import { categoryLabel, compactDate, money, publicCredentialSummary, verificationTypeLabel } from "@/lib/format";
 import { isImageValue } from "@/lib/file-upload";
 import { loadMarketplaceData } from "@/lib/store";
 import { loginNextPath, readAuthSession } from "@/lib/auth";
+import { ReportButton } from "@/components/ReportButton";
 
 export default function BuyerDetailPage({ params }: { params: { id: string } }) {
-  const router = useRouter();
   const session = readAuthSession();
   const data = loadMarketplaceData();
   const user = data.users.find((item) => item.id === params.id);
@@ -17,11 +17,6 @@ export default function BuyerDetailPage({ params }: { params: { id: string } }) 
 
   if (!user || !profile) {
     notFound();
-  }
-
-  if (!session) {
-    router.push(loginNextPath("buyer", `/buyers/${params.id}`));
-    return null;
   }
 
   const projects = data.projects.filter((project) => project.buyerId === user.id);
@@ -70,6 +65,7 @@ export default function BuyerDetailPage({ params }: { params: { id: string } }) 
           <p className="muted" style={{ margin: 0, lineHeight: 1.7 }}>
             {profile.companyIntro}
           </p>
+          {session ? <ReportButton targetType="buyer_profile" targetId={profile.id} /> : null}
           <div className="grid four">
             <div className="metric">
               <strong>{projects.length}</strong>
@@ -102,10 +98,10 @@ export default function BuyerDetailPage({ params }: { params: { id: string } }) 
           </div>
           <div className="cardBody stack">
             <div className="row muted">
-              <Mail size={16} /> {profile.contactEmail}
+              <Mail size={16} /> {session ? profile.contactEmail : "注册后查看联系邮箱"}
             </div>
             <div className="row muted">
-              <Phone size={16} /> {profile.contactPhone}
+              <Phone size={16} /> {session ? profile.contactPhone : "注册后查看联系电话"}
             </div>
             {profile.websiteUrl ? (
               <a className="row muted" href={profile.websiteUrl}>

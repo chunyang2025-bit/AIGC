@@ -8,7 +8,9 @@ export async function GET() {
     version: "1.0.0",
     endpoints: [
       "GET /api/marketplace",
+      "GET /api/health",
       "POST /api/auth/register",
+      "POST /api/auth/register role=admin inviteCode=ADMIN_INVITE_CODE",
       "POST /api/auth/login",
       "POST /api/agent/brief",
       "GET /api/projects",
@@ -28,7 +30,10 @@ export async function GET() {
       "PATCH /api/orders/:id/status",
       "GET /api/admin/metrics",
       "PATCH /api/admin/verify",
-      "POST /api/reset"
+      "PATCH /api/admin/users/:id/suspend",
+      "GET/POST /api/reports",
+      "GET/POST /api/feedback",
+      "PATCH /api/admin/feedback/:id"
     ]
   });
 }

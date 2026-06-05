@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "check:env": "node scripts/env-ready-check.mjs",
+    "check:predeploy": "node scripts/predeploy-check.mjs",
+    "check:pilot": "node scripts/pilot-readiness-check.mjs",
+    "check:prod": "node scripts/production-check.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",

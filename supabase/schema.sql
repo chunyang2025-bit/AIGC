@@ -13,6 +13,8 @@ create table if not exists app_users (
   phone text,
   email text not null,
   role text not null check (role in ('buyer', 'creator', 'admin')),
+  status text not null default 'active',
+  suspended_reason text,
   created_at date not null default current_date
 );
 
@@ -50,6 +52,8 @@ create table if not exists creator_profiles (
   skills jsonb not null default '[]'::jsonb,
   categories jsonb not null default '[]'::jsonb,
   portfolio jsonb not null default '[]'::jsonb,
+  portfolio_items jsonb not null default '[]'::jsonb,
+  service_packages jsonb not null default '[]'::jsonb,
   price_min integer not null default 0,
   price_max integer not null default 0,
   completed_projects integer not null default 0,
@@ -69,6 +73,7 @@ create table if not exists creator_profiles (
   service_area text,
   contact_email text,
   contact_phone text,
+  training_profile jsonb,
   cover text
 );
 
@@ -79,6 +84,13 @@ create table if not exists projects (
   description text not null,
   category text not null,
   tags jsonb not null default '[]'::jsonb,
+  use_case text,
+  deliverable_types jsonb not null default '[]'::jsonb,
+  urgency text,
+  need_invoice boolean,
+  long_term boolean,
+  accept_platform_recommend boolean,
+  training_requirement jsonb,
   budget integer not null default 0,
   deadline date not null,
   status text not null default 'open',
@@ -87,6 +99,7 @@ create table if not exists projects (
   contact_email text,
   contact_phone text,
   agent_brief jsonb,
+  rejected_reason text,
   created_at date not null default current_date
 );
 
@@ -107,6 +120,9 @@ create table if not exists orders (
   creator_id text not null references creator_profiles(id) on delete cascade,
   amount integer not null default 0,
   status text not null default 'active',
+  result_reason text,
+  result_note text,
+  result_updated_at timestamptz,
   deliverable_url text,
   created_at date not null default current_date
 );
@@ -130,6 +146,30 @@ create table if not exists reviews (
   created_at date not null default current_date
 );
 
+create table if not exists abuse_reports (
+  id text primary key,
+  reporter_id text not null references app_users(id) on delete cascade,
+  target_type text not null,
+  target_id text not null,
+  reason text not null,
+  status text not null default 'open',
+  resolution text,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists trial_feedback (
+  id text primary key,
+  user_id text references app_users(id) on delete set null,
+  role text,
+  page text not null,
+  rating integer,
+  category text not null default 'suggestion',
+  content text not null,
+  status text not null default 'open',
+  resolution text,
+  created_at timestamptz not null default now()
+);
+
 create table if not exists activity_events (
   id text primary key,
   user_id text not null references app_users(id) on delete cascade,
@@ -137,6 +177,7 @@ create table if not exists activity_events (
   event_type text not null,
   target_type text,
   target_id text,
+  note text,
   created_at timestamptz not null default now()
 );
 
@@ -146,13 +187,34 @@ create index if not exists project_matches_project_id_idx on project_matches(pro
 create index if not exists orders_buyer_id_idx on orders(buyer_id);
 create index if not exists orders_creator_id_idx on orders(creator_id);
 create index if not exists messages_order_id_idx on messages(order_id);
+create index if not exists abuse_reports_status_idx on abuse_reports(status);
+create index if not exists abuse_reports_target_idx on abuse_reports(target_type, target_id);
+create index if not exists trial_feedback_status_idx on trial_feedback(status);
+create index if not exists trial_feedback_created_at_idx on trial_feedback(created_at);
 create index if not exists activity_events_created_at_idx on activity_events(created_at);
 
 alter table app_users add column if not exists account text;
 alter table app_users add column if not exists phone text;
+alter table app_users add column if not exists status text not null default 'active';
+alter table app_users add column if not exists suspended_reason text;
 alter table buyer_profiles add column if not exists rejected_reason text;
 alter table creator_profiles add column if not exists rejected_reason text;
+alter table creator_profiles add column if not exists portfolio_items jsonb not null default '[]'::jsonb;
+alter table creator_profiles add column if not exists service_packages jsonb not null default '[]'::jsonb;
+alter table creator_profiles add column if not exists training_profile jsonb;
+alter table projects add column if not exists rejected_reason text;
 alter table projects add column if not exists tags jsonb not null default '[]'::jsonb;
+alter table projects add column if not exists use_case text;
+alter table projects add column if not exists deliverable_types jsonb not null default '[]'::jsonb;
+alter table projects add column if not exists urgency text;
+alter table projects add column if not exists need_invoice boolean;
+alter table projects add column if not exists long_term boolean;
+alter table projects add column if not exists accept_platform_recommend boolean;
+alter table projects add column if not exists training_requirement jsonb;
+alter table orders add column if not exists result_reason text;
+alter table orders add column if not exists result_note text;
+alter table orders add column if not exists result_updated_at timestamptz;
+alter table activity_events add column if not exists note text;
 
 alter table app_users enable row level security;
 alter table buyer_profiles enable row level security;
@@ -162,6 +224,8 @@ alter table project_matches enable row level security;
 alter table orders enable row level security;
 alter table messages enable row level security;
 alter table reviews enable row level security;
+alter table abuse_reports enable row level security;
+alter table trial_feedback enable row level security;
 alter table activity_events enable row level security;
 
 -- 业务表默认不开放给浏览器 anon key 直接访问。

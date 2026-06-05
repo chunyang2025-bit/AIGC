@@ -29,7 +29,9 @@ export function draftProjectBrief(input: DraftBriefInput): DraftBriefResult {
     ? "Prompt Engineering"
     : text.includes("ppt") || text.includes("演示") || text.includes("路演")
       ? "AI PPT"
-      : text.includes("课程") || text.includes("培训")
+      : text.includes("培训") || text.includes("内训") || text.includes("工作坊") || text.includes("训练营")
+        ? "AIGC Training"
+      : text.includes("课程") || text.includes("课件")
         ? "AI Course"
         : text.includes("配音") || text.includes("声音") || text.includes("音频")
           ? "AI Voice"
@@ -121,6 +123,12 @@ export function draftProjectBrief(input: DraftBriefInput): DraftBriefResult {
       budget: 8600,
       deliverables: ["课程大纲", "课件内容", "脚本", "练习/作业设计"],
       criteria: ["知识结构完整", "案例贴合目标用户", "可直接用于录制或授课"]
+    },
+    "AIGC Training": {
+      titleSuffix: "AIGC培训服务",
+      budget: 12000,
+      deliverables: ["课程大纲", "培训方案与报价", "现场/线上授课", "实操案例", "课件与课后资料包"],
+      criteria: ["培训目标清晰", "课程结构贴合学员岗位", "实操案例可落地", "提供课件、练习和课后答疑边界"]
     }
   }[category];
 
@@ -142,18 +150,24 @@ export function draftProjectBrief(input: DraftBriefInput): DraftBriefResult {
     ].join("\n"),
     category,
     budget: categoryConfig.budget,
-    deadline: daysFromNow(category === "Digital Human" ? 10 : 7),
+    deadline: daysFromNow(category === "Digital Human" || category === "AIGC Training" ? 10 : 7),
     agentBrief: {
       objective,
       audience,
       style,
       deliverables: categoryConfig.deliverables,
       acceptanceCriteria: categoryConfig.criteria,
-      suggestedQuestions: [
-        "是否已有产品图片、Logo、品牌色或参考案例？",
-        "是否需要创作者提供脚本，还是已有固定文案？",
-        "是否需要额外适配多个平台尺寸或多版本测试？"
-      ]
+      suggestedQuestions: category === "AIGC Training"
+        ? [
+            "讲师是否能提供课程大纲、报价和过往企业培训案例？",
+            "是否能基于我们的业务资料定制练习案例？",
+            "是否包含课件、练习任务、工具清单、课后答疑或陪跑？"
+          ]
+        : [
+            "是否已有产品图片、Logo、品牌色或参考案例？",
+            "是否需要创作者提供脚本，还是已有固定文案？",
+            "是否需要额外适配多个平台尺寸或多版本测试？"
+          ]
     }
   };
 }

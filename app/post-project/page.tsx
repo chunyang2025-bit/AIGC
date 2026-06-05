@@ -1,35 +1,100 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Bot, CheckCircle2, FileText, SendHorizonal, Sparkles } from "lucide-react";
 import { draftProjectBrief, DraftBriefResult } from "@/lib/brief-agent";
 import { categoryLabel } from "@/lib/format";
+import { deliverableTypeOptions, projectUseCaseOptions, urgencyOptions } from "@/lib/growth-taxonomy";
 import { projectCategoryOptions } from "@/lib/project-categories";
-import { createProject, loadMarketplaceData } from "@/lib/store";
+import { trainingFormatLabel, trainingFormatOptions } from "@/lib/training";
+import { createProject, loadMarketplaceData, resubmitProject } from "@/lib/store";
 import { isApproved, readAuthSession } from "@/lib/auth";
-import { ProjectCategory } from "@/lib/types";
+import { DeliverableType, ProjectCategory, ProjectUrgency, ProjectUseCase, TrainingFormat } from "@/lib/types";
 import { projectCompleteness } from "@/lib/growth";
+import { BetaNotice } from "@/components/BetaNotice";
+import { clearGrowthToolDraft, readGrowthToolDraft } from "@/lib/tool-draft";
+import { readRemixDraft } from "@/lib/remix-draft";
 
-export default function PostProjectPage() {
+function PostProjectContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const session = readAuthSession();
   const data = loadMarketplaceData();
   const buyerProfile = data.buyerProfiles?.find((profile) => profile.userId === session?.userId);
   const approved = buyerProfile?.verified ?? isApproved(session);
-  const [rawIdea, setRawIdea] = useState("我要给一款智能台灯做小红书和抖音投放内容，突出护眼、氛围灯和桌面美学。");
-  const [productName, setProductName] = useState("智能台灯");
-  const [audience, setAudience] = useState("25-35岁城市白领、学生和桌搭爱好者");
-  const [channel, setChannel] = useState("小红书、抖音");
-  const [style, setStyle] = useState("高级、干净、有科技感，适合种草转化");
-  const [referenceFile, setReferenceFile] = useState("产品图与品牌资料.zip");
-  const [qualificationFile, setQualificationFile] = useState("营业执照与产品授权资料.pdf");
-  const [contactEmail, setContactEmail] = useState("mira@northstar.ai");
-  const [contactPhone, setContactPhone] = useState("0571-8800-1024");
+  const editProjectId = searchParams.get("edit");
+  const editProject = editProjectId ? data.projects.find((project) => project.id === editProjectId && project.buyerId === session?.userId) : undefined;
+  const editMode = Boolean(editProject);
+  const draftSource = searchParams.get("draft");
+  const startsAsTraining = !editProject && searchParams.get("category") === "AIGC Training";
+  const presetInput = startsAsTraining
+    ? {
+        rawIdea: "希望为团队做一场AIGC实战培训，覆盖提示词、AI商品内容、短视频脚本和日常提效工具，最好能结合真实业务案例。",
+        productName: "企业团队AIGC实战内训",
+        audience: "运营、市场、设计和内容团队",
+        channel: "线下工作坊或线上培训",
+        style: "实操、案例驱动、可落地"
+      }
+    : {
+        rawIdea: "我要给一款智能台灯做小红书和抖音投放内容，突出护眼、氛围灯和桌面美学。",
+        productName: "智能台灯",
+        audience: "25-35岁城市白领、学生和桌搭爱好者",
+        channel: "小红书、抖音",
+        style: "高级、干净、有科技感，适合种草转化"
+      };
+  const initialBrief = editProject?.agentBrief ?? draftProjectBrief({
+    rawIdea: editProject?.description ?? presetInput.rawIdea,
+    productName: editProject?.title ?? presetInput.productName,
+    audience: presetInput.audience,
+    channel: presetInput.channel,
+    style: presetInput.style
+  }).agentBrief;
+  const [rawIdea, setRawIdea] = useState(editProject?.description ?? presetInput.rawIdea);
+  const [productName, setProductName] = useState(editProject?.title ?? presetInput.productName);
+  const [audience, setAudience] = useState(initialBrief.audience);
+  const [channel, setChannel] = useState(presetInput.channel);
+  const [style, setStyle] = useState(initialBrief.style);
+  const [referenceFile, setReferenceFile] = useState(editProject?.referenceFile ?? (startsAsTraining ? "企业业务案例与培训目标说明.docx" : "产品图与品牌资料.zip"));
+  const [qualificationFile, setQualificationFile] = useState(editProject?.qualificationFile ?? "营业执照与产品授权资料.pdf");
+  const [contactEmail, setContactEmail] = useState(editProject?.contactEmail ?? buyerProfile?.contactEmail ?? "mira@northstar.ai");
+  const [contactPhone, setContactPhone] = useState(editProject?.contactPhone ?? buyerProfile?.contactPhone ?? "0571-8800-1024");
   const [tagDraft, setTagDraft] = useState("");
-  const [projectTags, setProjectTags] = useState<string[]>(["小红书种草", "护眼产品", "桌面美学"]);
+  const [projectTags, setProjectTags] = useState<string[]>(editProject?.tags ?? (startsAsTraining ? ["企业内训", "提示词", "AI提效", "工作坊"] : ["小红书种草", "护眼产品", "桌面美学"]));
+  const [useCase, setUseCase] = useState<ProjectUseCase>(editProject?.useCase ?? (startsAsTraining ? "training" : "marketing"));
+  const [deliverableTypes, setDeliverableTypes] = useState<DeliverableType[]>(editProject?.deliverableTypes ?? (startsAsTraining ? ["other"] : ["video"]));
+  const [urgency, setUrgency] = useState<ProjectUrgency>(editProject?.urgency ?? (startsAsTraining ? "this_week" : "normal"));
+  const [needInvoice, setNeedInvoice] = useState(Boolean(editProject?.needInvoice));
+  const [longTerm, setLongTerm] = useState(Boolean(editProject?.longTerm));
+  const [acceptPlatformRecommend, setAcceptPlatformRecommend] = useState(editProject?.acceptPlatformRecommend ?? true);
+  const [trainingTopics, setTrainingTopics] = useState((editProject?.trainingRequirement?.topics ?? (startsAsTraining ? ["提示词工程", "AI办公提效", "AI营销内容"] : [])).join("、"));
+  const [trainingAudience, setTrainingAudience] = useState(editProject?.trainingRequirement?.audience ?? (startsAsTraining ? "运营、市场、设计和内容团队" : ""));
+  const [trainingHeadcount, setTrainingHeadcount] = useState(editProject?.trainingRequirement?.headcount ? String(editProject.trainingRequirement.headcount) : startsAsTraining ? "30" : "");
+  const [trainingFormat, setTrainingFormat] = useState<TrainingFormat>(editProject?.trainingRequirement?.format ?? (startsAsTraining ? "workshop" : "online"));
+  const [trainingCity, setTrainingCity] = useState(editProject?.trainingRequirement?.city ?? (startsAsTraining ? "上海/全国线上" : ""));
+  const [trainingDuration, setTrainingDuration] = useState(editProject?.trainingRequirement?.duration ?? (startsAsTraining ? "1天工作坊" : ""));
+  const [trainingGoal, setTrainingGoal] = useState(editProject?.trainingRequirement?.goal ?? (startsAsTraining ? "让团队能把AI工具落到真实业务中，形成可复用的提示词、内容模板和协作流程。" : ""));
+  const [needCustomCases, setNeedCustomCases] = useState(editProject?.trainingRequirement?.needCustomCases ?? true);
+  const [needTrainingMaterials, setNeedTrainingMaterials] = useState(editProject?.trainingRequirement?.needMaterials ?? true);
+  const [loadedToolDraft, setLoadedToolDraft] = useState(false);
+  const [loadedRemixSource, setLoadedRemixSource] = useState("");
   const [draft, setDraft] = useState<DraftBriefResult>(() =>
-    draftProjectBrief({ rawIdea, productName, audience, channel, style })
+    editProject
+      ? {
+          title: editProject.title,
+          description: editProject.description,
+          category: editProject.category,
+          budget: editProject.budget,
+          deadline: editProject.deadline,
+          agentBrief: initialBrief
+        }
+      : (() => {
+          const generated = draftProjectBrief({ rawIdea, productName, audience, channel, style });
+          return {
+            ...generated,
+            category: startsAsTraining ? "AIGC Training" : generated.category
+          };
+        })()
   );
   const completeness = projectCompleteness({
     title: draft.title,
@@ -45,8 +110,86 @@ export default function PostProjectPage() {
   });
   const canPublish = approved && completeness.score >= 80;
 
+  useEffect(() => {
+    if (editProject || draftSource !== "tool") return;
+    const savedDraft = readGrowthToolDraft();
+    if (!savedDraft) return;
+    const fromTrainingTool = savedDraft.mode === "training" || savedDraft.mode === "course" || savedDraft.result.category === "AIGC Training";
+    const nextResult: DraftBriefResult = fromTrainingTool
+      ? { ...savedDraft.result, category: "AIGC Training" }
+      : savedDraft.result;
+    setRawIdea(savedDraft.idea);
+    setProductName(savedDraft.result.title);
+    setAudience(savedDraft.result.agentBrief.audience);
+    setStyle(savedDraft.result.agentBrief.style);
+    setChannel(fromTrainingTool ? "线下工作坊或线上培训" : "小红书、抖音、微信视频号");
+    setDraft(nextResult);
+    setProjectTags(fromTrainingTool ? ["企业内训", "AIGC培训", "AI提效"] : [categoryLabel(nextResult.category), "Brief Agent生成"]);
+    setUseCase(fromTrainingTool ? "training" : "marketing");
+    setDeliverableTypes(fromTrainingTool ? ["other"] : ["video"]);
+    setUrgency(fromTrainingTool ? "this_week" : "normal");
+    setReferenceFile(fromTrainingTool ? "待补充：企业业务案例与培训目标说明" : "待补充：产品图、品牌资料或参考链接");
+    if (fromTrainingTool) {
+      setTrainingTopics(nextResult.agentBrief.deliverables.join("、"));
+      setTrainingAudience(nextResult.agentBrief.audience);
+      setTrainingGoal(nextResult.agentBrief.objective);
+      setTrainingDuration(savedDraft.mode === "course" ? "可沟通：半日/1天/多次课" : "1天工作坊");
+      setTrainingCity("全国线上/可沟通线下城市");
+    }
+    setLoadedToolDraft(true);
+  }, [draftSource, editProject]);
+
+  useEffect(() => {
+    if (editProject || searchParams.get("remix") !== "project") return;
+    const remix = readRemixDraft();
+    if (!remix || remix.type !== "project") return;
+    const source = remix.project;
+    setRawIdea(source.description);
+    setProductName(source.title);
+    setAudience(source.agentBrief?.audience ?? (source.trainingRequirement?.audience || presetInput.audience));
+    setChannel(source.category === "AIGC Training" ? "线下工作坊或线上培训" : presetInput.channel);
+    setStyle(source.agentBrief?.style ?? presetInput.style);
+    setDraft({
+      title: `${source.title}（参考发布）`,
+      description: source.description,
+      category: source.category,
+      budget: source.budget,
+      deadline: source.deadline,
+      agentBrief: source.agentBrief ?? draftProjectBrief({
+        rawIdea: source.description,
+        productName: source.title,
+        audience: source.trainingRequirement?.audience || presetInput.audience,
+        channel: source.category === "AIGC Training" ? "线下工作坊或线上培训" : presetInput.channel,
+        style: presetInput.style
+      }).agentBrief
+    });
+    setProjectTags([...(source.tags ?? []), "参考发布"].filter(Boolean));
+    setUseCase(source.useCase ?? (source.category === "AIGC Training" ? "training" : "marketing"));
+    setDeliverableTypes(source.deliverableTypes?.length ? source.deliverableTypes : source.category === "AIGC Training" ? ["other"] : ["video"]);
+    setUrgency(source.urgency ?? "normal");
+    setNeedInvoice(Boolean(source.needInvoice));
+    setLongTerm(Boolean(source.longTerm));
+    setAcceptPlatformRecommend(source.acceptPlatformRecommend ?? true);
+    if (source.trainingRequirement) {
+      setTrainingTopics(source.trainingRequirement.topics.join("、"));
+      setTrainingAudience(source.trainingRequirement.audience);
+      setTrainingHeadcount(source.trainingRequirement.headcount ? String(source.trainingRequirement.headcount) : "");
+      setTrainingFormat(source.trainingRequirement.format);
+      setTrainingCity(source.trainingRequirement.city ?? "");
+      setTrainingDuration(source.trainingRequirement.duration ?? "");
+      setTrainingGoal(source.trainingRequirement.goal);
+      setNeedCustomCases(source.trainingRequirement.needCustomCases);
+      setNeedTrainingMaterials(source.trainingRequirement.needMaterials);
+    }
+    setLoadedRemixSource(remix.sourceTitle);
+  }, [editProject, presetInput.audience, presetInput.channel, presetInput.style, searchParams]);
+
   function generateDraft() {
-    setDraft(draftProjectBrief({ rawIdea, productName, audience, channel, style }));
+    const generated = draftProjectBrief({ rawIdea, productName, audience, channel, style });
+    setDraft({
+      ...generated,
+      category: startsAsTraining ? "AIGC Training" : generated.category
+    });
   }
 
   function updateDraftField<K extends keyof DraftBriefResult>(key: K, value: DraftBriefResult[K]) {
@@ -64,13 +207,45 @@ export default function PostProjectPage() {
     setProjectTags((current) => current.filter((item) => item !== tag));
   }
 
+  function toggleDeliverableType(value: DeliverableType) {
+    setDeliverableTypes((current) =>
+      current.includes(value) ? current.filter((item) => item !== value) : [...current, value]
+    );
+  }
+
+  const selectedDeliverableTypes = deliverableTypes.length ? deliverableTypes : ["video" as const];
+  const isTrainingProject = draft.category === "AIGC Training";
+  const trainingRequirement = isTrainingProject
+    ? {
+        topics: trainingTopics.split(/[,，、\n]/).map((item) => item.trim()).filter(Boolean),
+        audience: trainingAudience,
+        headcount: Number(trainingHeadcount) || undefined,
+        format: trainingFormat,
+        city: trainingCity,
+        duration: trainingDuration,
+        goal: trainingGoal,
+        needCustomCases,
+        needMaterials: needTrainingMaterials
+      }
+    : undefined;
+
   return (
     <main className="main">
       <div className="pageHeader">
         <div>
-          <h1>需求发布 Agent</h1>
-          <p>用对话式输入生成结构化 Brief。你可以手动调整标题、预算和周期，再进入创作者匹配。</p>
+          <h1>{startsAsTraining || editProject?.category === "AIGC Training" ? "培训需求发布 Agent" : "项目需求发布 Agent"}</h1>
+          <p>{editMode ? "修改后重新提交审核。审核通过前不会公开展示，也不能邀请服务方。" : startsAsTraining ? "免费提交培训需求，重点填写培训对象、人数、主题、形式、城市、时长和目标，再匹配培训服务方。" : "免费提交项目交付需求，用对话式输入生成结构化 Brief。你可以手动调整标题、意向预算、交付物和周期，再进入审核与服务方匹配。"}</p>
         </div>
+      </div>
+
+      <BetaNotice />
+      {editProject?.rejectedReason ? <div className="notice">上次审核意见：{editProject.rejectedReason}</div> : null}
+      {loadedToolDraft ? <div className="notice">已带入你在首页生成的 Brief。可以继续调整标题、交付范围、预算、周期和联系方式，再提交审核。</div> : null}
+      {loadedRemixSource ? <div className="notice">已参考「{loadedRemixSource}」生成发布草稿。请替换成你的真实业务背景、素材范围、预算和联系方式后再提交。</div> : null}
+      <div className="notice">
+        {isTrainingProject
+          ? "当前使用培训模板：适合企业内训、工作坊、训练营和长期陪跑。"
+          : "当前使用项目交付模板：适合图片设计、AI短视频、数字人口播、文案、PPT、工作流等成果交付。"}
       </div>
 
       <div className="agentLayout">
@@ -82,7 +257,7 @@ export default function PostProjectPage() {
               </span>
               <div>
                 <strong>Brief Agent</strong>
-                <div className="muted">自动拆解目标、渠道、成果范围、预算和沟通要点</div>
+                <div className="muted">自动拆解目标、渠道、成果范围、意向预算和沟通要点</div>
               </div>
             </div>
             <span className="tag green">
@@ -134,6 +309,96 @@ export default function PostProjectPage() {
                 ))}
               </select>
               <span className="fieldHint">Agent 会自动判断类型，你也可以手动调整。</span>
+            </div>
+            <div className="grid two">
+              <div className="field">
+                <label htmlFor="project-use-case">主要用途</label>
+                <select id="project-use-case" value={useCase} onChange={(event) => setUseCase(event.target.value as ProjectUseCase)}>
+                  {projectUseCaseOptions.map((item) => (
+                    <option key={item.value} value={item.value}>{item.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="field">
+                <label htmlFor="project-urgency">沟通节奏</label>
+                <select id="project-urgency" value={urgency} onChange={(event) => setUrgency(event.target.value as ProjectUrgency)}>
+                  {urgencyOptions.map((item) => (
+                    <option key={item.value} value={item.value}>{item.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="field">
+              <label>希望交付什么</label>
+              <div className="tagList">
+                {deliverableTypeOptions.map((item) => (
+                  <button className={deliverableTypes.includes(item.value) ? "tag green" : "tag"} key={item.value} onClick={() => toggleDeliverableType(item.value)} type="button">
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+              {!deliverableTypes.length ? <span className="fieldHint">未选择时会默认按短视频需求进行匹配。</span> : null}
+            </div>
+            {isTrainingProject ? (
+              <div className="briefBlock">
+                <div className="spaceBetween">
+                  <strong>培训需求画像</strong>
+                  <span className="tag blue">AIGC培训</span>
+                </div>
+                <div className="field">
+                  <label htmlFor="training-topics">希望培训主题</label>
+                  <input id="training-topics" value={trainingTopics} onChange={(event) => setTrainingTopics(event.target.value)} placeholder="提示词、AI办公、AI营销、AI设计、AI视频、数字人" />
+                </div>
+                <div className="grid two compactGrid">
+                  <div className="field">
+                    <label htmlFor="training-audience">培训对象</label>
+                    <input id="training-audience" value={trainingAudience} onChange={(event) => setTrainingAudience(event.target.value)} placeholder="市场团队、管理层、设计团队、教师等" />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="training-headcount">预计人数</label>
+                    <input id="training-headcount" inputMode="numeric" value={trainingHeadcount} onChange={(event) => setTrainingHeadcount(event.target.value)} placeholder="例如：30" />
+                  </div>
+                </div>
+                <div className="grid three compactGrid">
+                  <div className="field">
+                    <label htmlFor="training-format">培训形式</label>
+                    <select id="training-format" value={trainingFormat} onChange={(event) => setTrainingFormat(event.target.value as TrainingFormat)}>
+                      {trainingFormatOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+                    </select>
+                  </div>
+                  <div className="field">
+                    <label htmlFor="training-city">城市</label>
+                    <input id="training-city" value={trainingCity} onChange={(event) => setTrainingCity(event.target.value)} placeholder="线上可写全国" />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="training-duration">期望时长</label>
+                    <input id="training-duration" value={trainingDuration} onChange={(event) => setTrainingDuration(event.target.value)} placeholder="半天、1天、3周陪跑" />
+                  </div>
+                </div>
+                <div className="field">
+                  <label htmlFor="training-goal">培训目标</label>
+                  <textarea id="training-goal" value={trainingGoal} onChange={(event) => setTrainingGoal(event.target.value)} placeholder="希望团队学完后能解决什么问题，或落地到哪些业务场景" />
+                </div>
+                <div className="tagList">
+                  <button className={needCustomCases ? "tag green" : "tag"} onClick={() => setNeedCustomCases((value) => !value)} type="button">
+                    {needCustomCases ? "已选择" : "可选"} · 需要企业定制案例
+                  </button>
+                  <button className={needTrainingMaterials ? "tag green" : "tag"} onClick={() => setNeedTrainingMaterials((value) => !value)} type="button">
+                    {needTrainingMaterials ? "已选择" : "可选"} · 需要课件/练习材料
+                  </button>
+                </div>
+              </div>
+            ) : null}
+            <div className="tagList">
+              <button className={longTerm ? "tag green" : "tag"} onClick={() => setLongTerm((value) => !value)} type="button">
+                {longTerm ? "已选择" : "可选"} · 可能长期合作
+              </button>
+              <button className={needInvoice ? "tag green" : "tag"} onClick={() => setNeedInvoice((value) => !value)} type="button">
+                {needInvoice ? "已选择" : "可选"} · 需要发票/合同
+              </button>
+              <button className={acceptPlatformRecommend ? "tag green" : "tag"} onClick={() => setAcceptPlatformRecommend((value) => !value)} type="button">
+                {acceptPlatformRecommend ? "已选择" : "可选"} · 接受平台推荐
+              </button>
             </div>
             <div className="field">
               <label htmlFor="project-tags">需求标签</label>
@@ -221,8 +486,24 @@ export default function PostProjectPage() {
               <strong>结构化需求</strong>
               <textarea value={draft.description} onChange={(event) => updateDraftField("description", event.target.value)} />
             </div>
+            <div className="briefBlock">
+              <strong>匹配画像</strong>
+              <div className="tagList">
+                <span className="tag blue">{projectUseCaseOptions.find((item) => item.value === useCase)?.label}</span>
+                <span className="tag blue">{urgencyOptions.find((item) => item.value === urgency)?.label}</span>
+                {selectedDeliverableTypes.map((item) => (
+                  <span className="tag green" key={item}>
+                    {deliverableTypeOptions.find((option) => option.value === item)?.label ?? item}
+                  </span>
+                ))}
+                {longTerm ? <span className="tag">长期合作</span> : null}
+                {needInvoice ? <span className="tag">需要发票/合同</span> : null}
+                {acceptPlatformRecommend ? <span className="tag">接受平台推荐</span> : null}
+                {trainingRequirement ? <span className="tag blue">{trainingFormatLabel(trainingRequirement.format)} · {trainingRequirement.headcount ? `${trainingRequirement.headcount}人` : "人数待定"}</span> : null}
+              </div>
+            </div>
             <div className="notice">
-              平台只提供信息展示、智能匹配和沟通留痕，不托管资金，不参与合同、交易、交付和售后纠纷。
+              当前免费发布需求。意向预算仅用于匹配和沟通参考，平台不托管资金，不参与合同、交易、交付和售后纠纷。
             </div>
             <div className="briefBlock">
               <div className="spaceBetween">
@@ -261,11 +542,18 @@ export default function PostProjectPage() {
               className="btn primary"
               onClick={() => {
                 if (!canPublish) return;
-                const { project } = createProject({
+                const payload = {
                   title: draft.title,
                   description: draft.description,
                   category: draft.category,
                   tags: projectTags,
+                  useCase,
+                  deliverableTypes: selectedDeliverableTypes,
+                  urgency,
+                  needInvoice,
+                  longTerm,
+                  acceptPlatformRecommend,
+                  trainingRequirement,
                   budget: draft.budget,
                   deadline: draft.deadline,
                   referenceFile,
@@ -273,18 +561,31 @@ export default function PostProjectPage() {
                   contactEmail,
                   contactPhone,
                   agentBrief: draft.agentBrief
-                });
-                router.push(`/buyer/projects/${project.id}`);
+                };
+                const result = editProject ? resubmitProject(editProject.id, payload) : createProject(payload);
+                if (result) {
+                  clearGrowthToolDraft();
+                  router.push(`/buyer/projects/${result.project.id}`);
+                }
               }}
               disabled={!canPublish}
             >
-              <SendHorizonal size={16} /> {canPublish ? "确认并启动匹配 Agent" : approved ? "补全需求后发布" : "审核通过后可发布需求"}
+              <SendHorizonal size={16} /> {canPublish ? (editMode ? "重新提交审核" : "提交审核") : approved ? "补全需求后提交审核" : "审核通过后可提交需求"}
             </button>
+            {canPublish ? <div className="notice">提交免费需求后将进入平台运营审核，审核通过后会公开展示并开放创作者沟通。</div> : null}
             {!approved ? <div className="notice">当前主体主页正在审核，审核通过后才能正式发布需求。</div> : null}
             {approved && completeness.score < 80 ? <div className="notice">需求完整度达到 80% 后才能公开发布。建议补充联系方式、参考资料、资质材料和清晰描述。</div> : null}
           </div>
         </aside>
       </div>
     </main>
+  );
+}
+
+export default function PostProjectPage() {
+  return (
+    <Suspense fallback={<main className="main"><div className="notice">正在加载需求发布 Agent...</div></main>}>
+      <PostProjectContent />
+    </Suspense>
   );
 }

@@ -14,10 +14,10 @@ export function AuthNavActions() {
   if (!session) {
     return (
       <>
-        <Link className="btn ghost" href="/login?role=accept&next=%2Fprovider">
+        <Link className="btn ghost" href="/login?role=accept&next=%2Faccount%2Fcapabilities%3Fintent%3Dservice&intent=service">
           <LogIn size={16} /> 我要接单
         </Link>
-        <Link className="btn primary" href="/login?role=dispatch&next=%2Fpost-project">
+        <Link className="btn primary" href="/login?role=dispatch&next=%2Faccount%2Fcapabilities%3Fintent%3Ddispatch&intent=dispatch">
           <Plus size={16} /> 我要派单
         </Link>
       </>

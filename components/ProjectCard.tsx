@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { ArrowRight, Bot, Building2, CalendarDays, WalletCards } from "lucide-react";
 import { categoryLabel, compactDate, money, projectStatusLabel } from "@/lib/format";
+import { trainingFormatLabel } from "@/lib/training";
 import { Project } from "@/lib/types";
-import { loginNextPath, readAuthSession } from "@/lib/auth";
 
 export function ProjectCard({
   project,
@@ -18,8 +18,7 @@ export function ProjectCard({
   publicMode?: boolean;
 }) {
   const statusClass = project.status === "completed" ? "green" : project.status === "open" ? "blue" : "gold";
-  const session = readAuthSession();
-  const detailHref = session ? `/projects/${project.id}` : loginNextPath("creator", `/projects/${project.id}`);
+  const detailHref = `/projects/${project.id}`;
 
   return (
     <article className={publicMode ? "projectJobCard" : "card"}>
@@ -49,12 +48,21 @@ export function ProjectCard({
             ))}
           </div>
         ) : null}
-        <Link className="row muted" href={session ? `/buyers/${project.buyerId}` : loginNextPath("creator", `/buyers/${project.buyerId}`)}>
+        {project.trainingRequirement ? (
+          <div className="miniInfo">
+            <strong>{trainingFormatLabel(project.trainingRequirement.format)} · {project.trainingRequirement.audience || "培训对象待沟通"}</strong>
+            <span>
+              {project.trainingRequirement.headcount ? `${project.trainingRequirement.headcount}人 · ` : ""}
+              {project.trainingRequirement.city || "线上/城市待沟通"} · {project.trainingRequirement.duration || "时长待沟通"}
+            </span>
+          </div>
+        ) : null}
+        <Link className="row muted" href={`/buyers/${project.buyerId}`}>
           <Building2 size={16} /> {buyerName}
         </Link>
         <div className="spaceBetween">
           <span className="row muted">
-            <WalletCards size={16} /> {money(project.budget)}
+            <WalletCards size={16} /> 意向预算 {money(project.budget)}
           </span>
           <span className="row muted">
             <CalendarDays size={16} /> {compactDate(project.deadline)}
@@ -62,7 +70,7 @@ export function ProjectCard({
         </div>
         <div className="toolbarGroup">
           <Link className="btn" href={detailHref}>
-            {session ? "查看详情" : "登录后查看详情"} <ArrowRight size={16} />
+            查看公开详情 <ArrowRight size={16} />
           </Link>
         </div>
       </div>

@@ -94,6 +94,44 @@ export const demoData: MarketplaceData = {
       skills: ["Runway", "剪映", "分镜脚本", "电商"],
       categories: ["AI Short Video"],
       portfolio: ["美妆新品短片", "天猫15秒广告", "众筹产品预热视频"],
+      portfolioItems: [
+        {
+          id: "pf-c1-1",
+          title: "智能硬件新品15秒短视频",
+          category: "AI Short Video",
+          description: "为智能台灯整理3版开头钩子、产品特写和中文字幕包装，用于小红书和抖音投放测试。",
+          url: "https://example.com/ava-lamp",
+          public: true
+        },
+        {
+          id: "pf-c1-2",
+          title: "美妆新品首发短片",
+          category: "AI Short Video",
+          description: "完成脚本、分镜、AI素材和竖屏成片，突出质地、使用场景和新品利益点。",
+          url: "https://example.com/ava-beauty",
+          public: true
+        }
+      ],
+      servicePackages: [
+        {
+          id: "sp-c1-1",
+          name: "15秒短视频基础包",
+          price: 1200,
+          deliveryDays: 5,
+          revisions: 1,
+          deliverables: ["脚本", "15秒竖屏成片", "中文字幕"],
+          description: "适合单品测试、轻量种草和新品预热。"
+        },
+        {
+          id: "sp-c1-2",
+          name: "投放素材标准包",
+          price: 3200,
+          deliveryDays: 7,
+          revisions: 2,
+          deliverables: ["3版开头钩子", "分镜", "竖屏成片", "封面图"],
+          description: "适合信息流素材A/B测试，交付后可继续追加变体。"
+        }
+      ],
       priceMin: 880,
       priceMax: 4500,
       completedProjects: 38,
@@ -125,6 +163,44 @@ export const demoData: MarketplaceData = {
       skills: ["AI广告", "钩子脚本", "剪辑", "短视频投放"],
       categories: ["AI Short Video", "Digital Human"],
       portfolio: ["SaaS解释视频", "健身产品广告包", "App拉新素材"],
+      portfolioItems: [
+        {
+          id: "pf-c2-1",
+          title: "SaaS解释视频",
+          category: "AI Short Video",
+          description: "将复杂B端功能拆成问题、场景、收益三段式脚本，交付30秒竖屏解释视频。",
+          url: "https://example.com/kai-saas",
+          public: true
+        },
+        {
+          id: "pf-c2-2",
+          title: "App拉新素材包",
+          category: "AI Short Video",
+          description: "围绕不同人群痛点制作多钩子短视频素材，便于投放团队快速复盘。",
+          url: "https://example.com/kai-app",
+          public: true
+        }
+      ],
+      servicePackages: [
+        {
+          id: "sp-c2-1",
+          name: "广告钩子测试包",
+          price: 2600,
+          deliveryDays: 4,
+          revisions: 1,
+          deliverables: ["5条钩子脚本", "2条竖屏成片", "字幕文件"],
+          description: "适合拉新、表单线索和轻量投放验证。"
+        },
+        {
+          id: "sp-c2-2",
+          name: "信息流素材冲刺包",
+          price: 5800,
+          deliveryDays: 8,
+          revisions: 2,
+          deliverables: ["10条脚本", "4条成片", "封面", "复盘建议"],
+          description: "适合需要快速起量的广告账户和新品活动。"
+        }
+      ],
       priceMin: 1200,
       priceMax: 6200,
       completedProjects: 56,
@@ -156,6 +232,44 @@ export const demoData: MarketplaceData = {
       skills: ["Midjourney", "PS精修", "商品图", "品牌视觉"],
       categories: ["Image Design"],
       portfolio: ["护肤品场景图", "厨房用品详情图", "生活方式素材库"],
+      portfolioItems: [
+        {
+          id: "pf-c3-1",
+          title: "护肤品场景图",
+          category: "Image Design",
+          description: "为护肤套装生成浴室、旅行和礼盒场景图，统一光线、材质和品牌色。",
+          url: "https://example.com/luna-skincare",
+          public: true
+        },
+        {
+          id: "pf-c3-2",
+          title: "厨房用品详情图",
+          category: "Image Design",
+          description: "围绕收纳、防水和容量卖点完成电商详情页素材，兼顾主图点击和详情阅读。",
+          url: "https://example.com/luna-kitchen",
+          public: true
+        }
+      ],
+      servicePackages: [
+        {
+          id: "sp-c3-1",
+          name: "商品主图精修包",
+          price: 699,
+          deliveryDays: 3,
+          revisions: 1,
+          deliverables: ["主图1张", "场景图2张", "基础精修"],
+          description: "适合已有产品照片、需要快速上架的商品。"
+        },
+        {
+          id: "sp-c3-2",
+          name: "电商视觉套图包",
+          price: 2200,
+          deliveryDays: 6,
+          revisions: 2,
+          deliverables: ["主图", "详情页图", "活动横幅", "可编辑源文件"],
+          description: "适合新品上架、活动页和社媒同步投放。"
+        }
+      ],
       priceMin: 399,
       priceMax: 2800,
       completedProjects: 71,
@@ -185,8 +299,18 @@ export const demoData: MarketplaceData = {
       bio: "提供数字人出镜、脚本润色、配音口型、字幕和品牌模板，适合课程、SaaS和招商说明。",
       resume: "数字人口播交付团队，覆盖课程介绍、直播预热、B端产品演示和招商说明类内容。",
       skills: ["数字人", "脚本", "配音", "字幕"],
-      categories: ["Digital Human"],
+      categories: ["Digital Human", "AIGC Training"],
       portfolio: ["课程介绍口播", "直播预热视频", "B端产品演示"],
+      trainingProfile: {
+        topics: ["数字人实战", "AI课程内容", "AI营销视频"],
+        formats: ["online", "workshop", "offline"],
+        audience: ["市场团队", "课程团队", "企业培训负责人"],
+        cities: ["全国线上", "北京", "天津"],
+        caseStudies: ["为在线教育团队完成数字人口播工作坊，25人，1天实操", "为SaaS客户成功团队设计AI讲解视频内训"],
+        materials: ["课件", "练习素材", "工具清单", "课后答疑"],
+        pricingNote: "支持半日工作坊、1天内训和按项目陪跑报价。",
+        customizable: true
+      },
       priceMin: 1500,
       priceMax: 8800,
       completedProjects: 29,
@@ -280,14 +404,24 @@ export const demoData: MarketplaceData = {
       bio: "交付产品讲解、培训课程和多语言说明类数字人视频，支持声音、字幕和模板化更新。",
       resume: "数字人与声音流程团队，覆盖保险产品讲解、HR培训和零售培训类数字人视频。",
       skills: ["数字人", "声音克隆", "字幕", "培训视频"],
-      categories: ["Digital Human", "AI Short Video"],
+      categories: ["Digital Human", "AI Short Video", "AIGC Training"],
       portfolio: ["保险产品讲解", "HR入职培训", "零售培训短片"],
+      trainingProfile: {
+        topics: ["AI办公提效", "HR培训视频", "零售门店培训", "数字人课件"],
+        formats: ["online", "offline", "coaching"],
+        audience: ["HR团队", "零售培训团队", "运营团队"],
+        cities: ["全国线上", "武汉", "长沙", "杭州"],
+        caseStudies: ["为HR团队制作入职培训数字人流程并辅导内部更新", "为零售团队完成门店培训短片和课后资料包"],
+        materials: ["课件", "录播", "练习任务", "字幕模板"],
+        pricingNote: "支持按场、按天或长期内容更新陪跑。",
+        customizable: true
+      },
       priceMin: 1800,
       priceMax: 10800,
       completedProjects: 18,
       rating: 4.6,
       responseTime: "6小时",
-      verified: false,
+      verified: true,
       cover: "linear-gradient(135deg, #0d563a, #2457c5)"
     },
     {
@@ -383,18 +517,77 @@ export const demoData: MarketplaceData = {
       deadline: "2026-06-01",
       status: "completed",
       createdAt: "2026-05-01"
+    },
+    {
+      id: "p-6",
+      buyerId: "u-buyer-2",
+      title: "电商团队AIGC商品内容内训",
+      description: "希望找一位讲师为运营和设计团队做AIGC商品图、短视频脚本和提示词实操培训，最好能结合家居日用商品案例。",
+      category: "AIGC Training",
+      tags: ["企业内训", "AI商品图", "提示词", "工作坊"],
+      useCase: "training",
+      deliverableTypes: ["other"],
+      urgency: "this_week",
+      needInvoice: true,
+      longTerm: true,
+      acceptPlatformRecommend: true,
+      trainingRequirement: {
+        topics: ["AI商品图", "提示词工程", "AI短视频脚本"],
+        audience: "电商运营和设计团队",
+        headcount: 28,
+        format: "offline",
+        city: "上海",
+        duration: "1天工作坊",
+        goal: "让团队掌握商品图生成、卖点脚本和素材复用流程，形成可复用模板。",
+        needCustomCases: true,
+        needMaterials: true
+      },
+      budget: 15000,
+      deadline: "2026-06-18",
+      status: "open",
+      referenceFile: "家居日用商品案例与品牌资料.zip",
+      qualificationFile: "城野生活电商营业执照.pdf",
+      contactEmail: "leo@urbanline.co",
+      contactPhone: "021-6800-2210",
+      agentBrief: {
+        objective: "为电商团队寻找AIGC培训讲师，完成商品图、提示词和短视频脚本实操训练。",
+        audience: "电商运营、设计和内容团队",
+        style: "实操、案例驱动、可落地",
+        deliverables: ["培训方案", "1天线下工作坊", "商品案例练习", "课件和工具清单"],
+        acceptanceCriteria: ["结合家居日用真实商品案例", "学员能独立完成商品图提示词和短视频脚本", "提供可复用模板和课后材料"],
+        suggestedQuestions: ["是否能基于我们的商品案例定制练习？", "是否提供课件和工具清单？", "是否支持课后答疑或陪跑？"]
+      },
+      createdAt: "2026-05-27"
     }
   ],
   matches: [
     { id: "m-1", projectId: "p-1", creatorId: "c-2", score: 94, reason: "短视频广告经验强，适合多钩子投放素材。" },
-    { id: "m-2", projectId: "p-1", creatorId: "c-1", score: 90, reason: "新品短片作品多，预算区间匹配。" },
+    { id: "m-2", projectId: "p-1", creatorId: "c-1", score: 90, reason: "新品短片作品多，意向预算区间匹配。" },
     { id: "m-3", projectId: "p-1", creatorId: "c-5", score: 86, reason: "熟悉电商商品内容包交付。" },
     { id: "m-4", projectId: "p-2", creatorId: "c-8", score: 92, reason: "商品场景图和目录图能力匹配。" },
     { id: "m-5", projectId: "p-2", creatorId: "c-3", score: 89, reason: "电商主图和精修经验丰富。" },
-    { id: "m-6", projectId: "p-2", creatorId: "c-10", score: 81, reason: "预算适配，支持图片与内容包交付。" },
+    { id: "m-6", projectId: "p-2", creatorId: "c-10", score: 81, reason: "意向预算适配，支持图片与内容包交付。" },
     { id: "m-7", projectId: "p-3", creatorId: "c-4", score: 95, reason: "数字人口播和脚本润色能力高度匹配。" },
     { id: "m-8", projectId: "p-3", creatorId: "c-9", score: 88, reason: "数字人与声音流程适合培训讲解。" },
-    { id: "m-9", projectId: "p-3", creatorId: "c-10", score: 79, reason: "跨品类内容交付灵活。" }
+    { id: "m-9", projectId: "p-3", creatorId: "c-10", score: 79, reason: "跨品类内容交付灵活。" },
+    {
+      id: "m-10",
+      projectId: "p-6",
+      creatorId: "c-9",
+      score: 93,
+      reason: "培训主题、数字人课件和线下工作坊经验匹配。",
+      risk: "讲师主体待审核，建议先确认企业内训案例和可开票方式。",
+      nextStep: "建议先确认培训对象、1天工作坊安排和家居商品案例范围。"
+    },
+    {
+      id: "m-11",
+      projectId: "p-6",
+      creatorId: "c-4",
+      score: 88,
+      reason: "数字人与课程培训经验匹配，支持企业定制案例。",
+      risk: "报价可能接近预算上限，建议先确认半日/全天范围。",
+      nextStep: "建议确认课件、练习材料和课后答疑方式。"
+    }
   ],
   orders: [
     {
@@ -444,6 +637,8 @@ export const demoData: MarketplaceData = {
       createdAt: "2026-05-12"
     }
   ],
+  reports: [],
+  feedback: [],
   activityEvents: [
     { id: "a-1", userId: "u-buyer-1", role: "buyer", eventType: "login", createdAt: "2026-05-02T09:00:00Z" },
     { id: "a-2", userId: "u-buyer-1", role: "buyer", eventType: "post_project", targetType: "project", targetId: "p-1", createdAt: "2026-05-10T10:20:00Z" },

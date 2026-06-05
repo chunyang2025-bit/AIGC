@@ -39,11 +39,31 @@
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
+NEXT_PUBLIC_APP_URL=
+ADMIN_INVITE_CODE=
+UPLOAD_PUBLIC_MAX_MB=5
+UPLOAD_PRIVATE_MAX_MB=10
 ```
 
 配置后重新部署。
 
-## 5. 部署后检查
+## 5. 支付和通知
+
+当前阶段免费入驻、免费发布需求，不涉及用户交易托管，支付配置不是上线阻塞项。代码已提供配置占位，后续如果平台要对 B 端收服务费，再确定服务商并配置：
+
+```bash
+PAYMENT_PROVIDER=
+PAYMENT_API_KEY=
+PAYMENT_WEBHOOK_SECRET=
+NOTIFICATION_EMAIL_PROVIDER=
+NOTIFICATION_EMAIL_API_KEY=
+NOTIFICATION_SMS_PROVIDER=
+NOTIFICATION_SMS_API_KEY=
+```
+
+如果这些变量为空，`/api/health` 会提示当前未启用线上支付/通知，但不会阻塞免费撮合模式上线。对外不要承诺平台内自动托管、自动结算或短信通知。
+
+## 6. 部署后检查
 
 - 首页可以打开。
 - 可以注册新账号。
@@ -61,11 +81,17 @@ SUPABASE_SERVICE_ROLE_KEY=
 - Supabase `projects` 能看到真实需求。
 - 接单方可以查看公开需求并发起沟通。
 - Supabase `orders` / `messages` 能看到沟通线索。
+- `/api/health` 返回 `data.ok: true`。
+- 执行 `npm run check:prod` 可以通过。
 
-## 6. 正式运营前提醒
+## 7. 正式运营前提醒
 
 - 不要公开 `SUPABASE_SERVICE_ROLE_KEY`。
 - 不要在前端代码里使用 service role key。
+- `ADMIN_INVITE_CODE` 必须设置为强随机值，不要使用本地默认值。
+- `NEXT_PUBLIC_APP_URL` 必须是线上 HTTPS 域名。
 - 个人主体不强制上传身份证。
 - 资质材料不要在公开主页展示原始文件。
+- 头像、Logo、作品图走 `public-assets`，资质文件走 `private-verifications`。
+- 默认上传限制：公开素材 5MB，资质材料 10MB，可通过环境变量调整。
 - 用户协议、隐私政策、审核规则需要按实际运营主体做法务审阅。

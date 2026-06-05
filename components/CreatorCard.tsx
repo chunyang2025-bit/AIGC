@@ -4,8 +4,8 @@ import Link from "next/link";
 import { CheckCircle2, Clock, Star } from "lucide-react";
 import { money, verificationTypeLabel } from "@/lib/format";
 import { isImageValue } from "@/lib/file-upload";
+import { trainingFormatLabel } from "@/lib/training";
 import { CreatorProfile } from "@/lib/types";
-import { loginNextPath, readAuthSession } from "@/lib/auth";
 
 type CreatorCardProps = {
   creator: CreatorProfile;
@@ -14,14 +14,17 @@ type CreatorCardProps = {
   risk?: string;
   nextStep?: string;
   onInvite?: () => void;
+  invited?: boolean;
+  inviteLabel?: string;
+  invitedLabel?: string;
   onToggleCandidate?: () => void;
   candidateSelected?: boolean;
 };
 
-export function CreatorCard({ creator, matchScore, reason, risk, nextStep, onInvite, onToggleCandidate, candidateSelected }: CreatorCardProps) {
+export function CreatorCard({ creator, matchScore, reason, risk, nextStep, onInvite, invited, inviteLabel = "邀请沟通", invitedLabel = "已邀请", onToggleCandidate, candidateSelected }: CreatorCardProps) {
   const displayName = creator.displayName ?? creator.name;
   const avatar = creator.avatarUrl || displayName.slice(0, 1);
-  const session = readAuthSession();
+  const featuredPackage = creator.servicePackages?.[0];
 
   return (
     <article className="card">
@@ -58,6 +61,15 @@ export function CreatorCard({ creator, matchScore, reason, risk, nextStep, onInv
             </span>
           ))}
         </div>
+        {creator.trainingProfile ? (
+          <div className="miniInfo">
+            <strong>{creator.trainingProfile.topics.slice(0, 3).join("、") || "AIGC培训"}</strong>
+            <span>
+              {creator.trainingProfile.formats.slice(0, 2).map(trainingFormatLabel).join("、") || "培训形式待沟通"}
+              {creator.trainingProfile.cities.length ? ` · ${creator.trainingProfile.cities.slice(0, 2).join("、")}` : ""}
+            </span>
+          </div>
+        ) : null}
         <div className="spaceBetween">
           <span className="row muted">
             <Star size={16} fill="#a86612" color="#a86612" /> {creator.rating.toFixed(1)}
@@ -72,8 +84,16 @@ export function CreatorCard({ creator, matchScore, reason, risk, nextStep, onInv
           </strong>
           <span className="muted">已完成{creator.completedProjects}单</span>
         </div>
-        <Link className="btn" href={session ? `/creators/${creator.id}` : loginNextPath("buyer", `/creators/${creator.id}`)}>
-          {session ? "查看展示页" : "登录后查看展示页"}
+        {featuredPackage ? (
+          <div className="miniInfo">
+            <strong>{featuredPackage.name}</strong>
+            <span>
+              {money(featuredPackage.price)} · {featuredPackage.deliveryDays || "-"}天交付 · {featuredPackage.revisions}次修改
+            </span>
+          </div>
+        ) : null}
+        <Link className="btn" href={`/creators/${creator.id}`}>
+          查看展示页
         </Link>
         {typeof matchScore === "number" ? (
           <div className="agentInsight">
@@ -86,9 +106,9 @@ export function CreatorCard({ creator, matchScore, reason, risk, nextStep, onInv
             {nextStep ? <p><b>下一步：</b>{nextStep}</p> : null}
           </div>
         ) : null}
-        {onInvite ? (
-          <button className="btn primary" onClick={onInvite}>
-            邀请沟通
+        {onInvite || invited ? (
+          <button className={invited ? "btn" : "btn primary"} disabled={invited} onClick={onInvite} type="button">
+            {invited ? invitedLabel : inviteLabel}
           </button>
         ) : null}
         {onToggleCandidate ? (

@@ -22,10 +22,13 @@ export function categoryLabel(value: string) {
 
 export function projectStatusLabel(value: string) {
   const labels: Record<string, string> = {
+    pending_review: "待审核",
+    rejected: "已驳回",
     open: "开放中",
     matching: "匹配中",
     in_progress: "进行中",
-    completed: "已完成"
+    completed: "已完成",
+    removed: "已下架"
   };
   return labels[value] ?? value;
 }
@@ -33,12 +36,30 @@ export function projectStatusLabel(value: string) {
 export function orderStatusLabel(value: string) {
   const labels: Record<string, string> = {
     active: "已发起沟通",
+    contacted: "已联系",
+    meeting_scheduled: "已约沟通",
     delivered: "已交换资料",
     revision: "继续沟通中",
     approved: "已线下合作",
-    not_fit: "不合适"
+    not_fit: "暂不合适",
+    no_response: "对方未回复",
+    cancelled: "需求取消"
   };
   return labels[value] ?? value;
+}
+
+export function orderResultReasonLabel(value?: string) {
+  const labels: Record<string, string> = {
+    budget_mismatch: "预算不匹配",
+    capability_mismatch: "能力不匹配",
+    schedule_mismatch: "时间不匹配",
+    unclear_requirement: "需求不清楚",
+    no_response: "对方未回复",
+    solved_elsewhere: "已通过其他渠道解决",
+    requirement_changed: "需求变更/取消",
+    other: "其他"
+  };
+  return value ? labels[value] ?? value : "未填写";
 }
 
 export function roleLabel(value: string) {
@@ -107,7 +128,15 @@ export function activityEventLabel(value: string) {
     invite_creator: "邀请创作者",
     send_message: "发送消息",
     deliver_order: "发送资料",
-    approve_order: "达成意向"
+    approve_order: "达成意向",
+    review_subject: "主体审核",
+    review_project: "需求审核",
+    remove_project: "需求下架",
+    report_abuse: "提交举报",
+    submit_feedback: "提交试用建议",
+    resolve_feedback: "处理试用建议",
+    resolve_report: "处理举报",
+    suspend_user: "封禁用户"
   };
   return labels[value] ?? value;
 }
@@ -117,7 +146,11 @@ export function targetTypeLabel(value?: string) {
     creator: "创作者",
     buyer_profile: "需求方主页",
     project: "需求",
-    order: "合作线索"
+    order: "合作线索",
+    message: "消息",
+    user: "用户",
+    report: "举报",
+    feedback: "试用建议"
   };
   return value ? labels[value] ?? value : "-";
 }

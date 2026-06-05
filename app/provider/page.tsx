@@ -3,12 +3,13 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Banknote, BriefcaseBusiness, CheckCircle2, FileText, FileUp, Inbox, Search, Star, UserRound } from "lucide-react";
-import { categoryLabel, money, orderStatusLabel } from "@/lib/format";
+import { Banknote, BriefcaseBusiness, CalendarDays, CheckCircle2, Copy, FileText, FileUp, Inbox, Search, SendHorizonal, Star, UserRound } from "lucide-react";
+import { categoryLabel, compactDate, money, orderStatusLabel } from "@/lib/format";
 import { isImageValue } from "@/lib/file-upload";
 import { loadMarketplaceData } from "@/lib/store";
 import { isApproved, readAuthSession } from "@/lib/auth";
-import { creatorProjectScore, opportunityPools } from "@/lib/opportunities";
+import { creatorProjectScore, creatorServiceConversion, opportunityPools } from "@/lib/opportunities";
+import { FirstActionPanel } from "@/components/FirstActionPanel";
 
 export default function ProviderPortalPage() {
   const router = useRouter();
@@ -22,7 +23,7 @@ export default function ProviderPortalPage() {
     }
 
     if (!creator) {
-      router.push("/account/capabilities");
+      router.push("/account/capabilities?intent=service");
     }
   }, [creator, router, session]);
 
@@ -32,15 +33,68 @@ export default function ProviderPortalPage() {
 
   const approved = creator?.verified ?? isApproved(session);
   const leads = data.orders.filter((order) => order.creatorId === creator.id);
-  const invitations = data.matches
+  const recommendedOpportunities = data.matches
     .filter((match) => match.creatorId === creator.id)
     .map((match) => ({
       match,
       project: data.projects.find((project) => project.id === match.projectId)
     }))
     .filter((item) => item.project);
-  const intentAmount = leads.reduce((sum, order) => sum + order.amount, 0);
+  const intentBudget = leads.reduce((sum, order) => sum + order.amount, 0);
   const pools = opportunityPools(data, creator);
+  const serviceConversion = creatorServiceConversion(creator);
+  const profileUrl = typeof window === "undefined" ? `/creators/${creator.id}` : `${window.location.origin}/creators/${creator.id}`;
+  const topOpportunity = pools.recommended[0];
+  const nextFollowUp = pools.followUp[0];
+  const nextFollowUpProject = nextFollowUp ? data.projects.find((project) => project.id === nextFollowUp.projectId) : undefined;
+  const firstProfileAction = pools.profileActions.find((action) => !action.done);
+  const hasTrainingProfile = Boolean(creator.categories.includes("AIGC Training") && creator.trainingProfile?.topics?.length);
+  const hasServicePackage = Boolean(creator.servicePackages?.length || (creator.priceMin && creator.priceMax));
+  const hasPortfolio = Boolean(creator.portfolioItems?.length || creator.portfolio.length);
+  const providerFirstAction = !approved
+    ? {
+        title: "先补齐服务主页，提高审核通过率",
+        description: "审核期间可以继续补服务定位、案例、报价和联系方式。审核通过后才能主动向派单方发起沟通。",
+        primaryLabel: "完善服务主页",
+        primaryHref: "/provider/profile",
+        secondaryLabel: "先看公开需求",
+        secondaryHref: "/projects"
+      }
+    : !hasServicePackage
+      ? {
+          title: "先设置服务包或报价，让派单方能判断预算",
+          description: "服务包会直接影响需求方是否愿意邀请你沟通。先给一个可理解的起步价、交付范围和周期。",
+          primaryLabel: "补充服务包报价",
+          primaryHref: "/provider/profile",
+          secondaryLabel: "查看需求大厅",
+          secondaryHref: "/projects"
+        }
+      : !hasPortfolio
+        ? {
+            title: "补充代表作，让主页可以发给客户看",
+            description: "有案例的主页更容易被信任，也更适合你主动分享到社群、朋友圈或老客户。",
+            primaryLabel: "补充代表作",
+            primaryHref: "/provider/profile",
+            secondaryLabel: "复制主页链接",
+            secondaryHref: `/creators/${creator.id}`
+          }
+        : !leads.length
+          ? {
+              title: "处理一个高匹配机会，产生第一条线索",
+              description: topOpportunity ? `优先查看「${topOpportunity.title}」，它和你的能力标签匹配度较高。` : "公开需求会按你的能力和服务范围推荐，先浏览一轮可接机会。",
+              primaryLabel: topOpportunity ? "查看推荐机会" : "浏览可接需求",
+              primaryHref: topOpportunity ? `/projects/${topOpportunity.id}` : "/projects",
+              secondaryLabel: "分享我的主页",
+              secondaryHref: `/creators/${creator.id}`
+            }
+          : {
+              title: "跟进已有线索，推动一次有效沟通",
+              description: "更新线索状态和沟通备注，能帮助你沉淀客户，也帮助平台判断匹配质量。",
+              primaryLabel: "跟进第一条线索",
+              primaryHref: `/orders/${leads[0].id}`,
+              secondaryLabel: "继续找机会",
+              secondaryHref: "/projects"
+            };
   const onboardingTasks = [
     {
       label: "完善展示页",
@@ -48,8 +102,13 @@ export default function ProviderPortalPage() {
       href: "/provider/profile"
     },
     {
-      label: "补充代表作",
-      done: creator.portfolio.length > 0,
+      label: "补充结构化代表作",
+      done: Boolean(creator.portfolioItems?.length || creator.portfolio.length),
+      href: "/provider/profile"
+    },
+    {
+      label: "设置服务包报价",
+      done: Boolean(creator.servicePackages?.length || (creator.priceMin && creator.priceMax)),
       href: "/provider/profile"
     },
     {
@@ -73,14 +132,14 @@ export default function ProviderPortalPage() {
           </span>
           <div>
             <h1>我的接单后台</h1>
-            <p>适合创作者、工作室和接单服务商查看邀约、表达合作意向和沉淀沟通线索。</p>
+            <p>适合创作者、工作室和接单服务商查看推荐机会、表达合作意向和沉淀沟通线索。</p>
           </div>
           <div className="toolbarGroup">
             <Link className="btn primary" href="/projects">
               <BriefcaseBusiness size={16} /> 浏览可接需求
             </Link>
-            <Link className="btn" href="/account/capabilities">
-              <BriefcaseBusiness size={16} /> 开通派单能力
+            <Link className="btn" href="/account/capabilities?intent=dispatch">
+              <BriefcaseBusiness size={16} /> 添加需求方身份
             </Link>
             <Link className="btn" href="/provider/profile">
               <Star size={16} /> 编辑我的展示页
@@ -121,6 +180,23 @@ export default function ProviderPortalPage() {
         </section>
       ) : null}
 
+      <FirstActionPanel
+        eyebrow={hasTrainingProfile ? "培训方/接单方下一步" : "接单方下一步"}
+        title={providerFirstAction.title}
+        description={providerFirstAction.description}
+        primaryLabel={providerFirstAction.primaryLabel}
+        primaryHref={providerFirstAction.primaryHref}
+        secondaryLabel={providerFirstAction.secondaryLabel}
+        secondaryHref={providerFirstAction.secondaryHref}
+        steps={[
+          { label: "主页审核", done: approved },
+          { label: "服务包报价", done: hasServicePackage },
+          { label: "代表作", done: hasPortfolio },
+          { label: "培训主页", done: hasTrainingProfile },
+          { label: "首条线索", done: Boolean(leads.length) }
+        ]}
+      />
+
       <section className="section">
         <div className="sectionHeader">
           <div>
@@ -128,10 +204,10 @@ export default function ProviderPortalPage() {
             <p>这些任务不限制浏览，但完成后更容易被派单方看到并邀请沟通。</p>
           </div>
         </div>
-        <div className="grid four">
+        <div className="grid six">
           {onboardingTasks.map((task, index) => (
             <Link className="metric" href={task.href} key={task.label}>
-              {index === 0 ? <UserRound size={18} /> : index === 1 ? <FileText size={18} /> : index === 2 ? <Search size={18} /> : <CheckCircle2 size={18} />}
+              {index === 0 ? <UserRound size={18} /> : index === 1 ? <FileText size={18} /> : index === 2 ? <Banknote size={18} /> : index === 3 ? <Search size={18} /> : <CheckCircle2 size={18} />}
               <strong>{task.done ? "已完成" : "待完成"}</strong>
               <span>{task.label}</span>
             </Link>
@@ -142,21 +218,142 @@ export default function ProviderPortalPage() {
       <section className="section">
         <div className="grid four">
           <div className="metric">
-            <strong>{invitations.length}</strong>
-            <span>收到匹配邀约</span>
+            <strong>{recommendedOpportunities.length}</strong>
+            <span>推荐机会</span>
           </div>
           <div className="metric">
             <strong>{leads.length}</strong>
             <span>合作线索</span>
           </div>
           <div className="metric">
-            <strong>{money(intentAmount)}</strong>
-            <span>意向金额</span>
+            <strong>{money(intentBudget)}</strong>
+            <span>意向预算</span>
           </div>
           <div className="metric">
             <strong>{creator.completedProjects}</strong>
             <span>累计完成项目</span>
           </div>
+          <div className="metric">
+            <strong>{creator.servicePackages?.length ?? 0}</strong>
+            <span>服务包</span>
+          </div>
+        </div>
+      </section>
+
+      <section className="section">
+        <div className="sharePanel">
+          <div className="stack">
+            <span className="tag green">增长入口</span>
+            <h2>分享你的服务主页，获得更多派单/培训线索</h2>
+            <p>这份主页包含服务方向、案例、报价、培训能力和联系方式。发给客户、社群或朋友圈时，对方可以先看能力，再进入平台发布需求或邀请沟通。</p>
+            <div className="shareUrl">{profileUrl}</div>
+          </div>
+          <button
+            className="btn primary"
+            onClick={() => navigator.clipboard?.writeText(profileUrl)}
+            type="button"
+          >
+            <Copy size={16} /> 复制主页链接
+          </button>
+        </div>
+      </section>
+
+      <section className="section">
+        <div className="conversionCard">
+          <div className="stack">
+            <span className="tag blue">四入口转化建议</span>
+            <strong>{serviceConversion.label}</strong>
+            <p>{serviceConversion.description}</p>
+            <div className="tagList">
+              {serviceConversion.reasons.length ? serviceConversion.reasons.map((item) => <span className="tag green" key={item}>{item}</span>) : <span className="tag">补齐资料后会更容易转化</span>}
+            </div>
+          </div>
+          <Link className="btn primary" href={serviceConversion.href}>
+            去完善能力
+          </Link>
+        </div>
+      </section>
+
+      <section className="section">
+        <div className="sectionHeader">
+          <div>
+            <h2>今日机会雷达</h2>
+            <p>每天先处理这几件事：看高匹配机会、跟进已沟通线索、补齐会影响转化的资料。</p>
+          </div>
+        </div>
+        <div className="grid four">
+          <article className="opportunityAction">
+            <div>
+              <span className="tag blue">
+                <Search size={13} /> 推荐
+              </span>
+              <strong>{topOpportunity?.title ?? "暂无高匹配机会"}</strong>
+              <span>{topOpportunity ? `${creatorProjectScore(creator, topOpportunity)}% 适合我 · 意向预算 ${money(topOpportunity.budget)}` : "先完善服务品类和技能标签，系统会更准。"}</span>
+            </div>
+            <Link className="btn" href={topOpportunity ? `/projects/${topOpportunity.id}` : "/provider/profile"}>
+              {topOpportunity ? "查看机会" : "完善资料"}
+            </Link>
+          </article>
+          <article className="opportunityAction">
+            <div>
+              <span className="tag gold">
+                <CalendarDays size={13} /> 快截止
+              </span>
+              <strong>{pools.dueSoon[0]?.title ?? "暂无临近截止机会"}</strong>
+              <span>{pools.dueSoon[0] ? `${compactDate(pools.dueSoon[0].deadline)} · ${categoryLabel(pools.dueSoon[0].category)}` : "公开需求暂无临近截止项目。"}</span>
+            </div>
+            <Link className="btn" href={pools.dueSoon[0] ? `/projects/${pools.dueSoon[0].id}` : "/projects"}>查看需求</Link>
+          </article>
+          <article className="opportunityAction">
+            <div>
+              <span className="tag green">
+                <SendHorizonal size={13} /> 待跟进
+              </span>
+              <strong>{nextFollowUpProject?.title ?? "暂无待跟进线索"}</strong>
+              <span>{nextFollowUp ? `${orderStatusLabel(nextFollowUp.status)} · 意向预算 ${money(nextFollowUp.amount)}` : "发起沟通后，线索会出现在这里。"}</span>
+            </div>
+            <Link className="btn" href={nextFollowUp ? `/orders/${nextFollowUp.id}` : "/projects"}>{nextFollowUp ? "跟进线索" : "去找机会"}</Link>
+          </article>
+          <article className="opportunityAction">
+            <div>
+              <span className={firstProfileAction ? "tag gold" : "tag green"}>
+                <CheckCircle2 size={13} /> 资料
+              </span>
+              <strong>{firstProfileAction?.label ?? "资料已较完整"}</strong>
+              <span>{firstProfileAction ? "补齐后更容易被派单方判断和邀请。" : "继续保持服务包和代表作更新。"}</span>
+            </div>
+            <Link className="btn" href={firstProfileAction?.href ?? "/provider/profile"}>{firstProfileAction ? "去完善" : "查看展示页"}</Link>
+          </article>
+        </div>
+      </section>
+
+      <section className="section">
+        <div className="sectionHeader">
+          <div>
+            <h2>我的服务包</h2>
+            <p>派单方会优先根据服务包判断意向预算、周期、修改次数和交付范围。</p>
+          </div>
+          <Link className="btn" href="/provider/profile">编辑服务包</Link>
+        </div>
+        <div className="grid three">
+          {(creator.servicePackages ?? []).slice(0, 3).map((item) => (
+            <article className="card" key={item.id}>
+              <div className="cardBody stack">
+                <div className="spaceBetween">
+                  <strong>{item.name}</strong>
+                  <span className="tag blue">{money(item.price)}</span>
+                </div>
+                <div className="muted">{item.deliveryDays || "-"} 天交付 · {item.revisions} 次修改</div>
+                <div className="tagList">
+                  {item.deliverables.slice(0, 4).map((deliverable) => (
+                    <span className="tag" key={deliverable}>{deliverable}</span>
+                  ))}
+                </div>
+                {item.description ? <p className="muted" style={{ margin: 0 }}>{item.description}</p> : null}
+              </div>
+            </article>
+          ))}
+          {!creator.servicePackages?.length ? <div className="notice">还没有服务包。建议至少设置基础、标准、高级三个报价档，提升派单方判断效率。</div> : null}
         </div>
       </section>
 
@@ -164,13 +361,13 @@ export default function ProviderPortalPage() {
         <section className="card">
           <div className="panelTop">
             <div>
-              <strong>匹配邀约</strong>
-              <div className="muted">Matching Agent 推荐给你的需求。</div>
+              <strong>推荐机会</strong>
+              <div className="muted">Matching Agent 根据你的服务能力推荐的需求，不代表派单方已主动邀约。</div>
             </div>
             <Inbox size={18} />
           </div>
           <div className="cardBody stack">
-            {invitations.map(({ match, project }) => (
+            {recommendedOpportunities.map(({ match, project }) => (
               <Link className="card" href={`/projects/${project?.id}`} key={match.id}>
                 <div className="cardBody stack">
                   <div className="spaceBetween">
@@ -189,7 +386,7 @@ export default function ProviderPortalPage() {
           <div className="panelTop">
             <div>
               <strong>沟通线索</strong>
-              <div className="muted">接单方查看派单邀约，并决定是否继续沟通。</div>
+              <div className="muted">接单方查看需求后发起沟通，或派单方邀请后生成线索。</div>
             </div>
             <FileUp size={18} />
           </div>
@@ -203,7 +400,7 @@ export default function ProviderPortalPage() {
                       <strong>{project?.title ?? "需求"}</strong>
                       <span className="tag green">{orderStatusLabel(order.status)}</span>
                     </div>
-                    <div className="muted">{money(order.amount)}</div>
+                    <div className="muted">意向预算 {money(order.amount)}</div>
                   </div>
                 </Link>
               );
@@ -235,7 +432,7 @@ export default function ProviderPortalPage() {
               {pools.recommended.slice(0, 4).map((project) => (
                 <Link className="miniLead" href={`/projects/${project.id}`} key={project.id}>
                   <span>{project.title}</span>
-                  <em>{creatorProjectScore(creator, project)}% 适合我 · {money(project.budget)}</em>
+                  <em>{creatorProjectScore(creator, project)}% 适合我 · 意向预算 {money(project.budget)}</em>
                 </Link>
               ))}
               {!pools.recommended.length ? <div className="muted">暂无推荐机会，先完善技能和可接类型。</div> : null}
@@ -244,18 +441,19 @@ export default function ProviderPortalPage() {
           <section className="card">
             <div className="panelTop">
               <div>
-                <strong>高预算机会</strong>
-                <div className="muted">适合挑选更高价值的沟通机会。</div>
+                <strong>快截止机会</strong>
+                <div className="muted">优先处理临近沟通期限的项目。</div>
               </div>
               <Banknote size={18} />
             </div>
             <div className="cardBody stack">
-              {pools.highBudget.slice(0, 4).map((project) => (
+              {pools.dueSoon.slice(0, 4).map((project) => (
                 <Link className="miniLead" href={`/projects/${project.id}`} key={project.id}>
                   <span>{project.title}</span>
-                  <em>{money(project.budget)} · {categoryLabel(project.category)}</em>
+                  <em>{compactDate(project.deadline)} · 意向预算 {money(project.budget)}</em>
                 </Link>
               ))}
+              {!pools.dueSoon.length ? <div className="muted">暂无临近截止机会。</div> : null}
             </div>
           </section>
           <section className="card">
@@ -270,7 +468,7 @@ export default function ProviderPortalPage() {
               {pools.contacted.slice(0, 4).map((project) => (
                 <Link className="miniLead" href={`/projects/${project.id}`} key={project.id}>
                   <span>{project.title}</span>
-                  <em>已发起沟通 · {money(project.budget)}</em>
+                  <em>已发起沟通 · 意向预算 {money(project.budget)}</em>
                 </Link>
               ))}
               {!pools.contacted.length ? <div className="muted">还没有发起沟通的机会。</div> : null}

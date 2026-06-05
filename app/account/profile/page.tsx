@@ -1,8 +1,8 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, Suspense, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, Building2, CheckCircle2, FileBadge2, Globe2, Mail, Phone, Save, ShieldCheck } from "lucide-react";
 import { isImageValue, uploadCredentialFiles, uploadOrPreviewImage } from "@/lib/file-upload";
 import { compactDate, credentialRequirementHint, credentialUploadOptional, money, publicCredentialSummary, requiredCredentialLabel, verificationTypeLabel } from "@/lib/format";
@@ -31,8 +31,10 @@ function splitList(value: string) {
     .filter(Boolean);
 }
 
-export default function AccountProfilePage() {
+function AccountProfileContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const intent = searchParams.get("intent") ?? "dispatch";
   const data = loadMarketplaceData();
   const session = readAuthSession();
   const buyerProfile = data.buyerProfiles?.find((profile) => profile.userId === session?.userId);
@@ -56,6 +58,8 @@ export default function AccountProfilePage() {
   const [serviceArea, setServiceArea] = useState(buyerProfile?.serviceArea ?? creatorProfile?.serviceArea ?? "");
   const [businessLicenseFile, setBusinessLicenseFile] = useState(buyerProfile?.businessLicenseFile ?? creatorProfile?.credentialFile ?? "");
   const [qualificationFiles, setQualificationFiles] = useState((buyerProfile?.qualificationFiles ?? creatorProfile?.qualificationFiles ?? []).join("\n"));
+  const [saveStatus, setSaveStatus] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
   const cityOptions = provinceCityOptions.find((item) => item.province === province)?.cities ?? [];
   const location = joinProvinceCity(province, city);
   const credentialOptional = credentialUploadOptional(verificationType);
@@ -80,9 +84,8 @@ export default function AccountProfilePage() {
     if (names.length) setQualificationFiles((current) => [...splitList(current), ...names].join("\n"));
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    upsertUnifiedSubjectProfile({
+  async function saveSubjectProfile() {
+    const input = {
       companyName,
       displayName,
       avatarUrl,
@@ -98,9 +101,42 @@ export default function AccountProfilePage() {
       serviceArea,
       businessLicenseFile,
       qualificationFiles: splitList(qualificationFiles)
+    };
+    const headers: HeadersInit = {
+      Accept: "application/json",
+      "Content-Type": "application/json"
+    };
+
+    if (session?.accessToken) {
+      headers.Authorization = `Bearer ${session.accessToken}`;
+    }
+
+    const response = await fetch("/api/buyers", {
+      method: "POST",
+      headers,
+      body: JSON.stringify(input)
     });
-    setAuthCapability(session?.role ?? "buyer", "pending_review");
-    router.push("/account/capabilities");
+    const payload = await response.json().catch(() => null) as { ok?: boolean; error?: string } | null;
+    if (!response.ok || !payload?.ok) {
+      throw new Error(payload?.error || "主体资料保存失败，请稍后再试。");
+    }
+
+    upsertUnifiedSubjectProfile(input);
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSaveStatus("");
+    setIsSaving(true);
+    try {
+      await saveSubjectProfile();
+      setAuthCapability(session?.role ?? "buyer", "pending_review");
+      router.push(`/account/capabilities?intent=${encodeURIComponent(intent)}`);
+    } catch (error) {
+      setSaveStatus(error instanceof Error ? error.message : "主体资料保存失败，请稍后再试。");
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (
@@ -111,8 +147,8 @@ export default function AccountProfilePage() {
             <ShieldCheck size={15} /> 统一主体主页
           </span>
           <div>
-            <h1>先创建主体主页，再选择派单或接单</h1>
-            <p>主体资料只需要填写一次。通过审核后，同一主体可以开通派单能力、接单能力，或同时开通两种能力。</p>
+            <h1>先创建主体主页，再继续当前业务</h1>
+            <p>主体资料只需要填写一次。保存后会回到你刚才选择的路径，后续也可以复用这份资料添加其他业务。</p>
           </div>
         </div>
       </section>
@@ -262,13 +298,14 @@ export default function AccountProfilePage() {
             </div>
 
             <div className="toolbarGroup">
-              <button className="btn primary" type="submit">
-                <Save size={16} /> 保存主体主页并选择能力
+              <button className="btn primary" disabled={isSaving} type="submit">
+                <Save size={16} /> {isSaving ? "正在保存..." : "保存主体主页并继续"}
               </button>
-              <Link className="btn" href="/account/capabilities">
-                已有主体资料，去开通能力 <ArrowRight size={16} />
+              <Link className="btn" href={`/account/capabilities?intent=${encodeURIComponent(intent)}`}>
+                已有主体资料，继续当前业务 <ArrowRight size={16} />
               </Link>
             </div>
+            {saveStatus ? <div className="notice">{saveStatus}</div> : null}
           </form>
         </section>
 
@@ -322,11 +359,19 @@ export default function AccountProfilePage() {
                   <span>{project.title}</span>
                   <em>{money(project.budget)} · {compactDate(project.createdAt)}</em>
                 </Link>
-              )) : <div className="muted">开通派单能力后，这里会展示历史需求。</div>}
+              )) : <div className="muted">启用需求方身份后，这里会展示历史需求。</div>}
             </div>
           </section>
         </aside>
       </div>
     </main>
+  );
+}
+
+export default function AccountProfilePage() {
+  return (
+    <Suspense fallback={<main className="main"><div className="notice">正在加载主体主页...</div></main>}>
+      <AccountProfileContent />
+    </Suspense>
   );
 }

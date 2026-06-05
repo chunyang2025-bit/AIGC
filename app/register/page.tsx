@@ -22,9 +22,13 @@ function passwordValid(value: string) {
 function RegisterContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const role = searchParams.get("role") === "admin" ? "admin" : "buyer";
+  const requestedNext = searchParams.get("next");
+  const requestedIntent = searchParams.get("intent");
   const [account, setAccount] = useState(searchParams.get("account") ?? "");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
   const [agreed, setAgreed] = useState(false);
   const [statusText, setStatusText] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -51,13 +55,16 @@ function RegisterContent() {
     try {
       setIsSubmitting(true);
       registerAccount({
-        role: "buyer",
+        role,
         account: account.trim(),
         password,
-        name: account.trim()
+        name: account.trim(),
+        inviteCode: role === "admin" ? inviteCode.trim() : undefined
       });
-      setStatusText("注册成功，请登录后完善主体资料。");
-      router.push("/login");
+      setStatusText(role === "admin" ? "后台账号注册成功，请登录运营后台。" : "注册成功，请登录后继续当前业务路径。");
+      const nextQuery = requestedNext ? `&next=${encodeURIComponent(requestedNext)}` : "";
+      const intentQuery = requestedIntent ? `&intent=${encodeURIComponent(requestedIntent)}` : "";
+      router.push(role === "admin" ? "/login?role=admin" : `/login?account=${encodeURIComponent(account.trim())}${nextQuery}${intentQuery}`);
     } catch (error) {
       setStatusText(error instanceof Error ? error.message : "注册失败，请稍后再试。");
     } finally {
@@ -84,17 +91,17 @@ function RegisterContent() {
       <section className="dispatchLoginMain registerMain">
         <aside className="dispatchLoginPanel modernAuthPanel registerPanel">
           <div className="authPanelHeader">
-            <h1>注册 AIGClancer</h1>
-            <p>先创建主体账号。登录后进入主体中心，再选择开通派单能力、接单能力或同时开通两种能力。</p>
+            <h1>{role === "admin" ? "注册平台运营账号" : "注册 AIGClancer"}</h1>
+            <p>{role === "admin" ? "仅平台内部人员使用。注册需要管理员邀请码，账号创建后可进入审核与风控后台。" : "先创建主体账号。登录后会按你选择的入口继续，不需要一次理解所有业务。"}</p>
           </div>
 
           <div className="selectedRole compact authSelectedRole">
             <div className="roleIcon">
-              <UserCog size={22} />
+              {role === "admin" ? <ShieldCheck size={22} /> : <UserCog size={22} />}
             </div>
             <div>
-              <strong>主体账号</strong>
-              <span>注册后进入主体中心选择能力</span>
+              <strong>{role === "admin" ? "平台运营" : "主体账号"}</strong>
+              <span>{role === "admin" ? "审核、举报和风控后台" : "注册后继续当前业务路径"}</span>
             </div>
           </div>
 
@@ -126,6 +133,15 @@ function RegisterContent() {
                 </button>
               </div>
             </label>
+            {role === "admin" ? (
+              <label>
+                <span>后台邀请码</span>
+                <div className="authInput">
+                  <ShieldCheck size={18} />
+                  <input placeholder="请输入管理员邀请码" value={inviteCode} onChange={(event) => setInviteCode(event.target.value)} />
+                </div>
+              </label>
+            ) : null}
             <button className="authPrimary" onClick={submitRegister} disabled={isSubmitting} type="button">
               {isSubmitting ? "正在注册..." : "注册"}
             </button>
@@ -135,7 +151,7 @@ function RegisterContent() {
 
           <div className="registerPrompt">
             <span>已有账号？</span>
-            <Link href="/login">去登录</Link>
+            <Link href={role === "admin" ? "/login?role=admin" : "/login"}>去登录</Link>
           </div>
 
           <label className="modernAgreement">
@@ -148,7 +164,7 @@ function RegisterContent() {
           <div className="dispatchRoleTips">
             <div>
               <CheckCircle2 size={15} />
-              <span>注册后需要完善主体主页并提交审核</span>
+              <span>{role === "admin" ? "默认本地邀请码为 AIGC-ADMIN-2026，生产环境请配置 ADMIN_INVITE_CODE" : "注册后需要完善主体主页并提交审核"}</span>
             </div>
           </div>
         </aside>

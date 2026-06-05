@@ -12,7 +12,8 @@ export const projectCategoryOptions: Array<{ value: ProjectCategory; label: stri
   { value: "AI Model Training", label: "AI模型训练" },
   { value: "AI Voice", label: "AI配音/声音" },
   { value: "AI PPT", label: "AI演示/PPT" },
-  { value: "AI Course", label: "AI课程内容" }
+  { value: "AI Course", label: "AI课程内容" },
+  { value: "AIGC Training", label: "AIGC培训" }
 ];
 
 export const projectCategories = projectCategoryOptions.map((item) => item.value);

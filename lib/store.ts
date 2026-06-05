@@ -2,7 +2,26 @@
 
 import { demoData } from "./demo-data";
 import { recommendCreators } from "./matching";
-import { ActivityEvent, BuyerProfile, MarketplaceData, Order, Project, ProjectCategory, ProjectMatch, VerificationType } from "./types";
+import {
+  AbuseReport,
+  ActivityEvent,
+  BuyerProfile,
+  DeliverableType,
+  MarketplaceData,
+  Order,
+  PortfolioItem,
+  Project,
+  ProjectCategory,
+  ProjectMatch,
+  ProjectUrgency,
+  ProjectUseCase,
+  ServicePackage,
+  TrialFeedback,
+  TrainingProfile,
+  TrainingRequirement,
+  User,
+  VerificationType
+} from "./types";
 import { readAuthSession, saveAuthSession } from "./auth";
 
 const STORAGE_KEY = "linggong-zhichuang-demo-v2";
@@ -23,6 +42,7 @@ function normalizeData(data: MarketplaceData): MarketplaceData {
   const demo = cloneData(demoData);
   return {
     ...data,
+    feedback: data.feedback ?? [],
     buyerProfiles: (data.buyerProfiles ?? demo.buyerProfiles ?? []).map((profile) => ({
       ...profile,
       displayName: profile.displayName ?? profile.companyName,
@@ -42,6 +62,8 @@ function normalizeData(data: MarketplaceData): MarketplaceData {
       verificationType: normalizeVerificationType(creator.verificationType ?? creator.identityType) ?? "individual",
       identityType: normalizeVerificationType(creator.identityType) ?? normalizeVerificationType(creator.verificationType) ?? "individual",
       qualificationFiles: creator.qualificationFiles ?? [],
+      portfolioItems: creator.portfolioItems ?? [],
+      servicePackages: creator.servicePackages ?? [],
       websiteUrl: creator.websiteUrl ?? "",
       socialUrl: creator.socialUrl ?? "",
       serviceArea: creator.serviceArea ?? creator.location
@@ -141,6 +163,13 @@ export function createProject(input: {
   description: string;
   category: ProjectCategory;
   tags?: string[];
+  useCase?: ProjectUseCase;
+  deliverableTypes?: DeliverableType[];
+  urgency?: ProjectUrgency;
+  needInvoice?: boolean;
+  longTerm?: boolean;
+  acceptPlatformRecommend?: boolean;
+  trainingRequirement?: TrainingRequirement;
   budget: number;
   deadline: string;
   referenceFile?: string;
@@ -172,9 +201,16 @@ export function createProject(input: {
     description: input.description,
     category: input.category,
     tags: input.tags ?? [],
+    useCase: input.useCase,
+    deliverableTypes: input.deliverableTypes ?? [],
+    urgency: input.urgency,
+    needInvoice: input.needInvoice,
+    longTerm: input.longTerm,
+    acceptPlatformRecommend: input.acceptPlatformRecommend ?? true,
+    trainingRequirement: input.trainingRequirement,
     budget: input.budget,
     deadline: input.deadline,
-    status: "matching",
+    status: "pending_review",
     referenceFile: input.referenceFile,
     qualificationFile: input.qualificationFile,
     contactEmail: input.contactEmail,
@@ -202,10 +238,88 @@ export function createProject(input: {
   return { project, matches };
 }
 
-export function inviteCreator(projectId: string, creatorId: string) {
+export function resubmitProject(projectId: string, input: {
+  title: string;
+  description: string;
+  category: ProjectCategory;
+  tags?: string[];
+  useCase?: ProjectUseCase;
+  deliverableTypes?: DeliverableType[];
+  urgency?: ProjectUrgency;
+  needInvoice?: boolean;
+  longTerm?: boolean;
+  acceptPlatformRecommend?: boolean;
+  trainingRequirement?: TrainingRequirement;
+  budget: number;
+  deadline: string;
+  referenceFile?: string;
+  qualificationFile?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  agentBrief?: Project["agentBrief"];
+}) {
+  const remote = requestJson<{ project: Project; matches: ProjectMatch[] }>(`/api/projects/${projectId}`, {
+    method: "PATCH",
+    body: JSON.stringify(input)
+  });
+
+  if (remote) {
+    syncFromApi();
+    return remote;
+  }
+
+  const data = loadMarketplaceData();
+  const project = data.projects.find((item) => item.id === projectId);
+  if (!project) return null;
+
+  const nextProject: Project = {
+    ...project,
+    title: input.title,
+    description: input.description,
+    category: input.category,
+    tags: input.tags ?? [],
+    useCase: input.useCase,
+    deliverableTypes: input.deliverableTypes ?? [],
+    urgency: input.urgency,
+    needInvoice: input.needInvoice,
+    longTerm: input.longTerm,
+    acceptPlatformRecommend: input.acceptPlatformRecommend ?? true,
+    trainingRequirement: input.trainingRequirement,
+    budget: input.budget,
+    deadline: input.deadline,
+    status: "pending_review",
+    referenceFile: input.referenceFile,
+    qualificationFile: input.qualificationFile,
+    contactEmail: input.contactEmail,
+    contactPhone: input.contactPhone,
+    agentBrief: input.agentBrief,
+    rejectedReason: undefined
+  };
+  const matches = recommendCreators(nextProject, data.creators, 10);
+  const activityEvent: ActivityEvent = {
+    id: `a-${Date.now()}`,
+    userId: nextProject.buyerId,
+    role: "buyer",
+    eventType: "post_project",
+    targetType: "project",
+    targetId: nextProject.id,
+    createdAt: new Date().toISOString(),
+    note: "重新提交需求审核"
+  };
+  const next: MarketplaceData = {
+    ...data,
+    projects: data.projects.map((item) => (item.id === projectId ? nextProject : item)),
+    matches: [...matches, ...data.matches.filter((match) => match.projectId !== projectId)],
+    activityEvents: [activityEvent, ...data.activityEvents]
+  };
+  saveMarketplaceData(next);
+  return { project: nextProject, matches };
+}
+
+export function inviteCreator(projectId: string, creatorId: string, input: { message?: string } = {}) {
   const remote = requestJson<Order>(`/api/projects/${projectId}/invite`, {
     method: "POST",
-    body: JSON.stringify({ creatorId })
+    body: JSON.stringify({ creatorId, message: input.message })
   });
 
   if (remote) {
@@ -217,7 +331,7 @@ export function inviteCreator(projectId: string, creatorId: string) {
   const project = data.projects.find((item) => item.id === projectId);
   const creator = data.creators.find((item) => item.id === creatorId);
 
-  if (!project || !creator) {
+  if (!project || !creator || (project.status !== "open" && project.status !== "matching")) {
     return null;
   }
 
@@ -254,7 +368,7 @@ export function inviteCreator(projectId: string, creatorId: string) {
         id: `msg-${Date.now()}`,
         orderId: order.id,
         senderId: project.buyerId,
-        body: `已邀请 ${creator.name} 沟通需求「${project.title}」。`,
+        body: input.message || `已邀请 ${creator.name} 沟通需求「${project.title}」。`,
         createdAt: new Date().toISOString()
       },
       ...data.messages
@@ -289,7 +403,7 @@ export function expressInterestInProject(
   const project = data.projects.find((item) => item.id === projectId);
   const creator = data.creators.find((item) => item.id === creatorId);
 
-  if (!project || !creator) {
+  if (!project || !creator || (project.status !== "open" && project.status !== "matching")) {
     return null;
   }
 
@@ -352,10 +466,10 @@ export function expressInterestInProject(
   return order;
 }
 
-export function updateOrderStatus(orderId: string, status: Order["status"]) {
+export function updateOrderStatus(orderId: string, status: Order["status"], input: { resultReason?: string; resultNote?: string } = {}) {
   const remote = requestJson<Order>(`/api/orders/${orderId}/status`, {
     method: "PATCH",
-    body: JSON.stringify({ status })
+    body: JSON.stringify({ status, ...input })
   });
 
   if (remote) {
@@ -367,8 +481,8 @@ export function updateOrderStatus(orderId: string, status: Order["status"]) {
   const order = data.orders.find((item) => item.id === orderId);
   const creator = order ? data.creators.find((item) => item.id === order.creatorId) : null;
   const creatorUserId = creator?.userId ?? "u-creator-1";
-  const actorRole: ActivityEvent["role"] = status === "approved" ? "buyer" : "creator";
-  const actorId = status === "approved" ? order?.buyerId ?? "u-buyer-1" : creatorUserId;
+  const actorRole: ActivityEvent["role"] = status === "approved" || status === "not_fit" || status === "no_response" || status === "cancelled" ? "buyer" : "creator";
+  const actorId = actorRole === "buyer" ? order?.buyerId ?? "u-buyer-1" : creatorUserId;
   const eventType: ActivityEvent["eventType"] = status === "approved" ? "approve_order" : status === "delivered" ? "deliver_order" : "send_message";
   const activityEvent: ActivityEvent = {
     id: `a-${Date.now()}`,
@@ -377,11 +491,22 @@ export function updateOrderStatus(orderId: string, status: Order["status"]) {
     eventType,
     targetType: "order",
     targetId: orderId,
+    note: input.resultReason || input.resultNote || status,
     createdAt: new Date().toISOString()
   };
   const next: MarketplaceData = {
     ...data,
-    orders: data.orders.map((order) => (order.id === orderId ? { ...order, status } : order)),
+    orders: data.orders.map((order) => (
+      order.id === orderId
+        ? {
+            ...order,
+            status,
+            resultReason: input.resultReason || order.resultReason,
+            resultNote: input.resultNote || order.resultNote,
+            resultUpdatedAt: new Date().toISOString()
+          }
+        : order
+    )),
     activityEvents: [activityEvent, ...data.activityEvents]
   };
   saveMarketplaceData(next);
@@ -575,6 +700,8 @@ export function upsertCurrentCreatorProfile(input: {
   skills: string[];
   categories: ProjectCategory[];
   portfolio: string[];
+  portfolioItems?: PortfolioItem[];
+  servicePackages?: ServicePackage[];
   priceMin: number;
   priceMax: number;
   responseTime: string;
@@ -589,6 +716,7 @@ export function upsertCurrentCreatorProfile(input: {
   qualificationFiles: string[];
   contactEmail: string;
   contactPhone: string;
+  trainingProfile?: TrainingProfile;
 }) {
   const session = readAuthSession();
   const userId = session?.userId ?? "u-creator-self";
@@ -622,6 +750,8 @@ export function upsertCurrentCreatorProfile(input: {
     skills: input.skills,
     categories: input.categories,
     portfolio: input.portfolio,
+    portfolioItems: input.portfolioItems,
+    servicePackages: input.servicePackages,
     priceMin: input.priceMin,
     priceMax: input.priceMax,
     completedProjects: 0,
@@ -640,6 +770,7 @@ export function upsertCurrentCreatorProfile(input: {
     qualificationFiles: input.qualificationFiles,
     contactEmail: input.contactEmail,
     contactPhone: input.contactPhone,
+    trainingProfile: input.trainingProfile,
     cover: "linear-gradient(135deg, #153f31, #2f7c5f 46%, #f0b35a)"
   };
 
@@ -691,6 +822,125 @@ export function verifySubject(subjectType: "buyer" | "creator", id: string, veri
   }
 
   return false;
+}
+
+export function reviewProject(projectId: string, status: "open" | "rejected" | "removed", rejectedReason?: string) {
+  const remote = requestJson<Project>(`/api/admin/projects/${projectId}/review`, {
+    method: "PATCH",
+    body: JSON.stringify({ status, rejectedReason })
+  });
+
+  if (remote) {
+    syncFromApi();
+    return remote;
+  }
+
+  const data = loadMarketplaceData();
+  const project = data.projects.find((item) => item.id === projectId);
+  if (!project) return null;
+
+  const activityEvent: ActivityEvent = {
+    id: `a-${Date.now()}`,
+    userId: project.buyerId,
+    role: "admin",
+    eventType: "browse",
+    targetType: "project",
+    targetId: projectId,
+    createdAt: new Date().toISOString()
+  };
+  const next: MarketplaceData = {
+    ...data,
+    projects: data.projects.map((item) =>
+      item.id === projectId
+        ? {
+            ...item,
+            status,
+            rejectedReason: status === "rejected" || status === "removed" ? rejectedReason || "需求信息不完整，请补充资质、联系方式或需求说明后重新提交。" : undefined
+          }
+        : item
+    ),
+    activityEvents: [activityEvent, ...data.activityEvents]
+  };
+  saveMarketplaceData(next);
+  return next.projects.find((item) => item.id === projectId) ?? null;
+}
+
+export function submitReport(input: { targetType: AbuseReport["targetType"]; targetId: string; reason: string }) {
+  const session = readAuthSession();
+  const remote = requestJson<AbuseReport>("/api/reports", {
+    method: "POST",
+    body: JSON.stringify({
+      ...input,
+      reporterId: session?.userId
+    })
+  });
+
+  if (remote) {
+    syncFromApi();
+    return remote;
+  }
+
+  return null;
+}
+
+export function submitFeedback(input: { page: string; category: TrialFeedback["category"]; content: string; rating?: number }) {
+  const session = readAuthSession();
+  const remote = requestJson<TrialFeedback>("/api/feedback", {
+    method: "POST",
+    body: JSON.stringify({
+      ...input,
+      userId: session?.userId
+    })
+  });
+
+  if (remote) {
+    syncFromApi();
+    return remote;
+  }
+
+  return null;
+}
+
+export function resolveFeedback(feedbackId: string, status: "reviewing" | "resolved" | "dismissed", resolution?: string) {
+  const remote = requestJson<TrialFeedback>(`/api/admin/feedback/${feedbackId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ status, resolution })
+  });
+
+  if (remote) {
+    syncFromApi();
+    return remote;
+  }
+
+  return null;
+}
+
+export function resolveReport(reportId: string, status: "reviewing" | "resolved" | "dismissed", resolution?: string) {
+  const remote = requestJson<AbuseReport>(`/api/admin/reports/${reportId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ status, resolution })
+  });
+
+  if (remote) {
+    syncFromApi();
+    return remote;
+  }
+
+  return null;
+}
+
+export function suspendUser(userId: string, suspended = true, reason?: string) {
+  const remote = requestJson<User>(`/api/admin/users/${userId}/suspend`, {
+    method: "PATCH",
+    body: JSON.stringify({ suspended, reason })
+  });
+
+  if (remote) {
+    syncFromApi();
+    return remote;
+  }
+
+  return null;
 }
 
 export function createOrderMessage(orderId: string, input: { senderId: string; body: string; attachmentUrl?: string }) {

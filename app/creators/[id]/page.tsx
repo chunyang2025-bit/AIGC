@@ -1,15 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { notFound, useRouter } from "next/navigation";
-import { ArrowLeft, BriefcaseBusiness, CheckCircle2, Clock, ExternalLink, FileBadge2, FileText, Globe2, Mail, MapPin, Phone, Star } from "lucide-react";
+import { notFound } from "next/navigation";
+import { ArrowLeft, BriefcaseBusiness, CheckCircle2, Clock, Copy, ExternalLink, FileBadge2, FileText, Globe2, Mail, MapPin, Phone, Star } from "lucide-react";
 import { categoryLabel, money, publicCredentialSummary, verificationTypeLabel } from "@/lib/format";
 import { isImageValue } from "@/lib/file-upload";
+import { trainingFormatLabel } from "@/lib/training";
 import { loadMarketplaceData } from "@/lib/store";
 import { readAuthSession } from "@/lib/auth";
+import { ReportButton } from "@/components/ReportButton";
+import { PortfolioItem } from "@/lib/types";
+import { saveRemixDraft } from "@/lib/remix-draft";
 
 export default function CreatorDetailPage({ params }: { params: { id: string } }) {
-  const router = useRouter();
   const session = readAuthSession();
   const data = loadMarketplaceData();
   const creator = data.creators.find((item) => item.id === params.id);
@@ -18,9 +21,38 @@ export default function CreatorDetailPage({ params }: { params: { id: string } }
     notFound();
   }
 
-  if (!session) {
-    router.push("/login");
-    return null;
+  const publicCreator = creator;
+  const portfolioItems: PortfolioItem[] =
+    creator.portfolioItems?.length
+      ? creator.portfolioItems
+      : creator.portfolio.map((item, index) => ({
+          id: `legacy-${index}`,
+          title: item,
+          category: creator.categories[0] ?? "AI Short Video",
+          description: "可在沟通时围绕该代表作进一步发送脚本、成片或项目说明。",
+          public: true
+        }));
+
+  const profileUrl = typeof window === "undefined" ? `/creators/${creator.id}` : `${window.location.origin}/creators/${creator.id}`;
+
+  function saveCreatorRemix() {
+    saveRemixDraft({
+      type: "creator",
+      sourceCreatorId: publicCreator.id,
+      sourceName: publicCreator.displayName ?? publicCreator.name,
+      creator: {
+        title: publicCreator.title,
+        bio: publicCreator.bio,
+        skills: publicCreator.skills,
+        categories: publicCreator.categories,
+        priceMin: publicCreator.priceMin,
+        priceMax: publicCreator.priceMax,
+        responseTime: publicCreator.responseTime,
+        serviceArea: publicCreator.serviceArea,
+        servicePackages: publicCreator.servicePackages,
+        trainingProfile: publicCreator.trainingProfile
+      }
+    });
   }
 
   return (
@@ -32,6 +64,17 @@ export default function CreatorDetailPage({ params }: { params: { id: string } }
         <Link className="btn primary" href="/projects">
           <BriefcaseBusiness size={16} /> 查看公开需求
         </Link>
+        <button className="btn" onClick={() => navigator.clipboard?.writeText(profileUrl)} type="button">
+          <Copy size={16} /> 复制展示页
+        </button>
+        <Link className="btn" href="/provider/profile?remix=creator" onClick={saveCreatorRemix}>
+          <Copy size={16} /> 参考这个主页
+        </Link>
+        {!session ? (
+          <Link className="btn primary" href="/register">
+            免费注册后联系
+          </Link>
+        ) : null}
       </div>
 
       <section className="creatorDetailHero">
@@ -71,6 +114,7 @@ export default function CreatorDetailPage({ params }: { params: { id: string } }
           <p className="muted" style={{ margin: 0, lineHeight: 1.7 }}>
             {creator.bio}
           </p>
+          <ReportButton targetType="creator" targetId={creator.id} />
           <div className="grid four">
             <div className="metric">
               <strong>{creator.rating.toFixed(1)}</strong>
@@ -152,6 +196,73 @@ export default function CreatorDetailPage({ params }: { params: { id: string } }
       </div>
 
       <section className="section">
+        {creator.trainingProfile ? (
+          <article className="card" style={{ marginBottom: 16 }}>
+            <div className="cardBody stack">
+              <div className="spaceBetween">
+                <strong>AIGC培训服务能力</strong>
+                <span className="tag blue">讲师/内训顾问</span>
+              </div>
+              <div className="tagList">
+                {creator.trainingProfile.topics.map((item) => <span className="tag green" key={item}>{item}</span>)}
+                {creator.trainingProfile.formats.map((item) => <span className="tag blue" key={item}>{trainingFormatLabel(item)}</span>)}
+                {creator.trainingProfile.customizable ? <span className="tag">支持企业定制案例</span> : null}
+              </div>
+              <div className="grid two compactGrid">
+                <div className="briefBlock">
+                  <strong>适合对象</strong>
+                  <p>{creator.trainingProfile.audience.join("、") || "待补充"}</p>
+                </div>
+                <div className="briefBlock">
+                  <strong>可服务城市</strong>
+                  <p>{creator.trainingProfile.cities.join("、") || creator.serviceArea || "全国线上"}</p>
+                </div>
+              </div>
+              <div className="briefBlock">
+                <strong>交付材料</strong>
+                <p>{creator.trainingProfile.materials.join("、") || "课件、练习、工具清单等可沟通确认"}</p>
+              </div>
+              {creator.trainingProfile.pricingNote ? <div className="notice">{creator.trainingProfile.pricingNote}</div> : null}
+              {creator.trainingProfile.caseStudies.length ? (
+                <div className="briefBlock">
+                  <strong>培训案例</strong>
+                  <ul className="cleanList">
+                    {creator.trainingProfile.caseStudies.map((item) => <li key={item}><CheckCircle2 size={15} /> {item}</li>)}
+                  </ul>
+                </div>
+              ) : null}
+            </div>
+          </article>
+        ) : null}
+        <div className="sectionHeader">
+          <div>
+            <h2>服务包报价</h2>
+            <p>用于快速判断预算、交付周期、修改次数和成果范围。</p>
+          </div>
+        </div>
+        <div className="grid three">
+          {(creator.servicePackages ?? []).map((item) => (
+            <article className="card" key={item.id}>
+              <div className="cardBody stack">
+                <div className="spaceBetween">
+                  <strong>{item.name}</strong>
+                  <span className="tag blue">{money(item.price)}</span>
+                </div>
+                <div className="muted">{item.deliveryDays || "-"} 天交付 · {item.revisions} 次修改</div>
+                <div className="tagList">
+                  {item.deliverables.map((deliverable) => (
+                    <span className="tag" key={deliverable}>{deliverable}</span>
+                  ))}
+                </div>
+                {item.description ? <p className="muted" style={{ margin: 0, lineHeight: 1.55 }}>{item.description}</p> : null}
+              </div>
+            </article>
+          ))}
+          {!creator.servicePackages?.length ? <div className="notice">该创作者暂未设置服务包，可通过沟通线索进一步确认报价和交付范围。</div> : null}
+        </div>
+      </section>
+
+      <section className="section">
         <div className="sectionHeader">
           <div>
             <h2>简历与代表作</h2>
@@ -167,14 +278,15 @@ export default function CreatorDetailPage({ params }: { params: { id: string } }
           </div>
         </article>
         <div className="grid">
-          {creator.portfolio.map((item) => (
-            <article className="card" key={item}>
+          {portfolioItems.map((item) => (
+            <article className="card" key={item.id}>
               <div className="cardBody stack">
-                <span className="tag green">代表作</span>
-                <strong>{item}</strong>
+                <span className="tag green">{categoryLabel(item.category)}</span>
+                <strong>{item.title}</strong>
                 <p className="muted" style={{ margin: 0, lineHeight: 1.55 }}>
-                  可在沟通时围绕该代表作进一步发送脚本、成片或项目说明。
+                  {item.description}
                 </p>
+                {item.url ? <a className="btn" href={item.url}>查看作品链接</a> : null}
               </div>
             </article>
           ))}

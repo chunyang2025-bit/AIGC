@@ -1,12 +1,17 @@
 import { publicUser, registerUser } from "../../../../lib/server/actions";
 import { registerSupabaseUser } from "../../../../lib/server/auth";
 import { getMarketplaceData, saveMarketplaceData } from "../../../../lib/server/data";
+import { rateLimit } from "../../../../lib/server/rate-limit";
 import { apiFail, apiOk, readJson } from "../../../../lib/server/response";
 import { requiredFields } from "../../../../lib/server/validation";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  const limited = rateLimit(request, "auth:register", 5, 60_000);
+  if (!limited.allowed) {
+    return apiFail(429, "注册过于频繁，请稍后再试");
+  }
   const body = await readJson(request);
   const missing = requiredFields(body, ["name", "role"]);
   if (missing.length) {
@@ -20,12 +25,20 @@ export async function POST(request: Request) {
 
   const normalizedBody = {
     ...body,
+    role: String(body.role || "buyer"),
     account,
     email: String(body.email || (account.includes("@") ? account : `${account}@phone.aigclancer.local`)),
     phone: String(body.phone || (account.includes("@") ? "" : account))
   };
 
   const data = await getMarketplaceData();
+  if (String(normalizedBody.role) === "admin") {
+    const inviteCode = String(body.inviteCode || "");
+    const expectedCode = process.env.ADMIN_INVITE_CODE || (process.env.NODE_ENV !== "production" ? "AIGC-ADMIN-2026" : "");
+    if (!expectedCode || inviteCode !== expectedCode) {
+      return apiFail(403, "后台人员注册邀请码不正确");
+    }
+  }
   let user;
 
   try {
@@ -36,7 +49,7 @@ export async function POST(request: Request) {
 
   user = user ?? registerUser(data, normalizedBody);
   if (!user) {
-    return apiFail(403, "平台运营账号不开放自助注册");
+    return apiFail(403, "注册失败，请检查账号信息");
   }
   if (!data.users.some((item) => item.id === user.id)) {
     data.users.unshift(user);

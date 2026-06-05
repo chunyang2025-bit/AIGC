@@ -1,12 +1,17 @@
 import { createMessage } from "../../../../../lib/server/actions";
 import { getRequestUser, isSupabaseServerConfigured } from "../../../../../lib/server/auth";
 import { getMarketplaceData, saveMarketplaceData } from "../../../../../lib/server/data";
+import { rateLimit } from "../../../../../lib/server/rate-limit";
 import { apiFail, apiOk, readJson } from "../../../../../lib/server/response";
 import { requiredFields } from "../../../../../lib/server/validation";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
+  const limited = rateLimit(request, "messages:create", 30, 60_000);
+  if (!limited.allowed) {
+    return apiFail(429, "发送过于频繁，请稍后再试");
+  }
   const body = await readJson(request);
   const actor = await getRequestUser(request);
   if (isSupabaseServerConfigured() && !actor) {
@@ -19,6 +24,10 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
   const data = await getMarketplaceData();
   const order = data.orders.find((item) => item.id === params.id);
+  const user = actor ? data.users.find((item) => item.id === actor.id) : null;
+  if (user?.status === "suspended") {
+    return apiFail(403, user.suspendedReason || "账号已被限制，暂不能发送消息");
+  }
   const creator = order ? data.creators.find((item) => item.id === order.creatorId) : null;
   const allowed = actor && order ? order.buyerId === actor.id || creator?.userId === actor.id : true;
   if (isSupabaseServerConfigured() && !allowed) {

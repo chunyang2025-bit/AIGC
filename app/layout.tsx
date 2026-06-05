@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { BriefcaseBusiness, LogIn, Search, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { AuthNavActions } from "@/components/AuthNavActions";
+import { FeedbackWidget } from "@/components/FeedbackWidget";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -59,6 +60,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Link href="/disclaimer">免责声明</Link>
             </div>
           </footer>
+          <FeedbackWidget />
         </div>
       </body>
     </html>

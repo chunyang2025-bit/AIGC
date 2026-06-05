@@ -3,17 +3,31 @@
 import { useState } from "react";
 import { notFound, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2, CircleDotDashed, MessageSquare, PhoneCall, RotateCcw, XCircle } from "lucide-react";
-import { compactDate, money, orderStatusLabel } from "@/lib/format";
+import { ArrowLeft, CalendarDays, CheckCircle2, CircleDotDashed, MessageSquare, PhoneCall, RotateCcw, UserCheck, XCircle } from "lucide-react";
+import { compactDate, money, orderResultReasonLabel, orderStatusLabel } from "@/lib/format";
 import { createOrderMessage, loadMarketplaceData, updateOrderStatus } from "@/lib/store";
 import { readAuthSession } from "@/lib/auth";
 import { OrderStatus } from "@/lib/types";
 
-const statusActions: Array<{ label: string; status: OrderStatus; icon: React.ReactNode }> = [
-  { label: "标记已交换资料", status: "delivered", icon: <MessageSquare size={16} /> },
+const statusActions: Array<{ label: string; status: OrderStatus; icon: React.ReactNode; tone?: "primary" | "danger"; requiresReason?: boolean }> = [
+  { label: "已联系", status: "contacted", icon: <UserCheck size={16} /> },
+  { label: "已约沟通", status: "meeting_scheduled", icon: <CalendarDays size={16} /> },
   { label: "继续沟通中", status: "revision", icon: <RotateCcw size={16} /> },
-  { label: "标记不合适", status: "not_fit", icon: <XCircle size={16} /> },
-  { label: "标记已线下合作", status: "approved", icon: <CheckCircle2 size={16} /> }
+  { label: "已达成合作意向", status: "approved", icon: <CheckCircle2 size={16} />, tone: "primary" },
+  { label: "对方未回复", status: "no_response", icon: <XCircle size={16} />, tone: "danger", requiresReason: true },
+  { label: "暂不合适", status: "not_fit", icon: <XCircle size={16} />, tone: "danger", requiresReason: true },
+  { label: "需求变更/取消", status: "cancelled", icon: <XCircle size={16} />, requiresReason: true }
+];
+
+const resultReasons = [
+  "budget_mismatch",
+  "capability_mismatch",
+  "schedule_mismatch",
+  "unclear_requirement",
+  "no_response",
+  "solved_elsewhere",
+  "requirement_changed",
+  "other"
 ];
 
 export default function OrderPage({ params }: { params: { id: string } }) {
@@ -21,6 +35,9 @@ export default function OrderPage({ params }: { params: { id: string } }) {
   const session = readAuthSession();
   const data = loadMarketplaceData();
   const [messageBody, setMessageBody] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState<OrderStatus>("not_fit");
+  const [resultReason, setResultReason] = useState("budget_mismatch");
+  const [resultNote, setResultNote] = useState("");
   const order = data.orders.find((item) => item.id === params.id);
 
   if (!order) {
@@ -45,7 +62,7 @@ export default function OrderPage({ params }: { params: { id: string } }) {
           <div className="panelTop">
             <div>
               <h1 style={{ margin: 0, fontSize: 26 }}>{project?.title ?? "合作线索"}</h1>
-              <div className="muted">意向创作者：{creator?.name ?? "创作者"} · 需求预算 {money(order.amount)}</div>
+              <div className="muted">意向创作者：{creator?.name ?? "创作者"} · 意向预算 {money(order.amount)}</div>
             </div>
             <span className="tag green">{orderStatusLabel(order.status)}</span>
           </div>
@@ -107,9 +124,13 @@ export default function OrderPage({ params }: { params: { id: string } }) {
               </div>
               {statusActions.map((action) => (
                 <button
-                  className={action.status === "approved" ? "btn primary" : action.status === "not_fit" ? "btn danger" : "btn"}
+                  className={action.tone === "primary" ? "btn primary" : action.tone === "danger" ? "btn danger" : "btn"}
                   key={action.status}
                   onClick={() => {
+                    if (action.requiresReason) {
+                      setSelectedStatus(action.status);
+                      return;
+                    }
                     updateOrderStatus(order.id, action.status);
                     router.refresh();
                   }}
@@ -117,6 +138,39 @@ export default function OrderPage({ params }: { params: { id: string } }) {
                   {action.icon} {action.label}
                 </button>
               ))}
+              <div className="notice stack">
+                <strong>关闭/失败原因</strong>
+                <div className="field">
+                  <label htmlFor="lead-result-status">结果</label>
+                  <select id="lead-result-status" value={selectedStatus} onChange={(event) => setSelectedStatus(event.target.value as OrderStatus)}>
+                    <option value="not_fit">暂不合适</option>
+                    <option value="no_response">对方未回复</option>
+                    <option value="cancelled">需求变更/取消</option>
+                  </select>
+                </div>
+                <div className="field">
+                  <label htmlFor="lead-result-reason">原因</label>
+                  <select id="lead-result-reason" value={resultReason} onChange={(event) => setResultReason(event.target.value)}>
+                    {resultReasons.map((reason) => (
+                      <option key={reason} value={reason}>{orderResultReasonLabel(reason)}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="field">
+                  <label htmlFor="lead-result-note">补充说明</label>
+                  <textarea id="lead-result-note" value={resultNote} onChange={(event) => setResultNote(event.target.value)} placeholder="可选，记录价格、时间、能力或其他沟通情况" />
+                </div>
+                <button
+                  className="btn danger"
+                  onClick={() => {
+                    updateOrderStatus(order.id, selectedStatus, { resultReason, resultNote });
+                    router.refresh();
+                  }}
+                  type="button"
+                >
+                  <XCircle size={16} /> 标记结果并保存原因
+                </button>
+              </div>
             </div>
           </div>
 
@@ -131,6 +185,14 @@ export default function OrderPage({ params }: { params: { id: string } }) {
                 <CircleDotDashed size={16} />
                 <span>当前状态 {orderStatusLabel(order.status)}</span>
               </div>
+              {order.resultReason || order.resultNote ? (
+                <div className="notice stack">
+                  <strong>结果回收</strong>
+                  <span>原因：{orderResultReasonLabel(order.resultReason)}</span>
+                  {order.resultNote ? <span>备注：{order.resultNote}</span> : null}
+                  {order.resultUpdatedAt ? <span>更新于 {compactDate(order.resultUpdatedAt)}</span> : null}
+                </div>
+              ) : null}
               {order.deliverableUrl ? (
                 <a className="btn" href={order.deliverableUrl}>
                   <PhoneCall size={16} /> 查看沟通资料

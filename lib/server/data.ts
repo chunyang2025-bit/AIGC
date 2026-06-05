@@ -1,14 +1,19 @@
 import { demoData } from "../demo-data";
 import {
   ActivityEvent,
+  AbuseReport,
   BuyerProfile,
   CreatorProfile,
+  DeliverableType,
   MarketplaceData,
   Message,
   Order,
+  PortfolioItem,
   Project,
   ProjectMatch,
   Review,
+  ServicePackage,
+  TrialFeedback,
   User
 } from "../types";
 import { createClient } from "@supabase/supabase-js";
@@ -31,6 +36,8 @@ function normalizeData(data: MarketplaceData): MarketplaceData {
     orders: data.orders ?? [],
     messages: data.messages ?? [],
     reviews: data.reviews ?? [],
+    reports: data.reports ?? [],
+    feedback: data.feedback ?? [],
     activityEvents: data.activityEvents ?? []
   };
 }
@@ -51,6 +58,10 @@ function getServerSupabase() {
   });
 }
 
+function requirePersistentStore() {
+  return process.env.NODE_ENV === "production" && !getServerSupabase();
+}
+
 function toDate(value: unknown) {
   return typeof value === "string" ? value.slice(0, 10) : new Date().toISOString().slice(0, 10);
 }
@@ -67,6 +78,8 @@ function mapUser(row: Record<string, unknown>): User {
     phone: row.phone ? String(row.phone) : undefined,
     email: String(row.email || ""),
     role: String(row.role || "buyer") as User["role"],
+    status: row.status ? String(row.status) as User["status"] : undefined,
+    suspendedReason: row.suspended_reason ? String(row.suspended_reason) : undefined,
     createdAt: toDate(row.created_at)
   };
 }
@@ -108,6 +121,8 @@ function mapCreator(row: Record<string, unknown>): CreatorProfile {
     skills: toArray<string>(row.skills),
     categories: toArray<CreatorProfile["categories"][number]>(row.categories),
     portfolio: toArray<string>(row.portfolio),
+    portfolioItems: toArray<PortfolioItem>(row.portfolio_items),
+    servicePackages: toArray<ServicePackage>(row.service_packages),
     priceMin: Number(row.price_min || 0),
     priceMax: Number(row.price_max || 0),
     completedProjects: Number(row.completed_projects || 0),
@@ -127,6 +142,7 @@ function mapCreator(row: Record<string, unknown>): CreatorProfile {
     serviceArea: row.service_area ? String(row.service_area) : undefined,
     contactEmail: row.contact_email ? String(row.contact_email) : undefined,
     contactPhone: row.contact_phone ? String(row.contact_phone) : undefined,
+    trainingProfile: row.training_profile as CreatorProfile["trainingProfile"],
     cover: String(row.cover || "linear-gradient(135deg, #153f31, #2f7c5f 46%, #f0b35a)")
   };
 }
@@ -139,6 +155,16 @@ function mapProject(row: Record<string, unknown>): Project {
     description: String(row.description || ""),
     category: String(row.category || "AI Short Video") as Project["category"],
     tags: toArray<string>(row.tags),
+    useCase: row.use_case ? String(row.use_case) as Project["useCase"] : undefined,
+    deliverableTypes: toArray<DeliverableType>(row.deliverable_types),
+    urgency: row.urgency ? String(row.urgency) as Project["urgency"] : undefined,
+    needInvoice: row.need_invoice === null || row.need_invoice === undefined ? undefined : Boolean(row.need_invoice),
+    longTerm: row.long_term === null || row.long_term === undefined ? undefined : Boolean(row.long_term),
+    acceptPlatformRecommend:
+      row.accept_platform_recommend === null || row.accept_platform_recommend === undefined
+        ? undefined
+        : Boolean(row.accept_platform_recommend),
+    trainingRequirement: row.training_requirement as Project["trainingRequirement"],
     budget: Number(row.budget || 0),
     deadline: toDate(row.deadline),
     status: String(row.status || "open") as Project["status"],
@@ -147,6 +173,7 @@ function mapProject(row: Record<string, unknown>): Project {
     contactEmail: row.contact_email ? String(row.contact_email) : undefined,
     contactPhone: row.contact_phone ? String(row.contact_phone) : undefined,
     agentBrief: row.agent_brief as Project["agentBrief"],
+    rejectedReason: row.rejected_reason ? String(row.rejected_reason) : undefined,
     createdAt: toDate(row.created_at)
   };
 }
@@ -171,6 +198,9 @@ function mapOrder(row: Record<string, unknown>): Order {
     creatorId: String(row.creator_id),
     amount: Number(row.amount || 0),
     status: String(row.status || "active") as Order["status"],
+    resultReason: row.result_reason ? String(row.result_reason) : undefined,
+    resultNote: row.result_note ? String(row.result_note) : undefined,
+    resultUpdatedAt: row.result_updated_at ? String(row.result_updated_at) : undefined,
     deliverableUrl: row.deliverable_url ? String(row.deliverable_url) : undefined,
     createdAt: toDate(row.created_at)
   };
@@ -207,6 +237,35 @@ function mapActivity(row: Record<string, unknown>): ActivityEvent {
     eventType: String(row.event_type || "browse") as ActivityEvent["eventType"],
     targetType: row.target_type ? String(row.target_type) as ActivityEvent["targetType"] : undefined,
     targetId: row.target_id ? String(row.target_id) : undefined,
+    note: row.note ? String(row.note) : undefined,
+    createdAt: String(row.created_at || new Date().toISOString())
+  };
+}
+
+function mapReport(row: Record<string, unknown>): AbuseReport {
+  return {
+    id: String(row.id),
+    reporterId: String(row.reporter_id),
+    targetType: String(row.target_type || "project") as AbuseReport["targetType"],
+    targetId: String(row.target_id || ""),
+    reason: String(row.reason || ""),
+    status: String(row.status || "open") as AbuseReport["status"],
+    resolution: row.resolution ? String(row.resolution) : undefined,
+    createdAt: String(row.created_at || new Date().toISOString())
+  };
+}
+
+function mapFeedback(row: Record<string, unknown>): TrialFeedback {
+  return {
+    id: String(row.id),
+    userId: row.user_id ? String(row.user_id) : undefined,
+    role: row.role ? String(row.role) as TrialFeedback["role"] : undefined,
+    page: String(row.page || ""),
+    rating: row.rating === null || row.rating === undefined ? undefined : Number(row.rating),
+    category: String(row.category || "suggestion") as TrialFeedback["category"],
+    content: String(row.content || ""),
+    status: String(row.status || "open") as TrialFeedback["status"],
+    resolution: row.resolution ? String(row.resolution) : undefined,
     createdAt: String(row.created_at || new Date().toISOString())
   };
 }
@@ -224,6 +283,8 @@ async function readSupabaseState() {
     orders,
     messages,
     reviews,
+    reports,
+    feedback,
     activityEvents
   ] = await Promise.all([
     supabase.from("app_users").select("*").order("created_at", { ascending: false }),
@@ -234,6 +295,8 @@ async function readSupabaseState() {
     supabase.from("orders").select("*").order("created_at", { ascending: false }),
     supabase.from("messages").select("*").order("created_at", { ascending: false }),
     supabase.from("reviews").select("*"),
+    supabase.from("abuse_reports").select("*").order("created_at", { ascending: false }),
+    supabase.from("trial_feedback").select("*").order("created_at", { ascending: false }),
     supabase.from("activity_events").select("*").order("created_at", { ascending: false })
   ]);
 
@@ -246,6 +309,8 @@ async function readSupabaseState() {
     orders.error,
     messages.error,
     reviews.error,
+    reports.error,
+    feedback.error,
     activityEvents.error
   ].find(Boolean);
 
@@ -262,6 +327,8 @@ async function readSupabaseState() {
     orders: (orders.data ?? []).map((row) => mapOrder(row)),
     messages: (messages.data ?? []).map((row) => mapMessage(row)),
     reviews: (reviews.data ?? []).map((row) => mapReview(row)),
+    reports: (reports.data ?? []).map((row) => mapReport(row)),
+    feedback: (feedback.data ?? []).map((row) => mapFeedback(row)),
     activityEvents: (activityEvents.data ?? []).map((row) => mapActivity(row))
   });
 }
@@ -279,6 +346,8 @@ async function writeSupabaseState(data: MarketplaceData) {
       phone: user.phone,
       email: user.email,
       role: user.role,
+      status: user.status ?? "active",
+      suspended_reason: user.suspendedReason,
       created_at: user.createdAt
     }))),
     supabase.from("buyer_profiles").upsert((normalized.buyerProfiles ?? []).map((profile) => ({
@@ -314,6 +383,8 @@ async function writeSupabaseState(data: MarketplaceData) {
       skills: creator.skills,
       categories: creator.categories,
       portfolio: creator.portfolio,
+      portfolio_items: creator.portfolioItems,
+      service_packages: creator.servicePackages,
       price_min: creator.priceMin,
       price_max: creator.priceMax,
       completed_projects: creator.completedProjects,
@@ -333,6 +404,7 @@ async function writeSupabaseState(data: MarketplaceData) {
       service_area: creator.serviceArea,
       contact_email: creator.contactEmail,
       contact_phone: creator.contactPhone,
+      training_profile: creator.trainingProfile,
       cover: creator.cover
     }))),
     supabase.from("projects").upsert(normalized.projects.map((project) => ({
@@ -342,6 +414,13 @@ async function writeSupabaseState(data: MarketplaceData) {
       description: project.description,
       category: project.category,
       tags: project.tags ?? [],
+      use_case: project.useCase,
+      deliverable_types: project.deliverableTypes ?? [],
+      urgency: project.urgency,
+      need_invoice: project.needInvoice,
+      long_term: project.longTerm,
+      accept_platform_recommend: project.acceptPlatformRecommend,
+      training_requirement: project.trainingRequirement,
       budget: project.budget,
       deadline: project.deadline,
       status: project.status,
@@ -350,6 +429,7 @@ async function writeSupabaseState(data: MarketplaceData) {
       contact_email: project.contactEmail,
       contact_phone: project.contactPhone,
       agent_brief: project.agentBrief,
+      rejected_reason: project.rejectedReason,
       created_at: project.createdAt
     }))),
     supabase.from("project_matches").upsert(normalized.matches.map((match) => ({
@@ -368,6 +448,9 @@ async function writeSupabaseState(data: MarketplaceData) {
       creator_id: order.creatorId,
       amount: order.amount,
       status: order.status,
+      result_reason: order.resultReason,
+      result_note: order.resultNote,
+      result_updated_at: order.resultUpdatedAt,
       deliverable_url: order.deliverableUrl,
       created_at: order.createdAt
     }))),
@@ -388,6 +471,28 @@ async function writeSupabaseState(data: MarketplaceData) {
       comment: review.comment,
       created_at: review.createdAt
     }))),
+    supabase.from("abuse_reports").upsert(normalized.reports.map((report) => ({
+      id: report.id,
+      reporter_id: report.reporterId,
+      target_type: report.targetType,
+      target_id: report.targetId,
+      reason: report.reason,
+      status: report.status,
+      resolution: report.resolution,
+      created_at: report.createdAt
+    }))),
+    supabase.from("trial_feedback").upsert(normalized.feedback.map((feedback) => ({
+      id: feedback.id,
+      user_id: feedback.userId,
+      role: feedback.role,
+      page: feedback.page,
+      rating: feedback.rating,
+      category: feedback.category,
+      content: feedback.content,
+      status: feedback.status,
+      resolution: feedback.resolution,
+      created_at: feedback.createdAt
+    }))),
     supabase.from("activity_events").upsert(normalized.activityEvents.map((event) => ({
       id: event.id,
       user_id: event.userId,
@@ -395,6 +500,7 @@ async function writeSupabaseState(data: MarketplaceData) {
       event_type: event.eventType,
       target_type: event.targetType,
       target_id: event.targetId,
+      note: event.note,
       created_at: event.createdAt
     })))
   ]);
@@ -411,6 +517,10 @@ export async function getMarketplaceData(): Promise<MarketplaceData> {
     return normalizeData(cloneData(remote));
   }
 
+  if (requirePersistentStore()) {
+    throw new Error("Production runtime requires Supabase server configuration. Demo memory data is disabled in production.");
+  }
+
   if (!globalStore.__aigcMarketplaceData) {
     globalStore.__aigcMarketplaceData = normalizeData(cloneData(demoData));
   }
@@ -422,6 +532,10 @@ export async function saveMarketplaceData(data: MarketplaceData): Promise<Market
   const remote = await writeSupabaseState(data);
   if (remote) {
     return normalizeData(cloneData(remote));
+  }
+
+  if (requirePersistentStore()) {
+    throw new Error("Production runtime requires Supabase server configuration. Demo memory data is disabled in production.");
   }
 
   globalStore.__aigcMarketplaceData = normalizeData(cloneData(data));

@@ -3,11 +3,12 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BriefcaseBusiness, CheckCircle2, Clock, FileBadge2, MessageSquare, ShieldCheck, UserRound } from "lucide-react";
+import { BriefcaseBusiness, CheckCircle2, Clock, FileBadge2, GraduationCap, MessageSquare, ShieldCheck, UserRound, UsersRound } from "lucide-react";
 import { compactDate, money, orderStatusLabel, projectStatusLabel } from "@/lib/format";
 import { loadMarketplaceData } from "@/lib/store";
 import { readAuthSession } from "@/lib/auth";
 import { notificationsForUser, onboardingCompleteness } from "@/lib/growth";
+import { FirstActionPanel } from "@/components/FirstActionPanel";
 
 function statusText(hasProfile: boolean, verified?: boolean) {
   if (!hasProfile) return "未开通";
@@ -25,6 +26,7 @@ export default function AccountPage() {
   const data = loadMarketplaceData();
   const buyerProfile = data.buyerProfiles?.find((profile) => profile.userId === session?.userId);
   const creatorProfile = data.creators.find((creator) => creator.userId === session?.userId);
+  const hasTrainingCapability = Boolean(creatorProfile?.categories.includes("AIGC Training"));
 
   useEffect(() => {
     if (!session) {
@@ -41,6 +43,8 @@ export default function AccountPage() {
   const myProjects = data.projects.filter((project) => project.buyerId === session.userId);
   const myBuyerLeads = data.orders.filter((order) => order.buyerId === session.userId);
   const myCreatorLeads = creatorProfile ? data.orders.filter((order) => order.creatorId === creatorProfile.id) : [];
+  const projectDemands = myProjects.filter((project) => project.category !== "AIGC Training");
+  const trainingDemands = myProjects.filter((project) => project.category === "AIGC Training");
   const activation = onboardingCompleteness({
     hasProfile: hasSubjectProfile,
     submittedReview: hasSubjectProfile,
@@ -50,9 +54,65 @@ export default function AccountPage() {
   });
   const activationSteps = activation.items.map((item, index) => ({
     ...item,
-    href: index === 1 || index === 2 ? "/account/profile" : index === 4 ? "/account/capabilities" : index === 5 ? buyerProfile ? "/buyer" : "/provider" : "/account"
+    href: index === 1 || index === 2 ? "/account/profile" : index === 4 ? "/account/capabilities?intent=dispatch" : index === 5 ? buyerProfile ? "/buyer" : "/provider" : "/account"
   }));
   const notifications = notificationsForUser(data, session.userId);
+  const hasAnyDemand = myProjects.length > 0;
+  const hasAnyProviderPage = Boolean(creatorProfile?.bio && creatorProfile?.title && (creatorProfile?.servicePackages?.length || creatorProfile?.portfolio.length));
+  const hasAnyLead = myBuyerLeads.length + myCreatorLeads.length > 0;
+  const firstAction = !hasSubjectProfile
+    ? {
+        title: "先完成主体主页，进入审核队列",
+        description: "这是所有业务身份共用的第一步。完成后才能发布需求、生成服务主页或被运营推荐。",
+        primaryLabel: "创建主体主页",
+        primaryHref: "/account/profile",
+        secondaryLabel: "先看公开市场",
+        secondaryHref: "/projects"
+      }
+    : !subjectVerified
+      ? {
+          title: "等待审核时，先补齐会影响通过率的资料",
+          description: "审核期间可以继续补充联系方式、资质说明、主页简介和可公开展示的信息。",
+          primaryLabel: "继续完善主体资料",
+          primaryHref: "/account/profile",
+          secondaryLabel: "查看公开服务方",
+          secondaryHref: "/creators"
+        }
+      : buyerProfile && !hasAnyDemand
+        ? {
+            title: "发布第一个需求，让系统开始匹配",
+            description: "你可以发布项目交付需求，也可以发布培训需求。先用 Brief Agent 把想法整理成可审核、可匹配的需求。",
+            primaryLabel: "发布项目需求",
+            primaryHref: "/post-project",
+            secondaryLabel: "发布培训需求",
+            secondaryHref: "/post-project?category=AIGC%20Training"
+          }
+        : creatorProfile && !hasAnyProviderPage
+          ? {
+              title: "生成服务主页，获得展示和匹配入口",
+              description: "先把服务定位、报价、案例和联系方式放到主页里，后续再补充更完整的材料。",
+              primaryLabel: "生成服务主页",
+              primaryHref: "/provider/profile",
+              secondaryLabel: "生成培训主页",
+              secondaryHref: "/provider/profile?category=AIGC%20Training"
+            }
+          : !hasAnyLead
+            ? {
+                title: "推进第一条沟通线索",
+                description: "需求方可以邀请候选服务方；服务方可以查看高匹配需求并表达兴趣。",
+                primaryLabel: buyerProfile ? "进入需求方后台" : "进入服务方后台",
+                primaryHref: buyerProfile ? "/buyer" : "/provider",
+                secondaryLabel: buyerProfile ? "查看服务方大厅" : "查看公开需求",
+                secondaryHref: buyerProfile ? "/creators" : "/projects"
+              }
+            : {
+                title: "跟进已有线索，沉淀试运营反馈",
+                description: "记录沟通状态、补充资料、提交试用反馈，让运营知道哪里还卡住。",
+                primaryLabel: buyerProfile ? "查看我的派单" : "查看我的接单",
+                primaryHref: buyerProfile ? "/buyer" : "/provider",
+                secondaryLabel: "提交试用建议",
+                secondaryHref: "/account"
+              };
 
   return (
     <main className="main">
@@ -63,7 +123,7 @@ export default function AccountPage() {
           </span>
           <div>
             <h1>{subjectName}</h1>
-            <p>先维护一份主体主页，再选择开通派单能力、接单能力，或同时开通两种能力。</p>
+            <p>先维护一份主体主页，再选择你当前要使用的业务身份。以后需要时，可以继续添加其他业务。</p>
           </div>
         </div>
         <div className="portalStats">
@@ -76,11 +136,27 @@ export default function AccountPage() {
             <span>主体审核</span>
           </div>
           <div className="metric">
-            <strong>{[buyerProfile, creatorProfile].filter(Boolean).length}</strong>
-            <span>已开通能力</span>
+            <strong>{[buyerProfile, creatorProfile, buyerProfile, hasTrainingCapability].filter(Boolean).length}</strong>
+            <span>已启用业务</span>
           </div>
         </div>
       </section>
+
+      <FirstActionPanel
+        eyebrow="下一步只做这件事"
+        title={firstAction.title}
+        description={firstAction.description}
+        primaryLabel={firstAction.primaryLabel}
+        primaryHref={firstAction.primaryHref}
+        secondaryLabel={firstAction.secondaryLabel}
+        secondaryHref={firstAction.secondaryHref}
+        steps={[
+          { label: "主体资料", done: hasSubjectProfile },
+          { label: "平台审核", done: subjectVerified },
+          { label: "需求/主页", done: hasAnyDemand || hasAnyProviderPage },
+          { label: "首条线索", done: hasAnyLead }
+        ]}
+      />
 
       <section className="card">
         <div className="cardBody stack">
@@ -109,7 +185,7 @@ export default function AccountPage() {
           ) : null}
           {!hasSubjectProfile ? (
             <section className="notice">
-              <CheckCircle2 size={15} /> 建议先创建主体主页。主页完成后再选择开通派单能力、接单能力，或两种能力同时开通。
+              <CheckCircle2 size={15} /> 建议先创建主体主页。主页完成后，根据当前目标选择一条业务路径继续。
             </section>
           ) : null}
         </div>
@@ -143,14 +219,14 @@ export default function AccountPage() {
           </div>
           <div>
             <h2 style={{ margin: 0 }}>主体主页</h2>
-            <p className="muted">名称、头像/Logo、主体类型、城市、基本介绍、联系方式和资质材料只维护一次，派单和接单共用。</p>
+              <p className="muted">名称、头像/Logo、主体类型、城市、基本介绍、联系方式和资质材料只维护一次，需求方和服务方共用。</p>
           </div>
           <div className="toolbarGroup">
             <Link className="btn primary" href="/account/profile">
               {hasSubjectProfile ? "查看/编辑主体主页" : "创建主体主页"}
             </Link>
-            <Link className="btn" href="/account/capabilities">
-              选择开通能力
+            <Link className="btn" href="/account/capabilities?intent=dispatch">
+              管理业务身份
             </Link>
           </div>
         </div>
@@ -166,15 +242,28 @@ export default function AccountPage() {
               </span>
             </div>
             <div>
-              <h2 style={{ margin: 0 }}>派单能力</h2>
-              <p className="muted">完善主体认证后发布需求、查看匹配推荐，并邀请接单方沟通。</p>
+              <h2 style={{ margin: 0 }}>需求方身份</h2>
+              <p className="muted">用于发布项目需求或培训需求，查看匹配推荐并邀请服务方沟通。</p>
+            </div>
+            <div className="grid two compactGrid">
+              <div className="metric">
+                <strong>{projectDemands.length}</strong>
+                <span>项目需求</span>
+              </div>
+              <div className="metric">
+                <strong>{trainingDemands.length}</strong>
+                <span>培训需求</span>
+              </div>
             </div>
             <div className="toolbarGroup">
-              <Link className="btn primary" href={buyerProfile?.verified ? "/buyer" : "/account/capabilities"}>
-                {buyerProfile ? "进入/开通派单能力" : "先完善主体主页"}
+              <Link className="btn primary" href={buyerProfile?.verified ? "/buyer" : "/account/capabilities?intent=dispatch"}>
+                {buyerProfile ? "进入需求方后台" : "先完善主体主页"}
               </Link>
               <Link className="btn" href={buyerProfile?.verified ? "/post-project" : "/account/profile"}>
-                {buyerProfile?.verified ? "发布需求" : "补充主体资料"}
+                {buyerProfile?.verified ? "发布项目需求" : "补充主体资料"}
+              </Link>
+              <Link className="btn" href={buyerProfile?.verified ? "/post-project?category=AIGC%20Training" : "/account/capabilities?intent=training_demand"}>
+                {buyerProfile?.verified ? "发布培训需求" : "准备找培训"}
               </Link>
             </div>
           </div>
@@ -189,14 +278,29 @@ export default function AccountPage() {
               </span>
             </div>
             <div>
-              <h2 style={{ margin: 0 }}>接单能力</h2>
-              <p className="muted">完善展示页和资质认证后进入需求大厅，向派单方发送主页、简历和代表作。</p>
+              <h2 style={{ margin: 0 }}>服务方身份</h2>
+              <p className="muted">用于承接项目需求或提供培训服务，展示服务主页、培训主页和案例报价。</p>
+            </div>
+            <div className="grid two compactGrid">
+              <div className="metric">
+                <strong>{creatorProfile ? 1 : 0}</strong>
+                <span>服务主页</span>
+              </div>
+              <div className="metric">
+                <strong>{hasTrainingCapability ? 1 : 0}</strong>
+                <span>培训主页</span>
+              </div>
             </div>
             <div className="toolbarGroup">
-              <Link className="btn primary" href={creatorProfile?.verified ? "/provider" : "/account/capabilities"}>
-                {creatorProfile ? "进入/开通接单能力" : "先完善主体主页"}
+              <Link className="btn primary" href={creatorProfile?.verified ? "/provider" : "/account/capabilities?intent=service"}>
+                {creatorProfile ? "进入服务方后台" : "先完善主体主页"}
               </Link>
-              <Link className="btn" href="/projects">浏览需求</Link>
+              <Link className="btn" href="/provider/profile">
+                完善接单主页
+              </Link>
+              <Link className="btn" href="/provider/profile?category=AIGC%20Training">
+                完善培训主页
+              </Link>
             </div>
           </div>
         </section>
@@ -230,7 +334,7 @@ export default function AccountPage() {
             ))}
             {myProjects.length === 0 ? <div className="muted">通过审核后发布第一个需求。</div> : null}
             <div className="toolbarGroup">
-              <Link className="btn primary" href={buyerProfile?.verified ? "/buyer" : "/account/capabilities"}>
+              <Link className="btn primary" href={buyerProfile?.verified ? "/buyer" : "/account/capabilities?intent=dispatch"}>
                 进入我的派单
               </Link>
               <Link className="btn" href={buyerProfile?.verified ? "/post-project" : "/account/profile"}>
@@ -274,10 +378,10 @@ export default function AccountPage() {
                 <em>{creatorProfile.verified ? "已认证展示页" : "展示页待审核"}</em>
               </Link>
             ) : (
-              <div className="muted">开通接单能力后，这里会显示你的展示页和沟通线索。</div>
+              <div className="muted">启用服务方身份后，这里会显示你的展示页和沟通线索。</div>
             )}
             <div className="toolbarGroup">
-              <Link className="btn primary" href={creatorProfile?.verified ? "/provider" : "/account/capabilities"}>
+              <Link className="btn primary" href={creatorProfile?.verified ? "/provider" : "/account/capabilities?intent=service"}>
                 进入我的接单
               </Link>
               <Link className="btn" href="/projects">
@@ -289,7 +393,7 @@ export default function AccountPage() {
       </div>
 
       <section className="notice">
-        <Clock size={15} /> 派单方需完成主体资质审核后才能发布需求；接单方审核通过后可主动发起沟通。
+        <Clock size={15} /> 需求方需完成主体资质审核后才能发布需求；服务方审核通过后可主动发起沟通。
       </section>
     </main>
   );

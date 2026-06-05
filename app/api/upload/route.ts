@@ -1,9 +1,14 @@
 import { getRequestUser, getServerSupabase, isSupabaseServerConfigured } from "../../../lib/server/auth";
+import { getUploadLimits } from "../../../lib/server/env";
 import { apiFail, apiOk } from "../../../lib/server/response";
 
 export const dynamic = "force-dynamic";
 
 const allowedBuckets = ["public-assets", "private-verifications"];
+const allowedMimeTypes: Record<string, string[]> = {
+  "public-assets": ["image/jpeg", "image/png", "image/webp", "image/gif"],
+  "private-verifications": ["application/pdf", "image/jpeg", "image/png", "image/webp", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"]
+};
 
 function safeName(value: string) {
   return value.replace(/[^a-zA-Z0-9._-]/g, "-").slice(0, 120);
@@ -20,6 +25,17 @@ export async function POST(request: Request) {
   }
   if (!allowedBuckets.includes(bucket)) {
     return apiFail(400, "上传空间不合法");
+  }
+
+  const uploadLimits = getUploadLimits();
+  const maxBytes = bucket === "public-assets" ? uploadLimits.maxPublicAssetBytes : uploadLimits.maxPrivateVerificationBytes;
+  if (file.size > maxBytes) {
+    return apiFail(413, `文件过大，当前限制为 ${Math.round(maxBytes / 1024 / 1024)}MB`);
+  }
+
+  const allowedTypes = allowedMimeTypes[bucket] ?? [];
+  if (file.type && !allowedTypes.includes(file.type)) {
+    return apiFail(415, "文件类型不支持");
   }
 
   if (!isSupabaseServerConfigured()) {

@@ -103,6 +103,12 @@ function normalizeAccount(account: string) {
   return account.trim();
 }
 
+function accountPhone(account: string, phone?: string) {
+  const normalized = normalizeAccount(account);
+  if (phone) return phone;
+  return normalized.includes("@") ? "" : normalized;
+}
+
 function requestAuthUser(path: string, input: {
   role: UserRole;
   account: string;
@@ -111,6 +117,7 @@ function requestAuthUser(path: string, input: {
   code?: string;
   authMethod?: "password" | "code";
   name?: string;
+  inviteCode?: string;
 }) {
   const xhr = new XMLHttpRequest();
   xhr.open("POST", path, false);
@@ -120,21 +127,19 @@ function requestAuthUser(path: string, input: {
     JSON.stringify({
       role: input.role,
       account: normalizeAccount(input.account),
-      phone: input.phone || normalizeAccount(input.account),
+      phone: accountPhone(input.account, input.phone),
       email: normalizeAccount(input.account).includes("@") ? normalizeAccount(input.account) : `${normalizeAccount(input.account)}@phone.aigclancer.local`,
       password: input.password,
       code: input.code,
       authMethod: input.authMethod,
-      name: input.name || normalizeAccount(input.account) || "新用户"
+      name: input.name || normalizeAccount(input.account) || "新用户",
+      inviteCode: input.inviteCode
     })
   );
 
-  if (xhr.status < 200 || xhr.status >= 300) {
-    return null;
-  }
-
   const parsed = JSON.parse(xhr.responseText) as {
     ok: boolean;
+    error?: string;
     data?: {
       id: string;
       name: string;
@@ -147,7 +152,11 @@ function requestAuthUser(path: string, input: {
     };
   };
 
-  return parsed.ok ? parsed.data ?? null : null;
+  if (xhr.status < 200 || xhr.status >= 300 || !parsed.ok) {
+    throw new Error(parsed.error || "请求失败，请稍后再试。");
+  }
+
+  return parsed.data ?? null;
 }
 
 function saveUserSession(user: {
@@ -179,7 +188,7 @@ function saveUserSession(user: {
   return session;
 }
 
-export function registerAccount(input: { role: UserRole; account: string; password: string; name?: string }) {
+export function registerAccount(input: { role: UserRole; account: string; password: string; name?: string; inviteCode?: string }) {
   const user = requestAuthUser("/api/auth/register", input);
   if (!user) {
     throw new Error("注册失败，请检查手机号、邮箱和网络状态。");
@@ -230,7 +239,8 @@ export function roleProfilePath(role: UserRole) {
 }
 
 export function roleWorkbenchPath(role: UserRole) {
-  if (role !== "admin") return "/account";
+  if (role === "buyer") return "/buyer";
+  if (role === "creator") return "/provider";
   return "/admin";
 }
 

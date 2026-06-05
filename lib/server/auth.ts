@@ -46,8 +46,6 @@ export async function registerSupabaseUser(input: Record<string, unknown>) {
   const role = ["buyer", "creator", "admin"].includes(String(input.role))
     ? (String(input.role) as UserRole)
     : "buyer";
-  if (role === "admin") return null;
-
   const { account, email, phone } = authAccount(input);
   const password = String(input.password || "");
   if (!account || password.length < 8) return null;

@@ -422,6 +422,33 @@ button {
   font-size: 13px;
 }
 
+.opportunityAction {
+  display: grid;
+  align-content: space-between;
+  gap: 14px;
+  min-height: 188px;
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.opportunityAction > div {
+  display: grid;
+  gap: 8px;
+}
+
+.opportunityAction strong {
+  color: #22342d;
+  line-height: 1.35;
+}
+
+.opportunityAction span:last-child {
+  color: var(--muted);
+  line-height: 1.45;
+  font-size: 13px;
+}
+
 .compactForm textarea {
   min-height: 104px;
 }
@@ -1503,6 +1530,10 @@ button {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.grid.five {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
 .grid.six {
   grid-template-columns: repeat(6, minmax(0, 1fr));
 }
@@ -1516,6 +1547,29 @@ button {
 
 .cardBody {
   padding: 16px;
+}
+
+.conversionCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 16px;
+  border: 1px solid rgba(36, 87, 197, 0.18);
+  border-radius: 8px;
+  background: #f7fbff;
+}
+
+.conversionCard p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.selectedCapability {
+  border-color: rgba(36, 87, 197, 0.34);
+  background: #f7fbff;
+  box-shadow: 0 14px 34px rgba(36, 87, 197, .08);
 }
 
 .cardMedia {
@@ -1659,6 +1713,26 @@ button {
   font-size: 13px;
 }
 
+.miniInfo {
+  display: grid;
+  gap: 4px;
+  padding: 10px 11px;
+  border: 1px solid rgba(22, 114, 79, 0.16);
+  border-radius: 8px;
+  background: #f3fbf4;
+}
+
+.miniInfo strong {
+  color: #22342d;
+  font-size: 13px;
+}
+
+.miniInfo span {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .form {
   display: grid;
   gap: 14px;
@@ -1740,6 +1814,17 @@ button {
   cursor: pointer;
 }
 
+.reportBox {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfa;
+}
+
 .compactGrid {
   gap: 12px;
 }
@@ -1798,13 +1883,109 @@ button {
   font-weight: 700;
 }
 
+.tab.active {
+  color: #fff;
+  background: var(--brand);
+}
+
 .tab:last-child {
   border-right: 0;
 }
 
-.tab.active {
-  color: #fff;
-  background: var(--ink);
+.growthTool {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+  gap: 18px;
+  align-items: stretch;
+  padding: 18px;
+  border: 1px solid rgba(22, 114, 79, 0.18);
+  border-radius: 8px;
+  background: #f6fbf7;
+}
+
+.growthTool h2,
+.toolResult h3 {
+  margin: 0;
+  letter-spacing: 0;
+}
+
+.growthTool p,
+.toolResult p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.toolResult {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.toolMiniCard {
+  display: grid;
+  gap: 8px;
+  min-height: 112px;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: inherit;
+  text-decoration: none;
+}
+
+.toolMiniCard strong,
+.toolMiniCard b {
+  color: var(--ink);
+}
+
+.toolMiniCard p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.valuePreview {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.sharePanel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px;
+  border: 1px solid rgba(22, 114, 79, 0.18);
+  border-radius: 8px;
+  background: #f3fbf4;
+}
+
+.sharePanel h2,
+.sharePanel p {
+  margin: 0;
+}
+
+.sharePanel p {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.shareUrl {
+  overflow: hidden;
+  max-width: 100%;
+  padding: 10px 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--muted);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .table {
@@ -1865,12 +2046,51 @@ button {
 }
 
 .notice {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
   padding: 13px 14px;
   border: 1px solid rgba(36, 87, 197, 0.18);
   border-radius: 8px;
   color: #193f90;
   background: #eef4ff;
   font-size: 14px;
+}
+
+.emptyState {
+  display: grid;
+  justify-items: start;
+  gap: 9px;
+  padding: 18px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  background: #fbfcfa;
+}
+
+.emptyState strong {
+  color: #22342d;
+}
+
+.emptyState span {
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.betaNotice {
+  margin: 12px 0 18px;
+}
+
+.betaHomeNotice {
+  padding-top: 0;
+}
+
+.paginationBar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin: 18px 0 0;
 }
 
 .agentLayout {
@@ -1946,6 +2166,59 @@ button {
   color: #33423b;
   line-height: 1.5;
   font-size: 14px;
+}
+
+.feedbackWidget {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 40;
+  display: grid;
+  justify-items: end;
+  gap: 10px;
+}
+
+.feedbackTrigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 14px;
+  border: 1px solid var(--brand);
+  border-radius: 8px;
+  background: var(--brand);
+  color: #fff;
+  font-weight: 750;
+  box-shadow: 0 14px 34px rgba(21, 32, 27, .18);
+}
+
+.feedbackPanel {
+  width: min(360px, calc(100vw - 32px));
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 24px 60px rgba(21, 32, 27, .2);
+}
+
+.feedbackPanel textarea {
+  min-height: 100px;
+}
+
+.iconBtn {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--muted);
+  font-size: 20px;
+  line-height: 1;
 }
 
 @media (max-width: 920px) {
@@ -2060,6 +2333,7 @@ button {
   .grid,
   .grid.two,
   .grid.four,
+  .grid.five,
   .grid.six,
   .checkPillGrid {
     grid-template-columns: 1fr;
@@ -2067,6 +2341,20 @@ button {
 
   .pageHeader,
   .sectionHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .conversionCard {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .growthTool {
+    grid-template-columns: 1fr;
+  }
+
+  .sharePanel {
     align-items: flex-start;
     flex-direction: column;
   }

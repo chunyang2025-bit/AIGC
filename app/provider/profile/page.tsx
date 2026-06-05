@@ -1,8 +1,8 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, BriefcaseBusiness, CheckCircle2, Eye, Save, Sparkles, UserRound } from "lucide-react";
 import { CreatorCard } from "@/components/CreatorCard";
 import { credentialRequirementHint, credentialUploadOptional, requiredCredentialLabel, verificationTypeLabel } from "@/lib/format";
@@ -10,8 +10,10 @@ import { uploadCredentialFiles, uploadOrPreviewImage } from "@/lib/file-upload";
 import { joinProvinceCity, provinceCityOptions, splitProvinceCity } from "@/lib/location-options";
 import { projectCategoryOptions } from "@/lib/project-categories";
 import { loadMarketplaceData, upsertCurrentCreatorProfile } from "@/lib/store";
-import { CreatorProfile, ProjectCategory, VerificationType } from "@/lib/types";
+import { trainingFormatOptions } from "@/lib/training";
+import { CreatorProfile, PortfolioItem, ProjectCategory, ServicePackage, TrainingFormat, VerificationType } from "@/lib/types";
 import { readAuthSession, setAuthCapability } from "@/lib/auth";
+import { readRemixDraft } from "@/lib/remix-draft";
 
 const verificationTypes: VerificationType[] = [
   "enterprise",
@@ -33,29 +35,93 @@ function splitList(value: string) {
     .filter(Boolean);
 }
 
-export default function ProviderProfilePage() {
+function parsePortfolioItems(value: string, fallbackCategory: ProjectCategory): PortfolioItem[] {
+  return value
+    .split("\n")
+    .map((line, index) => {
+      const [title = "", category = fallbackCategory, description = "", url = ""] = line.split("|").map((item) => item.trim());
+      if (!title) return null;
+      return {
+        id: `pf-${index + 1}`,
+        title,
+        category: category as ProjectCategory,
+        description,
+        url,
+        public: true
+      } satisfies PortfolioItem;
+    })
+    .filter(Boolean) as PortfolioItem[];
+}
+
+function parseServicePackages(value: string): ServicePackage[] {
+  return value
+    .split("\n")
+    .map((line, index) => {
+      const [name = "", price = "0", deliveryDays = "0", revisions = "0", deliverables = "", description = ""] = line.split("|").map((item) => item.trim());
+      if (!name) return null;
+      return {
+        id: `sp-${index + 1}`,
+        name,
+        price: Number(price) || 0,
+        deliveryDays: Number(deliveryDays) || 0,
+        revisions: Number(revisions) || 0,
+        deliverables: splitList(deliverables),
+        description
+      } satisfies ServicePackage;
+    })
+    .filter(Boolean) as ServicePackage[];
+}
+
+function portfolioLines(profile?: CreatorProfile) {
+  if (profile?.portfolioItems?.length) {
+    return profile.portfolioItems
+      .map((item) => [item.title, item.category, item.description, item.url ?? ""].join(" | "))
+      .join("\n");
+  }
+  return (profile?.portfolio ?? []).join("\n");
+}
+
+function servicePackageLines(profile?: CreatorProfile) {
+  return (profile?.servicePackages ?? [])
+    .map((item) => [item.name, item.price, item.deliveryDays, item.revisions, item.deliverables.join("、"), item.description].join(" | "))
+    .join("\n");
+}
+
+function ProviderProfileContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const data = loadMarketplaceData();
   const session = readAuthSession();
   const currentProfile = data.creators.find((creator) => creator.userId === session?.userId);
+  const wantsTraining = searchParams.get("category") === "AIGC Training";
+  const startsAsTraining = !currentProfile && wantsTraining;
+  const shouldPrefillTraining = wantsTraining && !currentProfile?.trainingProfile;
   const subjectProfile = data.buyerProfiles?.find((profile) => profile.userId === session?.userId);
   const subjectName = currentProfile?.name ?? subjectProfile?.companyName ?? session?.name ?? "";
+  const remixSource = searchParams.get("remix");
   const [name, setName] = useState(subjectName);
   const [displayName, setDisplayName] = useState(currentProfile?.displayName ?? subjectProfile?.displayName ?? subjectName);
   const [avatarUrl, setAvatarUrl] = useState(currentProfile?.avatarUrl ?? subjectProfile?.avatarUrl ?? subjectName.slice(0, 1));
   const [profileSlogan, setProfileSlogan] = useState(currentProfile?.profileSlogan ?? subjectProfile?.profileSlogan ?? "");
-  const [title, setTitle] = useState(currentProfile?.title ?? "");
+  const [title, setTitle] = useState(currentProfile?.title ?? (wantsTraining ? "AIGC企业培训讲师/服务方" : ""));
   const initialLocation = splitProvinceCity(currentProfile?.location ?? subjectProfile?.location ?? "");
   const [province, setProvince] = useState(initialLocation.province);
   const [city, setCity] = useState(initialLocation.city);
   const [bio, setBio] = useState(currentProfile?.bio ?? subjectProfile?.companyIntro ?? "");
   const [resume, setResume] = useState(currentProfile?.resume ?? "");
-  const [skills, setSkills] = useState((currentProfile?.skills ?? []).join(", "));
+  const [skills, setSkills] = useState((currentProfile?.skills ?? (startsAsTraining ? ["AIGC培训", "提示词工程", "AI办公", "企业内训"] : [])).join(", "));
   const [skillDraft, setSkillDraft] = useState("");
-  const [portfolio, setPortfolio] = useState((currentProfile?.portfolio ?? []).join("\n"));
-  const [priceMin, setPriceMin] = useState(currentProfile ? String(currentProfile.priceMin) : "");
-  const [priceMax, setPriceMax] = useState(currentProfile ? String(currentProfile.priceMax) : "");
-  const [responseTime, setResponseTime] = useState(currentProfile?.responseTime ?? "");
+  const [portfolio, setPortfolio] = useState(portfolioLines(currentProfile));
+  const [servicePackages, setServicePackages] = useState(servicePackageLines(currentProfile) || (wantsTraining ? "AIGC实战内训 | 12000 | 7 | 1 | 培训方案、1天授课、实操案例、课件资料 | 适合企业团队快速建立AI实操能力" : ""));
+  const [packageName, setPackageName] = useState("");
+  const [packagePrice, setPackagePrice] = useState("");
+  const [packageDeliveryDays, setPackageDeliveryDays] = useState("");
+  const [packageRevisions, setPackageRevisions] = useState("1");
+  const [packageDeliverables, setPackageDeliverables] = useState("");
+  const [packageDescription, setPackageDescription] = useState("");
+  const [priceMin, setPriceMin] = useState(currentProfile ? String(currentProfile.priceMin) : startsAsTraining ? "6000" : "");
+  const [priceMax, setPriceMax] = useState(currentProfile ? String(currentProfile.priceMax) : startsAsTraining ? "30000" : "");
+  const [responseTime, setResponseTime] = useState(currentProfile?.responseTime ?? (wantsTraining ? "4小时" : ""));
   const [identityType, setIdentityType] = useState<VerificationType>(currentProfile?.identityType ?? currentProfile?.verificationType ?? subjectProfile?.verificationType ?? "individual");
   const [credentialFile, setCredentialFile] = useState(currentProfile?.credentialFile ?? subjectProfile?.businessLicenseFile ?? "");
   const [qualificationFiles, setQualificationFiles] = useState((currentProfile?.qualificationFiles ?? subjectProfile?.qualificationFiles ?? []).join("\n"));
@@ -63,11 +129,29 @@ export default function ProviderProfilePage() {
   const [contactPhone, setContactPhone] = useState(currentProfile?.contactPhone ?? subjectProfile?.contactPhone ?? session?.phone ?? "");
   const [websiteUrl, setWebsiteUrl] = useState(currentProfile?.websiteUrl ?? subjectProfile?.websiteUrl ?? "");
   const [socialUrl, setSocialUrl] = useState(currentProfile?.socialUrl ?? subjectProfile?.socialUrl ?? "");
-  const [serviceArea, setServiceArea] = useState(currentProfile?.serviceArea ?? subjectProfile?.serviceArea ?? "");
-  const [categories, setCategories] = useState<ProjectCategory[]>(currentProfile?.categories ?? ["AI Short Video"]);
+  const [serviceArea, setServiceArea] = useState(currentProfile?.serviceArea ?? subjectProfile?.serviceArea ?? (wantsTraining ? "全国线上，可承接线下内训" : ""));
+  const [categories, setCategories] = useState<ProjectCategory[]>(currentProfile?.categories ? (wantsTraining && !currentProfile.categories.includes("AIGC Training") ? [...currentProfile.categories, "AIGC Training"] : currentProfile.categories) : startsAsTraining ? ["AIGC Training"] : ["AI Short Video"]);
+  const [trainingTopics, setTrainingTopics] = useState((currentProfile?.trainingProfile?.topics ?? (shouldPrefillTraining ? ["提示词工程", "AI办公提效", "AI营销内容", "AI短视频"] : [])).join("、"));
+  const [trainingFormats, setTrainingFormats] = useState<TrainingFormat[]>(currentProfile?.trainingProfile?.formats ?? (shouldPrefillTraining ? ["online", "offline", "workshop"] : ["online"]));
+  const [trainingAudience, setTrainingAudience] = useState((currentProfile?.trainingProfile?.audience ?? (shouldPrefillTraining ? ["运营团队", "市场团队", "设计团队", "管理层"] : [])).join("、"));
+  const [trainingCities, setTrainingCities] = useState((currentProfile?.trainingProfile?.cities ?? (shouldPrefillTraining ? ["全国线上", "上海", "杭州", "北京"] : [])).join("、"));
+  const [trainingCases, setTrainingCases] = useState((currentProfile?.trainingProfile?.caseStudies ?? (shouldPrefillTraining ? ["为企业团队设计AIGC实战工作坊，覆盖提示词、内容生成和业务案例练习"] : [])).join("\n"));
+  const [trainingMaterials, setTrainingMaterials] = useState((currentProfile?.trainingProfile?.materials ?? (shouldPrefillTraining ? ["课件", "练习任务", "工具清单", "课后答疑"] : [])).join("、"));
+  const [trainingPricingNote, setTrainingPricingNote] = useState(currentProfile?.trainingProfile?.pricingNote ?? (shouldPrefillTraining ? "支持半日、全天工作坊和长期陪跑报价。" : ""));
+  const [trainingCustomizable, setTrainingCustomizable] = useState(currentProfile?.trainingProfile?.customizable ?? true);
+  const [loadedCreatorRemix, setLoadedCreatorRemix] = useState("");
   const cityOptions = provinceCityOptions.find((item) => item.province === province)?.cities ?? [];
   const location = joinProvinceCity(province, city);
+  const offersTraining = categories.includes("AIGC Training");
   const credentialOptional = credentialUploadOptional(identityType);
+  const parsedPortfolioItems = useMemo(
+    () => parsePortfolioItems(portfolio, categories[0] ?? "AI Short Video"),
+    [categories, portfolio]
+  );
+  const parsedServicePackages = useMemo(
+    () => parseServicePackages(servicePackages),
+    [servicePackages]
+  );
 
   const preview = useMemo<CreatorProfile>(
     () => ({
@@ -80,7 +164,9 @@ export default function ProviderProfilePage() {
       resume: resume || "简历/履历会展示在这里。",
       skills: splitList(skills).length ? splitList(skills) : ["AI内容创作"],
       categories,
-      portfolio: splitList(portfolio),
+      portfolio: parsedPortfolioItems.length ? parsedPortfolioItems.map((item) => item.title) : splitList(portfolio),
+      portfolioItems: parsedPortfolioItems,
+      servicePackages: parsedServicePackages,
       priceMin: Number(priceMin) || 0,
       priceMax: Number(priceMax) || 0,
       completedProjects: 0,
@@ -99,9 +185,21 @@ export default function ProviderProfilePage() {
       serviceArea,
       contactEmail,
       contactPhone,
+      trainingProfile: offersTraining
+        ? {
+            topics: splitList(trainingTopics),
+            formats: trainingFormats,
+            audience: splitList(trainingAudience),
+            cities: splitList(trainingCities),
+            caseStudies: splitList(trainingCases),
+            materials: splitList(trainingMaterials),
+            pricingNote: trainingPricingNote,
+            customizable: trainingCustomizable
+          }
+        : undefined,
       cover: "linear-gradient(135deg, #153f31, #2f7c5f 46%, #f0b35a)"
     }),
-    [avatarUrl, bio, categories, contactEmail, contactPhone, credentialFile, displayName, identityType, location, name, portfolio, priceMax, priceMin, profileSlogan, qualificationFiles, responseTime, resume, serviceArea, skills, socialUrl, title, websiteUrl]
+    [avatarUrl, bio, categories, contactEmail, contactPhone, credentialFile, displayName, identityType, location, name, offersTraining, parsedPortfolioItems, parsedServicePackages, portfolio, priceMax, priceMin, profileSlogan, qualificationFiles, responseTime, resume, serviceArea, skills, socialUrl, title, trainingAudience, trainingCases, trainingCities, trainingCustomizable, trainingFormats, trainingMaterials, trainingPricingNote, trainingTopics, websiteUrl]
   );
 
   function toggleCategory(category: ProjectCategory) {
@@ -109,6 +207,42 @@ export default function ProviderProfilePage() {
       current.includes(category) ? current.filter((item) => item !== category) : [...current, category]
     );
   }
+
+  useEffect(() => {
+    if (remixSource !== "creator" || currentProfile) return;
+    const remix = readRemixDraft();
+    if (!remix || remix.type !== "creator") return;
+    const source = remix.creator;
+    setTitle(source.title);
+    setBio(`参考「${remix.sourceName}」主页结构：${source.bio}`);
+    setSkills(source.skills.join(", "));
+    setCategories(source.categories);
+    setPriceMin(String(source.priceMin || ""));
+    setPriceMax(String(source.priceMax || ""));
+    setResponseTime(source.responseTime || "");
+    setServiceArea(source.serviceArea || "");
+    if (source.servicePackages?.length) {
+      setServicePackages(source.servicePackages.map((item) => [
+        item.name,
+        item.price,
+        item.deliveryDays,
+        item.revisions,
+        item.deliverables.join("、"),
+        item.description
+      ].join(" | ")).join("\n"));
+    }
+    if (source.trainingProfile) {
+      setTrainingTopics(source.trainingProfile.topics.join("、"));
+      setTrainingFormats(source.trainingProfile.formats);
+      setTrainingAudience(source.trainingProfile.audience.join("、"));
+      setTrainingCities(source.trainingProfile.cities.join("、"));
+      setTrainingCases(source.trainingProfile.caseStudies.join("\n"));
+      setTrainingMaterials(source.trainingProfile.materials.join("、"));
+      setTrainingPricingNote(source.trainingProfile.pricingNote ?? "");
+      setTrainingCustomizable(source.trainingProfile.customizable);
+    }
+    setLoadedCreatorRemix(remix.sourceName);
+  }, [currentProfile, remixSource]);
 
   function addSkillTag() {
     const next = skillDraft.trim();
@@ -122,6 +256,32 @@ export default function ProviderProfilePage() {
 
   function removeSkillTag(tag: string) {
     setSkills(splitList(skills).filter((item) => item !== tag).join(", "));
+  }
+
+  function toggleTrainingFormat(format: TrainingFormat) {
+    setTrainingFormats((current) =>
+      current.includes(format) ? current.filter((item) => item !== format) : [...current, format]
+    );
+  }
+
+  function addServicePackage() {
+    const name = packageName.trim();
+    if (!name) return;
+    const line = [
+      name,
+      Number(packagePrice) || 0,
+      Number(packageDeliveryDays) || 0,
+      Number(packageRevisions) || 0,
+      packageDeliverables.trim(),
+      packageDescription.trim()
+    ].join(" | ");
+    setServicePackages((current) => [current.trim(), line].filter(Boolean).join("\n"));
+    setPackageName("");
+    setPackagePrice("");
+    setPackageDeliveryDays("");
+    setPackageRevisions("1");
+    setPackageDeliverables("");
+    setPackageDescription("");
   }
 
   async function handleAvatarUpload(files: FileList | null) {
@@ -156,6 +316,8 @@ export default function ProviderProfilePage() {
       skills: preview.skills,
       categories: preview.categories.length ? preview.categories : ["AI Short Video"],
       portfolio: preview.portfolio,
+      portfolioItems: preview.portfolioItems,
+      servicePackages: preview.servicePackages,
       priceMin: preview.priceMin,
       priceMax: preview.priceMax,
       responseTime,
@@ -169,7 +331,8 @@ export default function ProviderProfilePage() {
       credentialFile,
       qualificationFiles: splitList(qualificationFiles),
       contactEmail,
-      contactPhone
+      contactPhone,
+      trainingProfile: preview.trainingProfile
     });
     setAuthCapability("creator", "pending_review");
     router.push("/provider");
@@ -180,21 +343,21 @@ export default function ProviderProfilePage() {
       <section className="profileSetupHero">
         <div className="stack">
           <span className="eyebrow">
-            <UserRound size={15} /> 接单方入驻
+            <UserRound size={15} /> 服务方能力
           </span>
           <div>
-            <h1>开通接单能力</h1>
-            <p>主体主页已共用，这里只需要补充可接需求类型、技能标签、报价区间、简历/履历和代表作。</p>
+            <h1>{wantsTraining ? "生成培训服务主页" : "生成服务主页"}</h1>
+            <p>主体资料会自动继承。先填展示名称、服务定位、方向标签、报价和联系方式，就能生成一张可发给客户看的主页。</p>
           </div>
           <div className="profileSteps">
             <span>
-              <CheckCircle2 size={15} /> 填写展示页
+              <CheckCircle2 size={15} /> 3分钟生成主页
             </span>
             <span>
-              <Eye size={15} /> 出现在创作者大厅
+              <Eye size={15} /> 首批优先展示
             </span>
             <span>
-              <BriefcaseBusiness size={15} /> 浏览公开需求
+              <BriefcaseBusiness size={15} /> 分享获得线索
             </span>
           </div>
         </div>
@@ -204,11 +367,19 @@ export default function ProviderProfilePage() {
         <section className="card">
           <div className="panelTop">
             <div>
-              <strong>接单能力补充资料</strong>
-              <div className="muted">基础主体资料已从主体主页继承，这些信息用于匹配和接单展示。</div>
+              <strong>先生成可分享主页</strong>
+              <div className="muted">试运营期免费入驻。资料越完整，越容易进入首页精选池和需求方推荐。</div>
             </div>
             <Sparkles size={18} />
           </div>
+          <div className="notice">
+            轻入驻建议：先完成展示名称、服务定位、可接方向、报价和联系方式；案例、服务包、课件材料和资质可以后续继续补充。
+          </div>
+          {loadedCreatorRemix ? (
+            <div className="notice">
+              已参考「{loadedCreatorRemix}」的主页结构。请替换为你的真实服务能力、案例、报价和联系方式后再提交审核。
+            </div>
+          ) : null}
           <form className="cardBody form" onSubmit={handleSubmit}>
             <div className="grid two compactGrid">
               <div className="field">
@@ -309,6 +480,56 @@ export default function ProviderProfilePage() {
               </div>
             </div>
 
+            {offersTraining ? (
+              <div className="briefBlock">
+                <div className="spaceBetween">
+                  <strong>AIGC培训能力</strong>
+                  <span className="tag blue">培训服务</span>
+                </div>
+                <div className="field">
+                  <label htmlFor="training-topics">可讲主题</label>
+                  <input id="training-topics" value={trainingTopics} onChange={(event) => setTrainingTopics(event.target.value)} placeholder="提示词工程、AI办公、AI营销、AI设计、AI视频、数字人" />
+                </div>
+                <div className="field">
+                  <label>培训形式</label>
+                  <div className="tagList">
+                    {trainingFormatOptions.map((item) => (
+                      <button className={trainingFormats.includes(item.value) ? "tag green" : "tag"} key={item.value} onClick={() => toggleTrainingFormat(item.value)} type="button">
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="grid two compactGrid">
+                  <div className="field">
+                    <label htmlFor="training-audience">适合对象</label>
+                    <input id="training-audience" value={trainingAudience} onChange={(event) => setTrainingAudience(event.target.value)} placeholder="管理层、市场团队、设计团队、教师、开发团队" />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="training-cities">可线下城市</label>
+                    <input id="training-cities" value={trainingCities} onChange={(event) => setTrainingCities(event.target.value)} placeholder="全国线上、杭州、上海、北京" />
+                  </div>
+                </div>
+                <div className="field">
+                  <label htmlFor="training-cases">培训案例</label>
+                  <textarea id="training-cases" value={trainingCases} onChange={(event) => setTrainingCases(event.target.value)} placeholder="每行一个案例，例如：为某电商团队做AI商品图工作坊，30人，半天实操" />
+                </div>
+                <div className="grid two compactGrid">
+                  <div className="field">
+                    <label htmlFor="training-materials">交付材料</label>
+                    <input id="training-materials" value={trainingMaterials} onChange={(event) => setTrainingMaterials(event.target.value)} placeholder="课件、练习、工具清单、录播、课后答疑" />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="training-pricing">报价说明</label>
+                    <input id="training-pricing" value={trainingPricingNote} onChange={(event) => setTrainingPricingNote(event.target.value)} placeholder="半日/全天/按人/按项目报价" />
+                  </div>
+                </div>
+                <button className={trainingCustomizable ? "tag green" : "tag"} onClick={() => setTrainingCustomizable((value) => !value)} type="button">
+                  {trainingCustomizable ? "已选择" : "可选"} · 支持企业定制案例
+                </button>
+              </div>
+            ) : null}
+
             <div className="field">
               <label htmlFor="creator-skills">技能标签</label>
               <div className="tagEditor">
@@ -347,6 +568,30 @@ export default function ProviderProfilePage() {
                 <label htmlFor="price-max">报价上限</label>
                 <input id="price-max" inputMode="numeric" value={priceMax} onChange={(event) => setPriceMax(event.target.value)} />
               </div>
+            </div>
+
+            <div className="field">
+              <label htmlFor="service-packages">服务包/报价</label>
+              <div className="briefBlock">
+                <div className="grid two compactGrid">
+                  <input aria-label="服务包名称" placeholder="服务包名称，例如：基础短视频包" value={packageName} onChange={(event) => setPackageName(event.target.value)} />
+                  <input aria-label="价格" inputMode="numeric" placeholder="价格，例如：1200" value={packagePrice} onChange={(event) => setPackagePrice(event.target.value)} />
+                </div>
+                <div className="grid three compactGrid">
+                  <input aria-label="交付天数" inputMode="numeric" placeholder="交付天数" value={packageDeliveryDays} onChange={(event) => setPackageDeliveryDays(event.target.value)} />
+                  <input aria-label="修改次数" inputMode="numeric" placeholder="修改次数" value={packageRevisions} onChange={(event) => setPackageRevisions(event.target.value)} />
+                  <input aria-label="交付物" placeholder="交付物，用顿号分隔" value={packageDeliverables} onChange={(event) => setPackageDeliverables(event.target.value)} />
+                </div>
+                <input aria-label="服务包说明" placeholder="说明，例如：适合单条短视频试投" value={packageDescription} onChange={(event) => setPackageDescription(event.target.value)} />
+                <button className="btn" onClick={addServicePackage} type="button">添加服务包</button>
+              </div>
+              <textarea
+                id="service-packages"
+                value={servicePackages}
+                onChange={(event) => setServicePackages(event.target.value)}
+                placeholder={"基础短视频包 | 1200 | 5 | 1 | 脚本、成片、字幕 | 适合单条短视频试投\n电商图片包 | 1800 | 4 | 2 | 主图、场景图、详情页图 | 适合商品上新"}
+              />
+              <span className="fieldHint">每行一个服务包，格式：名称 | 价格 | 交付天数 | 修改次数 | 交付物 | 说明。</span>
             </div>
 
             <div className="field">
@@ -406,20 +651,25 @@ export default function ProviderProfilePage() {
             </div>
 
             <div className="field">
-              <label htmlFor="creator-resume">简历/履历</label>
-              <textarea id="creator-resume" value={resume} onChange={(event) => setResume(event.target.value)} required />
-              <span className="fieldHint">这部分会展示在你的主页里，发起沟通时会随展示页一起发送给派单方。</span>
+              <label htmlFor="creator-resume">简历/履历（可后续补充）</label>
+              <textarea id="creator-resume" value={resume} onChange={(event) => setResume(event.target.value)} />
+              <span className="fieldHint">建议补充过往经历或培训背景；先不填也可以生成主页，后续补全会提升推荐权重。</span>
             </div>
 
             <div className="field">
               <label htmlFor="creator-portfolio">代表作</label>
-              <textarea id="creator-portfolio" value={portfolio} onChange={(event) => setPortfolio(event.target.value)} />
-              <span className="fieldHint">每行一个代表作，可写标题、链接或简短说明。发起沟通时不用重复填写，会包含在展示页里。</span>
+              <textarea
+                id="creator-portfolio"
+                value={portfolio}
+                onChange={(event) => setPortfolio(event.target.value)}
+                placeholder={"智能台灯短视频 | AI Short Video | 3版开头钩子和15秒竖屏成片 | https://example.com/case\n咖啡店海报系列 | Image Design | 6张社媒海报和门店屏幕图 | https://example.com/poster"}
+              />
+              <span className="fieldHint">每行一个代表作，格式：标题 | 品类英文值 | 项目说明 | 链接。旧格式纯标题也兼容。</span>
             </div>
 
             <div className="toolbarGroup">
               <button className="btn primary" type="submit">
-                <Save size={16} /> 提交展示页并等待审核
+                <Save size={16} /> 保存并生成主页
               </button>
               <Link className="btn" href="/creators">
                 查看创作者大厅 <ArrowRight size={16} />
@@ -443,5 +693,13 @@ export default function ProviderProfilePage() {
         </aside>
       </div>
     </main>
+  );
+}
+
+export default function ProviderProfilePage() {
+  return (
+    <Suspense fallback={<main className="main"><div className="notice">正在加载接单资料表单...</div></main>}>
+      <ProviderProfileContent />
+    </Suspense>
   );
 }

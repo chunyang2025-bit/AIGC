@@ -2,12 +2,15 @@
 
 import { FormEvent, useState } from "react";
 import { notFound, useRouter } from "next/navigation";
-import { ArrowLeft, Bot, Building2, CheckCircle2, FileBadge2, FileText, Link2, Send } from "lucide-react";
+import { ArrowLeft, Bot, Building2, CheckCircle2, FileBadge2, FileText, Link2, Send, Sparkles, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { categoryLabel, compactDate, money, projectStatusLabel } from "@/lib/format";
+import { trainingFormatLabel } from "@/lib/training";
+import { ReportButton } from "@/components/ReportButton";
 import { expressInterestInProject, loadMarketplaceData } from "@/lib/store";
-import { isApproved, loginNextPath, readAuthSession } from "@/lib/auth";
-import { creatorProjectScore, decisionScore, projectDecisionItems } from "@/lib/opportunities";
+import { loginNextPath, readAuthSession } from "@/lib/auth";
+import { creatorProjectScore, decisionScore, projectDecisionItems, trainingOpportunityItems, trainingOpportunityScore, trainingProposalText } from "@/lib/opportunities";
+import { saveRemixDraft } from "@/lib/remix-draft";
 
 export default function ProjectDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -23,21 +26,36 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
     notFound();
   }
 
-  if (!session) {
-    router.push(loginNextPath("creator", `/projects/${params.id}`));
-    return null;
+  if (project.status !== "open" && project.status !== "matching") {
+    notFound();
   }
 
+  const publicProject = project;
   const projectId = project.id;
+  const isTrainingProject = project.category === "AIGC Training";
   const buyerProfile = (data.buyerProfiles ?? []).find((profile) => profile.userId === project.buyerId);
   const buyerName = buyerProfile?.displayName ?? buyerProfile?.companyName ?? data.users.find((user) => user.id === project.buyerId)?.name ?? "需求发布方";
   const decisionItems = projectDecisionItems(project, buyerProfile);
   const suitabilityScore = creatorProjectScore(currentCreator, project);
   const trustScore = decisionScore(project, buyerProfile);
+  const trainingFitItems = isTrainingProject ? trainingOpportunityItems(currentCreator, project, buyerProfile) : [];
+  const trainingFitScore = isTrainingProject ? trainingOpportunityScore(currentCreator, project, buyerProfile) : 0;
+  const generatedTrainingProposal = isTrainingProject ? trainingProposalText(currentCreator, project) : "";
+  const sampleMatches = data.matches
+    .filter((match) => match.projectId === project.id)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3)
+    .map((match) => ({
+      ...match,
+      creator: data.creators.find((creator) => creator.id === match.creatorId)
+    }))
+    .filter((match) => match.creator);
   const suggestedIntro = [
     `你好，我看过「${project.title}」这个需求。`,
     currentCreator ? `我这边主要做${currentCreator.categories.map(categoryLabel).join("、")}，相关能力包括${currentCreator.skills.slice(0, 4).join("、")}。` : "",
-    project.agentBrief?.deliverables?.length ? `我建议先确认${project.agentBrief.deliverables.slice(0, 2).join("、")}的样式参考和修改轮次。` : "我建议先确认交付范围、参考风格和修改轮次。",
+    isTrainingProject
+      ? "我可以先提供课程大纲、报价和过往企业培训案例，并预约15分钟沟通确认培训对象、人数和定制案例范围。"
+      : project.agentBrief?.deliverables?.length ? `我建议先确认${project.agentBrief.deliverables.slice(0, 2).join("、")}的样式参考和修改轮次。` : "我建议先确认交付范围、参考风格和修改轮次。",
     currentCreator ? `我的展示页里包含代表作、简历和联系方式，可以先供你判断是否适合继续沟通。` : ""
   ].filter(Boolean).join("\n");
 
@@ -53,11 +71,42 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
     }
   }
 
+  function saveProjectRemix() {
+    saveRemixDraft({
+      type: "project",
+      sourceProjectId: publicProject.id,
+      sourceTitle: publicProject.title,
+      project: {
+        title: publicProject.title,
+        description: publicProject.description,
+        category: publicProject.category,
+        tags: publicProject.tags,
+        useCase: publicProject.useCase,
+        deliverableTypes: publicProject.deliverableTypes,
+        urgency: publicProject.urgency,
+        needInvoice: publicProject.needInvoice,
+        longTerm: publicProject.longTerm,
+        acceptPlatformRecommend: publicProject.acceptPlatformRecommend,
+        trainingRequirement: publicProject.trainingRequirement,
+        budget: publicProject.budget,
+        deadline: publicProject.deadline,
+        agentBrief: publicProject.agentBrief
+      }
+    });
+  }
+
   return (
     <main className="main">
       <div className="toolbar">
         <Link className="btn" href="/projects">
           <ArrowLeft size={16} /> 返回需求
+        </Link>
+        <Link
+          className="btn primary"
+          href={loginNextPath("buyer", `/post-project?remix=project${isTrainingProject ? "&category=AIGC%20Training" : ""}`)}
+          onClick={saveProjectRemix}
+        >
+          <Sparkles size={16} /> {isTrainingProject ? "参考这个培训需求" : "参考这个需求发布"}
         </Link>
       </div>
 
@@ -90,7 +139,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
               <div className="grid four">
                 <div className="metric">
                   <strong>{money(project.budget)}</strong>
-                  <span>预算</span>
+                  <span>意向预算</span>
                 </div>
                 <div className="metric">
                   <strong>{compactDate(project.deadline).split(",")[0]}</strong>
@@ -115,6 +164,40 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                   <FileBadge2 size={15} /> 需求相关资质：{project.qualificationFile}
                 </div>
               ) : null}
+              {project.trainingRequirement ? (
+                <div className="agentBriefPanel">
+                  <div className="spaceBetween">
+                    <strong>AIGC培训需求</strong>
+                    <span className="tag blue">{trainingFormatLabel(project.trainingRequirement.format)}</span>
+                  </div>
+                  <div className="grid two compactGrid">
+                    <div className="briefBlock">
+                      <strong>培训对象</strong>
+                      <p>{project.trainingRequirement.audience || "待沟通"}{project.trainingRequirement.headcount ? ` · ${project.trainingRequirement.headcount}人` : ""}</p>
+                    </div>
+                    <div className="briefBlock">
+                      <strong>城市/时长</strong>
+                      <p>{project.trainingRequirement.city || "线上/待沟通"} · {project.trainingRequirement.duration || "待沟通"}</p>
+                    </div>
+                  </div>
+                  <div className="briefBlock">
+                    <strong>培训主题</strong>
+                    <div className="tagList">
+                      {project.trainingRequirement.topics.map((item) => <span className="tag green" key={item}>{item}</span>)}
+                      {!project.trainingRequirement.topics.length ? <span className="tag">待沟通</span> : null}
+                    </div>
+                  </div>
+                  <div className="briefBlock">
+                    <strong>培训目标</strong>
+                    <p>{project.trainingRequirement.goal || "待沟通"}</p>
+                  </div>
+                  <div className="tagList">
+                    {project.trainingRequirement.needCustomCases ? <span className="tag">需要企业定制案例</span> : null}
+                    {project.trainingRequirement.needMaterials ? <span className="tag">需要课件/练习材料</span> : null}
+                  </div>
+                </div>
+              ) : null}
+              {session ? <ReportButton targetType="project" targetId={project.id} /> : null}
               {project.agentBrief ? (
                 <div className="agentBriefPanel">
                   <div className="spaceBetween">
@@ -156,21 +239,34 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
               <div className="card">
                 <div className="cardBody stack">
                   <div className="spaceBetween">
-                    <strong>接单判断卡</strong>
-                    <span className={trustScore >= 80 ? "tag green" : "tag gold"}>{trustScore}% 可信信息</span>
+                    <strong>{isTrainingProject ? "培训需求是否值得接" : "接单判断卡"}</strong>
+                    <span className={(isTrainingProject ? trainingFitScore : trustScore) >= 80 ? "tag green" : "tag gold"}>
+                      {isTrainingProject ? `${trainingFitScore}% 适合接` : `${trustScore}% 可信信息`}
+                    </span>
                   </div>
                   <div className="grid two compactGrid">
                     <div className="metric">
-                      <strong>{suitabilityScore}%</strong>
-                      <span>与你的能力匹配</span>
+                      <strong>{isTrainingProject ? `${trustScore}%` : `${suitabilityScore}%`}</strong>
+                      <span>{isTrainingProject ? "需求信息完整度" : "与你的能力匹配"}</span>
                     </div>
                     <div className="metric">
                       <strong>{buyerProfile?.verified ? "已认证" : "待审核"}</strong>
                       <span>派单方主体</span>
                     </div>
                   </div>
+                  {isTrainingProject ? (
+                    <div className="notice stack">
+                      <strong>建议先确认</strong>
+                      <div className="tagList">
+                        <span className="tag">课程大纲</span>
+                        <span className="tag">报价口径</span>
+                        <span className="tag">企业案例</span>
+                        <span className="tag">课后答疑边界</span>
+                      </div>
+                    </div>
+                  ) : null}
                   <div className="tagList">
-                    {decisionItems.map((item) => (
+                    {(isTrainingProject ? trainingFitItems : decisionItems).map((item) => (
                       <span className={item.done ? "tag green" : "tag"} key={item.label}>
                         {item.done ? "已具备" : "待确认"} · {item.label}
                       </span>
@@ -178,6 +274,30 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                   </div>
                 </div>
               </div>
+              {sampleMatches.length ? (
+                <div className="agentBriefPanel">
+                  <div className="spaceBetween">
+                    <strong>
+                      <Sparkles size={16} /> 示例匹配结果
+                    </strong>
+                    <span className="tag green">注册后可发起沟通</span>
+                  </div>
+                  <p className="muted" style={{ margin: 0, lineHeight: 1.6 }}>
+                    先展示系统如何推荐候选服务方，帮助你判断需求发布后能得到什么结果。
+                  </p>
+                  <div className="grid three compactGrid">
+                    {sampleMatches.map((match) => (
+                      <Link className="toolMiniCard" href={`/creators/${match.creator!.id}`} key={match.id}>
+                        <div className="spaceBetween">
+                          <strong>{match.creator!.displayName ?? match.creator!.name}</strong>
+                          <span className="tag blue">{match.score}%</span>
+                        </div>
+                        <p>{match.reason}</p>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </div>
           </article>
         </section>
@@ -186,9 +306,9 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
           <section className="card">
             <div className="cardBody stack">
               <div>
-                <h2 style={{ margin: 0, fontSize: 22 }}>向派单方发起沟通</h2>
+                <h2 style={{ margin: 0, fontSize: 22 }}>{isTrainingProject ? "向需求方提交培训方案意向" : "向派单方发起沟通"}</h2>
                 <p className="muted" style={{ margin: "8px 0 0", lineHeight: 1.55 }}>
-                  直接发送你装修好的展示页。展示页内已包含主体资质、联系方式、简历/履历和代表作。
+                  {isTrainingProject ? "发送你的展示页，并说明可提供课程大纲、报价、企业培训案例和预约沟通时间。" : "直接发送你装修好的展示页。展示页内已包含主体资质、联系方式、简历/履历和代表作。"}
                 </p>
               </div>
               {currentCreator ? (
@@ -207,15 +327,27 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                     <label htmlFor="interest-intro">沟通留言</label>
                     <textarea id="interest-intro" value={intro} onChange={(event) => setIntro(event.target.value)} />
                   </div>
-                  <button className="btn" onClick={() => setIntro(suggestedIntro)} type="button">
-                    生成沟通话术
+                  {isTrainingProject ? (
+                    <div className="notice stack">
+                      <strong>培训方案应包含</strong>
+                      <div className="tagList">
+                        <span className="tag">课程结构</span>
+                        <span className="tag">报价</span>
+                        <span className="tag">企业案例</span>
+                        <span className="tag">课件材料</span>
+                        <span className="tag">15分钟沟通时间</span>
+                      </div>
+                    </div>
+                  ) : null}
+                  <button className="btn" onClick={() => setIntro(isTrainingProject ? generatedTrainingProposal : suggestedIntro)} type="button">
+                    {isTrainingProject ? "生成培训方案话术" : "生成沟通话术"}
                   </button>
                   <div className="notice">
                     <Link2 size={15} /> 将发送展示页：/creators/{currentCreator.id}
                   </div>
-                  {currentCreator.verified ? (
+                  {currentCreator.verified && (project.status === "open" || project.status === "matching") ? (
                     <button className="btn primary" type="submit">
-                      <Send size={16} /> 发送我的展示页并邀约聊天
+                      <Send size={16} /> {isTrainingProject ? "发送展示页并提交方案意向" : "发送我的展示页并邀约聊天"}
                     </button>
                   ) : (
                     <div className="notice">
@@ -228,10 +360,15 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                   完善展示页后邀约
                 </Link>
               ) : (
-                <Link className="btn primary" href="/login?role=accept">
-                  接单方登录后邀约
+                <Link className="btn primary" href={loginNextPath("creator", `/projects/${project.id}`)}>
+                  免费注册/登录后发起沟通
                 </Link>
               )}
+              {!session ? (
+                <div className="notice">
+                  <UsersRound size={15} /> 你可以先查看需求、Brief Agent 和示例匹配结果；联系派单方时再注册。
+                </div>
+              ) : null}
             </div>
           </section>
         </aside>
