@@ -7,7 +7,7 @@ import { ArrowRight, Building2, CheckCircle2, FileBadge2, Globe2, Mail, Phone, S
 import { isImageValue, uploadCredentialFiles, uploadOrPreviewImage } from "@/lib/file-upload";
 import { compactDate, credentialUploadOptional, money, publicCredentialSummary, requiredCredentialLabel, verificationTypeLabel } from "@/lib/format";
 import { joinProvinceCity, provinceCityOptions, splitProvinceCity } from "@/lib/location-options";
-import { loadMarketplaceData, upsertUnifiedSubjectProfile } from "@/lib/store";
+import { loadMarketplaceData } from "@/lib/store";
 import { VerificationType } from "@/lib/types";
 import { readAuthSession, setAuthCapability } from "@/lib/auth";
 
@@ -35,6 +35,7 @@ function AccountProfileContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const intent = searchParams.get("intent") ?? "dispatch";
+  const nextPath = `/account/capabilities?intent=${encodeURIComponent(intent)}`;
   const data = useMemo(() => loadMarketplaceData(), []);
   const session = useMemo(() => readAuthSession(), []);
   const buyerProfile = data.buyerProfiles?.find((profile) => profile.userId === session?.userId);
@@ -121,7 +122,7 @@ function AccountProfileContent() {
       throw new Error(payload?.error || "主体资料保存失败，请稍后再试。");
     }
 
-    upsertUnifiedSubjectProfile(input);
+    return input;
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -131,7 +132,8 @@ function AccountProfileContent() {
     try {
       await saveSubjectProfile();
       setAuthCapability(session?.role ?? "buyer", "pending_review");
-      router.push(`/account/capabilities?intent=${encodeURIComponent(intent)}`);
+      router.replace(nextPath);
+      router.refresh();
     } catch (error) {
       setSaveStatus(error instanceof Error ? error.message : "主体资料保存失败，请稍后再试。");
     } finally {
@@ -300,7 +302,7 @@ function AccountProfileContent() {
               <button className="btn primary" disabled={isSaving} type="submit">
                 <Save size={16} /> {isSaving ? "正在保存..." : "保存主体主页并继续"}
               </button>
-              <Link className="btn" href={`/account/capabilities?intent=${encodeURIComponent(intent)}`}>
+              <Link className="btn" href={nextPath}>
                 已有主体资料，继续当前业务 <ArrowRight size={16} />
               </Link>
             </div>

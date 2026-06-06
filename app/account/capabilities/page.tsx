@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect } from "react";
+import { Suspense, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, BriefcaseBusiness, CheckCircle2, GraduationCap, MessageSquare, ShieldCheck, UserRound, UsersRound } from "lucide-react";
@@ -23,8 +23,8 @@ function AccountCapabilitiesContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const intent = normalizeIntent(searchParams.get("intent"));
-  const session = readAuthSession();
-  const data = loadMarketplaceData();
+  const session = useMemo(() => readAuthSession(), []);
+  const data = useMemo(() => loadMarketplaceData(), []);
   const subject = data.buyerProfiles?.find((profile) => profile.userId === session?.userId);
   const creator = data.creators.find((profile) => profile.userId === session?.userId);
   const hasTrainingService = Boolean(creator?.categories.includes("AIGC Training"));
