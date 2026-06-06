@@ -225,7 +225,7 @@ export function setAuthStatus(status: AccountStatus) {
 export function setAuthCapability(role: UserRole, status: AccountStatus = "pending_review") {
   const session = readAuthSession();
   if (session) {
-    saveAuthSession({ ...session, role: session.role === "admin" ? "admin" : "buyer", status });
+    saveAuthSession({ ...session, role: session.role === "admin" ? "admin" : role, status });
   }
 }
 

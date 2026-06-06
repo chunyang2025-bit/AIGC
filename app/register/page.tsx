@@ -13,7 +13,7 @@ import {
   Sparkles,
   UserCog
 } from "lucide-react";
-import { registerAccount } from "@/lib/auth";
+import { loginAccount, registerAccount } from "@/lib/auth";
 import { userFacingErrorMessage } from "@/lib/error-message";
 
 function passwordValid(value: string) {
@@ -63,11 +63,27 @@ function RegisterContent() {
         name: account.trim(),
         inviteCode: role === "admin" ? inviteCode.trim() : undefined
       });
-      setStatusText(role === "admin" ? "后台账号注册成功，请登录运营后台。" : "注册成功，请登录后继续当前业务路径。");
-      const nextQuery = requestedNext ? `&next=${encodeURIComponent(requestedNext)}` : "";
-      const intentQuery = requestedIntent ? `&intent=${encodeURIComponent(requestedIntent)}` : "";
-      const loginRole = role === "admin" ? "admin" : role === "creator" ? "accept" : "dispatch";
-      router.push(role === "admin" ? "/login?role=admin" : `/login?role=${loginRole}&account=${encodeURIComponent(account.trim())}${nextQuery}${intentQuery}`);
+      setStatusText(role === "admin" ? "后台账号注册成功，请登录运营后台。" : "注册成功，正在进入下一步。");
+      if (role === "admin") {
+        router.push("/login?role=admin");
+        return;
+      }
+      loginAccount({
+        role,
+        account: account.trim(),
+        password,
+        authMethod: "password",
+        name: account.trim()
+      });
+      if (requestedNext?.startsWith("/")) {
+        router.push(requestedNext);
+        return;
+      }
+      if (requestedIntent) {
+        router.push(`/account/profile?intent=${encodeURIComponent(requestedIntent)}`);
+        return;
+      }
+      router.push(role === "creator" ? "/account/profile?intent=service" : "/account/profile?intent=dispatch");
     } catch (error) {
       setStatusText(userFacingErrorMessage(error, "注册失败，请稍后再试。"));
     } finally {
