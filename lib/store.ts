@@ -39,36 +39,55 @@ function normalizeVerificationType(value?: string): VerificationType | undefined
   return value as VerificationType | undefined;
 }
 
+function dedupeProfilesByUserId<T extends { id: string; userId: string }>(items: T[], canonicalPrefix: string): T[] {
+  const byUserId = new Map<string, T>();
+
+  for (const item of items) {
+    const current = byUserId.get(item.userId);
+    const isCanonical = item.id === `${canonicalPrefix}-${item.userId}`;
+    const currentIsCanonical = current?.id === `${canonicalPrefix}-${item.userId}`;
+
+    if (!current || isCanonical || !currentIsCanonical) {
+      byUserId.set(item.userId, item);
+    }
+  }
+
+  return Array.from(byUserId.values());
+}
+
 function normalizeData(data: MarketplaceData): MarketplaceData {
   const demo = cloneData(demoData);
+  const buyerProfiles = (data.buyerProfiles ?? demo.buyerProfiles ?? []).map((profile) => ({
+    ...profile,
+    displayName: profile.displayName ?? profile.companyName,
+    avatarUrl: profile.avatarUrl ?? profile.companyName.slice(0, 1),
+    profileSlogan: profile.profileSlogan ?? profile.industry,
+    verificationType: normalizeVerificationType(profile.verificationType) ?? "enterprise",
+    websiteUrl: profile.websiteUrl ?? "",
+    socialUrl: profile.socialUrl ?? "",
+    serviceArea: profile.serviceArea ?? profile.location
+  }));
+  const creators = data.creators.map((creator) => ({
+    ...creator,
+    displayName: creator.displayName ?? creator.name,
+    avatarUrl: creator.avatarUrl ?? creator.name.slice(0, 1),
+    profileSlogan: creator.profileSlogan ?? creator.title,
+    resume: creator.resume ?? `${creator.name} 已完成 ${creator.completedProjects} 个历史项目，擅长 ${creator.skills.slice(0, 3).join("、")}。`,
+    verificationType: normalizeVerificationType(creator.verificationType ?? creator.identityType) ?? "individual",
+    identityType: normalizeVerificationType(creator.identityType) ?? normalizeVerificationType(creator.verificationType) ?? "individual",
+    qualificationFiles: creator.qualificationFiles ?? [],
+    portfolioItems: creator.portfolioItems ?? [],
+    servicePackages: creator.servicePackages ?? [],
+    websiteUrl: creator.websiteUrl ?? "",
+    socialUrl: creator.socialUrl ?? "",
+    serviceArea: creator.serviceArea ?? creator.location
+  }));
+
   return {
     ...data,
     feedback: data.feedback ?? [],
-    buyerProfiles: (data.buyerProfiles ?? demo.buyerProfiles ?? []).map((profile) => ({
-      ...profile,
-      displayName: profile.displayName ?? profile.companyName,
-      avatarUrl: profile.avatarUrl ?? profile.companyName.slice(0, 1),
-      profileSlogan: profile.profileSlogan ?? profile.industry,
-      verificationType: normalizeVerificationType(profile.verificationType) ?? "enterprise",
-      websiteUrl: profile.websiteUrl ?? "",
-      socialUrl: profile.socialUrl ?? "",
-      serviceArea: profile.serviceArea ?? profile.location
-    })),
-    creators: data.creators.map((creator) => ({
-      ...creator,
-      displayName: creator.displayName ?? creator.name,
-      avatarUrl: creator.avatarUrl ?? creator.name.slice(0, 1),
-      profileSlogan: creator.profileSlogan ?? creator.title,
-      resume: creator.resume ?? `${creator.name} 已完成 ${creator.completedProjects} 个历史项目，擅长 ${creator.skills.slice(0, 3).join("、")}。`,
-      verificationType: normalizeVerificationType(creator.verificationType ?? creator.identityType) ?? "individual",
-      identityType: normalizeVerificationType(creator.identityType) ?? normalizeVerificationType(creator.verificationType) ?? "individual",
-      qualificationFiles: creator.qualificationFiles ?? [],
-      portfolioItems: creator.portfolioItems ?? [],
-      servicePackages: creator.servicePackages ?? [],
-      websiteUrl: creator.websiteUrl ?? "",
-      socialUrl: creator.socialUrl ?? "",
-      serviceArea: creator.serviceArea ?? creator.location
-    }))
+    buyerProfiles: dedupeProfilesByUserId(buyerProfiles, "bp"),
+    creators: dedupeProfilesByUserId(creators, "c")
   };
 }
 
@@ -701,7 +720,7 @@ export function upsertUnifiedSubjectProfile(input: {
   const next = loadMarketplaceData();
   saveMarketplaceData({
     ...next,
-    creators: [mergedCreator, ...next.creators.filter((item) => item.id !== creator.id)]
+    creators: [mergedCreator, ...next.creators.filter((item) => item.id !== creator.id && item.userId !== creator.userId)]
   });
   return buyerProfile;
 }
@@ -802,7 +821,7 @@ export function upsertCurrentCreatorProfile(input: {
         },
         ...data.users
       ];
-  const creators = [profile, ...data.creators.filter((creator) => creator.id !== profileId)];
+  const creators = [profile, ...data.creators.filter((creator) => creator.id !== profileId && creator.userId !== userId)];
   const activityEvent: ActivityEvent = {
     id: `a-${Date.now()}`,
     userId,

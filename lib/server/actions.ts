@@ -456,9 +456,12 @@ export function pagedCreators(data: MarketplaceData, searchParams: URLSearchPara
 }
 
 export function upsertCreator(data: MarketplaceData, input: Record<string, unknown>) {
+  const profileId = String(input.id || id("c"));
+  const userId = String(input.userId || "u-creator-self");
+  const existing = data.creators.find((item) => item.id === profileId || item.userId === userId);
   const profile: CreatorProfile = {
-    id: String(input.id || id("c")),
-    userId: String(input.userId || "u-creator-self"),
+    id: profileId,
+    userId,
     name: String(input.name || input.displayName || "新接单方"),
     title: String(input.title || input.profileSlogan || "AIGC创作者"),
     location: String(input.location || ""),
@@ -474,7 +477,8 @@ export function upsertCreator(data: MarketplaceData, input: Record<string, unkno
     completedProjects: asNumber(input.completedProjects, 0),
     rating: asNumber(input.rating, 4.6),
     responseTime: String(input.responseTime || "24小时"),
-    verified: false,
+    verified: existing?.verified ?? false,
+    rejectedReason: existing?.rejectedReason,
     identityType: asVerificationType(input.identityType || input.verificationType),
     verificationType: asVerificationType(input.verificationType || input.identityType),
     credentialFile: input.credentialFile ? String(input.credentialFile) : undefined,
@@ -491,7 +495,7 @@ export function upsertCreator(data: MarketplaceData, input: Record<string, unkno
     cover: String(input.cover || "linear-gradient(135deg, #153f31, #2f7c5f 46%, #f0b35a)")
   };
 
-  data.creators = [profile, ...data.creators.filter((item) => item.id !== profile.id)];
+  data.creators = [profile, ...data.creators.filter((item) => item.id !== profile.id && item.userId !== profile.userId)];
   addActivity(data, {
     userId: profile.userId,
     role: "creator",
@@ -503,9 +507,12 @@ export function upsertCreator(data: MarketplaceData, input: Record<string, unkno
 }
 
 export function upsertBuyer(data: MarketplaceData, input: Record<string, unknown>) {
+  const profileId = String(input.id || id("bp"));
+  const userId = String(input.userId || "u-buyer-1");
+  const existing = (data.buyerProfiles ?? []).find((item) => item.id === profileId || item.userId === userId);
   const profile: BuyerProfile = {
-    id: String(input.id || id("bp")),
-    userId: String(input.userId || "u-buyer-1"),
+    id: profileId,
+    userId,
     companyName: String(input.companyName || input.displayName || input.name || "新派单方"),
     displayName: String(input.displayName || input.name || input.companyName || "新派单方"),
     avatarUrl: input.avatarUrl ? String(input.avatarUrl) : undefined,
@@ -521,11 +528,12 @@ export function upsertBuyer(data: MarketplaceData, input: Record<string, unknown
     serviceArea: input.serviceArea ? String(input.serviceArea) : undefined,
     businessLicenseFile: String(input.businessLicenseFile || input.credentialFile || ""),
     qualificationFiles: asStringArray(input.qualificationFiles),
-    verified: false,
+    verified: existing?.verified ?? false,
+    rejectedReason: existing?.rejectedReason,
     cover: String(input.cover || "linear-gradient(135deg, #153f31, #2457c5)")
   };
 
-  data.buyerProfiles = [profile, ...(data.buyerProfiles ?? []).filter((item) => item.id !== profile.id)];
+  data.buyerProfiles = [profile, ...(data.buyerProfiles ?? []).filter((item) => item.id !== profile.id && item.userId !== profile.userId)];
   addActivity(data, {
     userId: profile.userId,
     role: "buyer",

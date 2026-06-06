@@ -26,11 +26,27 @@ function cloneData(data: MarketplaceData): MarketplaceData {
   return JSON.parse(JSON.stringify(data)) as MarketplaceData;
 }
 
+function dedupeProfilesByUserId<T extends { id: string; userId: string }>(items: T[], canonicalPrefix: string): T[] {
+  const byUserId = new Map<string, T>();
+
+  for (const item of items) {
+    const current = byUserId.get(item.userId);
+    const isCanonical = item.id === `${canonicalPrefix}-${item.userId}`;
+    const currentIsCanonical = current?.id === `${canonicalPrefix}-${item.userId}`;
+
+    if (!current || isCanonical || !currentIsCanonical) {
+      byUserId.set(item.userId, item);
+    }
+  }
+
+  return Array.from(byUserId.values());
+}
+
 function normalizeData(data: MarketplaceData): MarketplaceData {
   return {
     users: data.users ?? [],
-    buyerProfiles: data.buyerProfiles ?? [],
-    creators: data.creators ?? [],
+    buyerProfiles: dedupeProfilesByUserId(data.buyerProfiles ?? [], "bp"),
+    creators: dedupeProfilesByUserId(data.creators ?? [], "c"),
     projects: data.projects ?? [],
     matches: data.matches ?? [],
     orders: data.orders ?? [],
