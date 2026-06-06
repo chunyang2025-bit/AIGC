@@ -7,7 +7,7 @@ import { categoryLabel, money, publicCredentialSummary, verificationTypeLabel } 
 import { isImageValue } from "@/lib/file-upload";
 import { trainingFormatLabel } from "@/lib/training";
 import { loadMarketplaceData } from "@/lib/store";
-import { readAuthSession } from "@/lib/auth";
+import { loginNextPath, readAuthSession } from "@/lib/auth";
 import { ReportButton } from "@/components/ReportButton";
 import { PortfolioItem } from "@/lib/types";
 import { saveRemixDraft } from "@/lib/remix-draft";
@@ -22,6 +22,8 @@ export default function CreatorDetailPage({ params }: { params: { id: string } }
   }
 
   const publicCreator = creator;
+  const buyerProfile = data.buyerProfiles?.find((profile) => profile.userId === session?.userId);
+  const buyerProjects = data.projects.filter((project) => project.buyerId === session?.userId);
   const portfolioItems: PortfolioItem[] =
     creator.portfolioItems?.length
       ? creator.portfolioItems
@@ -71,7 +73,7 @@ export default function CreatorDetailPage({ params }: { params: { id: string } }
           <Copy size={16} /> 参考这个主页
         </Link>
         {!session ? (
-          <Link className="btn primary" href="/register">
+          <Link className="btn primary" href={loginNextPath("buyer", `/creators/${creator.id}`)}>
             免费注册后联系
           </Link>
         ) : null}
@@ -139,6 +141,38 @@ export default function CreatorDetailPage({ params }: { params: { id: string } }
       </section>
 
       <div className="grid two">
+        <section className="card">
+          <div className="panelTop">
+            <div>
+              <strong>沟通引导</strong>
+            </div>
+            <BriefcaseBusiness size={18} />
+          </div>
+          <div className="cardBody stack">
+            {!session ? (
+              <>
+                <div className="notice">先查看展示页；进一步沟通、邀请候选方和查看完整联系资料需要注册登录。</div>
+                <Link className="btn primary" href={loginNextPath("buyer", `/creators/${creator.id}`)}>注册/登录后沟通</Link>
+              </>
+            ) : !buyerProfile ? (
+              <>
+                <div className="notice">继续沟通前，需要先开通派单能力并完善主体主页。</div>
+                <Link className="btn primary" href="/account/capabilities?intent=dispatch">开通派单能力</Link>
+              </>
+            ) : !buyerProjects.length ? (
+              <>
+                <div className="notice">已开通派单能力。发布需求后，可以邀请这位服务方进入沟通线索。</div>
+                <Link className="btn primary" href={creator.categories.includes("AIGC Training") ? "/post-project?category=AIGC%20Training" : "/post-project"}>发布需求并邀请</Link>
+              </>
+            ) : (
+              <>
+                <div className="notice">进入你的派单后台，选择需求后可邀请这位服务方沟通。</div>
+                <Link className="btn primary" href="/buyer">进入派单后台</Link>
+              </>
+            )}
+          </div>
+        </section>
+
         <section className="card">
           <div className="panelTop">
             <div>

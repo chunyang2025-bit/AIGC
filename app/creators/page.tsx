@@ -18,9 +18,10 @@ function CreatorsContent() {
   const searchParams = useSearchParams();
   const data = loadMarketplaceData();
   const session = readAuthSession();
+  const listType = searchParams.get("type") === "creator" ? "creator" : "trainer";
   const projectId = searchParams.get("project");
   const project = projectId ? data.projects.find((item) => item.id === projectId) : null;
-  const [category, setCategory] = useState<ProjectCategory | "All">(project?.category ?? "AIGC Training");
+  const [category, setCategory] = useState<ProjectCategory | "All">(project?.category ?? (listType === "trainer" ? "AIGC Training" : "All"));
   const [budget, setBudget] = useState("all");
   const [sort, setSort] = useState("recommended");
   const [query, setQuery] = useState("");
@@ -32,13 +33,14 @@ function CreatorsContent() {
   const creators = useMemo(() => {
     const filtered = data.creators.filter((creator) => {
       const matchesCategory = category === "All" || creator.categories.includes(category);
+      const matchesListType = listType === "trainer" ? creator.categories.includes("AIGC Training") : true;
       const matchesBudget =
         budget === "all" ||
         (budget === "low" && creator.priceMin <= 800) ||
         (budget === "mid" && creator.priceMax >= 2000 && creator.priceMin <= 6000) ||
         (budget === "high" && creator.priceMax >= 8000);
       const haystack = `${creator.name} ${creator.title} ${creator.location} ${creator.bio} ${creator.skills.join(" ")} ${creator.portfolio.join(" ")}`.toLowerCase();
-      return matchesCategory && matchesBudget && haystack.includes(query.toLowerCase());
+      return matchesListType && matchesCategory && matchesBudget && haystack.includes(query.toLowerCase());
     });
 
     return filtered.sort((a, b) => {
@@ -52,7 +54,9 @@ function CreatorsContent() {
       }
       return b.completedProjects - a.completedProjects;
     });
-  }, [budget, category, data.creators, project, query, sort]);
+  }, [budget, category, data.creators, listType, project, query, sort]);
+  const previewLimit = session ? creators.length : 6;
+  const pagedCreators = creators.slice(0, previewLimit);
 
   function invite(creatorId: string) {
     if (!project) {
@@ -82,8 +86,8 @@ function CreatorsContent() {
     <main className="main">
       <div className="pageHeader">
         <div>
-          <h1>培训服务方大厅</h1>
-          <p>优先检索可提供AIGC培训的讲师和服务团队；培训后的内容制作、数字人和自动化交付也可以继续在这里筛选。</p>
+          <h1>{listType === "trainer" ? "培训名师" : "创作者大厅"}</h1>
+          <p>{listType === "trainer" ? "优先查看可提供企业AI培训的讲师、机构和顾问。" : "查看项目交付型创作者、工作室和服务团队。"}</p>
         </div>
         <div className="toolbarGroup">
           <button className="btn" onClick={() => router.push(creatorEntry)} type="button">
@@ -162,7 +166,7 @@ function CreatorsContent() {
             title="重置筛选"
             onClick={() => {
               setCategory(project?.category ?? "All");
-              if (!project) setCategory("AIGC Training");
+              if (!project) setCategory(listType === "trainer" ? "AIGC Training" : "All");
               setBudget("all");
               setSort("recommended");
               setQuery("");
@@ -179,7 +183,7 @@ function CreatorsContent() {
       <div className="sectionHeader">
         <div>
           <h2>{creators.length} 位服务方</h2>
-          <p>默认展示AIGC培训服务方；切换品类后可继续检索其他接派单服务。</p>
+          <p>游客可优先查看部分信息；注册登录并开通能力后可查看全部并发起沟通。</p>
         </div>
         {project ? (
           <span className={project.status === "open" || project.status === "matching" ? "tag blue" : "tag gold"}>
@@ -189,7 +193,7 @@ function CreatorsContent() {
       </div>
 
       <div className="grid">
-        {creators.map((creator) => (
+        {pagedCreators.map((creator) => (
           <CreatorCard
             creator={creator}
             key={creator.id}
@@ -200,6 +204,16 @@ function CreatorsContent() {
           />
         ))}
       </div>
+      {!session && creators.length > pagedCreators.length ? (
+        <section className="notice stack">
+          <strong>登录后查看全部{listType === "trainer" ? "培训名师" : "创作者"}</strong>
+          <span>进一步沟通、邀请候选方和开通派单能力需要注册登录。</span>
+          <div className="toolbarGroup">
+            <button className="btn primary" onClick={() => router.push(buyerEntry)} type="button">注册/登录后查看全部</button>
+            <button className="btn" onClick={() => router.push("/account/capabilities?intent=dispatch")} type="button">开通派单能力</button>
+          </div>
+        </section>
+      ) : null}
     </main>
   );
 }

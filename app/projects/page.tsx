@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { BriefcaseBusiness, Filter, GraduationCap, Plus, Search, UserCog } from "lucide-react";
 import { ProjectCard } from "@/components/ProjectCard";
 import { BetaNotice } from "@/components/BetaNotice";
@@ -9,16 +10,19 @@ import { loadMarketplaceData } from "@/lib/store";
 import { loginNextPath, readAuthSession } from "@/lib/auth";
 import { creatorProjectScore, sortProjectsForCreator } from "@/lib/opportunities";
 
-export default function ProjectsPage() {
+function ProjectsContent() {
+  const searchParams = useSearchParams();
   const data = loadMarketplaceData();
   const session = readAuthSession();
+  const listType = searchParams.get("type") === "training" ? "training" : "dispatch";
   const currentCreator = data.creators.find((creator) => creator.userId === session?.userId);
   const creatorEntry = loginNextPath("creator", "/provider");
   const buyerEntry = loginNextPath("buyer", "/post-project");
   const trainingEntry = loginNextPath("buyer", "/post-project?category=AIGC%20Training");
   const [query, setQuery] = useState("");
-  const [mode, setMode] = useState<"project" | "training" | "recommended" | "latest" | "budget" | "verified">("project");
+  const [mode, setMode] = useState<"project" | "training" | "recommended" | "latest" | "budget" | "verified">(listType === "training" ? "training" : "project");
   const [visibleCount, setVisibleCount] = useState(12);
+  const previewLimit = session ? visibleCount : Math.min(visibleCount, 6);
   const visibleProjects = useMemo(() => {
     const openProjects = data.projects.filter((project) => {
       if (project.status !== "open" && project.status !== "matching") return false;
@@ -27,7 +31,7 @@ export default function ProjectsPage() {
     });
     if (mode === "project") {
       return sortProjectsForCreator(openProjects, data, currentCreator, "recommended")
-        .sort((a, b) => Number(a.category === "AIGC Training") - Number(b.category === "AIGC Training"));
+        .filter((project) => project.category !== "AIGC Training");
     }
     if (mode === "training") {
       return sortProjectsForCreator(
@@ -39,14 +43,15 @@ export default function ProjectsPage() {
     }
     return sortProjectsForCreator(openProjects, data, currentCreator, mode);
   }, [currentCreator, data, mode, query]);
-  const pagedProjects = visibleProjects.slice(0, visibleCount);
+  const pagedProjects = visibleProjects.slice(0, previewLimit);
+  const isTrainingList = mode === "training";
 
   return (
     <main className="main">
       <div className="pageHeader">
         <div>
           <h1>AIGC公开派单需求大厅</h1>
-          <p>默认优先展示图片设计、短视频、数字人、文案、PPT和工作流等项目交付需求；培训需求保留为独立筛选。</p>
+          <p>{isTrainingList ? "企业AI培训需求、内训课题和陪跑项目。" : "项目交付、内容制作、数字人与自动化工作流需求。"}</p>
         </div>
         <div className="toolbarGroup">
           <Link className="btn" href={creatorEntry}>
@@ -66,10 +71,10 @@ export default function ProjectsPage() {
       <section className="publicBoardHero">
         <div>
           <span className="eyebrow">
-            <BriefcaseBusiness size={15} /> 类招聘平台的公开机会列表
+            <BriefcaseBusiness size={15} /> {isTrainingList ? "培训需求" : "派单信息"}
           </span>
-          <h2>先看可接项目</h2>
-          <p>项目交付需求是当前主市场：服务方可以先判断预算、周期、交付物和匹配度，再决定是否沟通。</p>
+          <h2>{isTrainingList ? "先看培训需求" : "先看派单信息"}</h2>
+          <p>游客可优先查看部分信息；注册登录并开通能力后可查看全部并发起沟通。</p>
         </div>
         <div className="publicSearch">
           <Search size={18} />
@@ -82,7 +87,7 @@ export default function ProjectsPage() {
           </button>
         </div>
         <div className="toolbarGroup">
-          <button className={mode === "project" ? "btn primary" : "btn"} onClick={() => { setMode("project"); setVisibleCount(12); }} type="button">派单优先</button>
+          <button className={mode === "project" ? "btn primary" : "btn"} onClick={() => { setMode("project"); setVisibleCount(12); }} type="button">派单信息</button>
           <button className={mode === "recommended" ? "btn primary" : "btn"} onClick={() => { setMode("recommended"); setVisibleCount(12); }} type="button">推荐给我</button>
           <button className={mode === "latest" ? "btn primary" : "btn"} onClick={() => { setMode("latest"); setVisibleCount(12); }} type="button">最新发布</button>
           <button className={mode === "budget" ? "btn primary" : "btn"} onClick={() => { setMode("budget"); setVisibleCount(12); }} type="button">高预算</button>
@@ -102,12 +107,30 @@ export default function ProjectsPage() {
           />
         ))}
       </div>
-      {visibleCount < visibleProjects.length ? (
+      {!session && visibleProjects.length > pagedProjects.length ? (
+        <section className="notice stack">
+          <strong>登录后查看全部{isTrainingList ? "培训需求" : "派单信息"}</strong>
+          <span>继续沟通、收藏候选和开通接单能力需要注册登录。</span>
+          <div className="toolbarGroup">
+            <Link className="btn primary" href={creatorEntry}>注册/登录后查看全部</Link>
+            <Link className="btn" href="/account/capabilities?intent=service">开通接单能力</Link>
+          </div>
+        </section>
+      ) : null}
+      {session && visibleCount < visibleProjects.length ? (
         <div className="paginationBar">
           <span className="muted">已显示 {pagedProjects.length} / {visibleProjects.length} 个需求</span>
           <button className="btn" onClick={() => setVisibleCount((count) => count + 12)} type="button">加载更多</button>
         </div>
       ) : null}
     </main>
+  );
+}
+
+export default function ProjectsPage() {
+  return (
+    <Suspense fallback={<main className="main"><div className="notice">正在加载派单信息...</div></main>}>
+      <ProjectsContent />
+    </Suspense>
   );
 }

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { BriefcaseBusiness, LogIn, Search, Sparkles } from "lucide-react";
+import { BriefcaseBusiness, GraduationCap, LogIn, Search, Sparkles, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { AuthNavActions } from "@/components/AuthNavActions";
 import { FeedbackWidget } from "@/components/FeedbackWidget";
@@ -37,11 +37,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <span>AIGClancer</span>
             </Link>
             <nav className="navLinks" aria-label="Primary navigation">
-              <Link href="/creators">
+              <Link href="/projects?type=dispatch">
+                <BriefcaseBusiness size={16} /> 派单信息
+              </Link>
+              <Link href="/creators?type=creator">
                 <Search size={16} /> 创作者
               </Link>
-              <Link href="/projects">
-                <BriefcaseBusiness size={16} /> 公开需求
+              <Link href="/projects?type=training">
+                <GraduationCap size={16} /> 培训需求
+              </Link>
+              <Link href="/creators?type=trainer">
+                <UsersRound size={16} /> 培训名师
               </Link>
               <Link href="/login?next=%2Faccount">
                 <LogIn size={16} /> 主体中心
