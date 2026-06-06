@@ -14,6 +14,7 @@ import {
   UserCog
 } from "lucide-react";
 import { registerAccount } from "@/lib/auth";
+import { userFacingErrorMessage } from "@/lib/error-message";
 
 function passwordValid(value: string) {
   return /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d\S]{8,32}$/.test(value);
@@ -66,7 +67,7 @@ function RegisterContent() {
       const intentQuery = requestedIntent ? `&intent=${encodeURIComponent(requestedIntent)}` : "";
       router.push(role === "admin" ? "/login?role=admin" : `/login?account=${encodeURIComponent(account.trim())}${nextQuery}${intentQuery}`);
     } catch (error) {
-      setStatusText(error instanceof Error ? error.message : "注册失败，请稍后再试。");
+      setStatusText(userFacingErrorMessage(error, "注册失败，请稍后再试。"));
     } finally {
       setIsSubmitting(false);
     }

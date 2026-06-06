@@ -73,7 +73,7 @@ export default function OrderPage({ params }: { params: { id: string } }) {
 
               return (
                 <div className={`message ${mine ? "mine" : ""}`} key={message.id}>
-                  <strong>{sender?.name ?? "User"}</strong>
+                  <strong>{sender?.name ?? "用户"}</strong>
                   <div style={{ marginTop: 6, lineHeight: 1.45 }}>{message.body}</div>
                   {message.attachmentUrl ? (
                     <a style={{ display: "block", marginTop: 8, textDecoration: "underline" }} href={message.attachmentUrl}>

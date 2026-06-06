@@ -1,4 +1,5 @@
 import { loginUser, publicUser } from "../../../../lib/server/actions";
+import { userFacingErrorMessage } from "../../../../lib/error-message";
 import { loginSupabaseUser } from "../../../../lib/server/auth";
 import { getMarketplaceData, saveMarketplaceData } from "../../../../lib/server/data";
 import { rateLimit } from "../../../../lib/server/rate-limit";
@@ -13,7 +14,13 @@ export async function POST(request: Request) {
   }
   const body = await readJson(request);
   const data = await getMarketplaceData();
-  const user = (await loginSupabaseUser(body)) ?? loginUser(data, body);
+  let user;
+
+  try {
+    user = (await loginSupabaseUser(body)) ?? loginUser(data, body);
+  } catch (error) {
+    return apiFail(400, userFacingErrorMessage(error, "登录失败，请稍后再试。"));
+  }
 
   if (!user) {
     return apiFail(404, "未找到可登录用户");

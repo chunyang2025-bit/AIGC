@@ -1,4 +1,5 @@
 import { publicUser, registerUser } from "../../../../lib/server/actions";
+import { userFacingErrorMessage } from "../../../../lib/error-message";
 import { registerSupabaseUser } from "../../../../lib/server/auth";
 import { getMarketplaceData, saveMarketplaceData } from "../../../../lib/server/data";
 import { rateLimit } from "../../../../lib/server/rate-limit";
@@ -44,7 +45,7 @@ export async function POST(request: Request) {
   try {
     user = await registerSupabaseUser(normalizedBody);
   } catch (error) {
-    return apiFail(400, error instanceof Error ? error.message : "注册失败");
+    return apiFail(400, userFacingErrorMessage(error, "注册失败，请稍后再试。"));
   }
 
   user = user ?? registerUser(data, normalizedBody);

@@ -1,4 +1,5 @@
 import { getRequestUser, getServerSupabase, isSupabaseServerConfigured } from "../../../lib/server/auth";
+import { userFacingErrorMessage } from "../../../lib/error-message";
 import { getUploadLimits } from "../../../lib/server/env";
 import { apiFail, apiOk } from "../../../lib/server/response";
 
@@ -61,7 +62,7 @@ export async function POST(request: Request) {
   });
 
   if (error) {
-    return apiFail(400, error.message);
+    return apiFail(400, userFacingErrorMessage(error, "文件上传失败，请稍后再试。"));
   }
 
   if (bucket === "public-assets") {

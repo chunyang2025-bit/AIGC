@@ -1,6 +1,7 @@
 "use client";
 
 import { UserRole } from "./types";
+import { userFacingErrorMessage } from "./error-message";
 
 export type AccountStatus = "registered" | "pending_review" | "approved";
 
@@ -153,7 +154,7 @@ function requestAuthUser(path: string, input: {
   };
 
   if (xhr.status < 200 || xhr.status >= 300 || !parsed.ok) {
-    throw new Error(parsed.error || "请求失败，请稍后再试。");
+    throw new Error(userFacingErrorMessage(parsed.error, "请求失败，请稍后再试。"));
   }
 
   return parsed.data ?? null;

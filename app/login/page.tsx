@@ -16,6 +16,7 @@ import {
   UserCog
 } from "lucide-react";
 import { AuthSession, loginAccount, readAuthSession, roleProfilePath, roleWorkbenchPath } from "@/lib/auth";
+import { userFacingErrorMessage } from "@/lib/error-message";
 import { UserRole } from "@/lib/types";
 
 const adminRole = {
@@ -82,7 +83,7 @@ function LoginContent() {
       setShowRegisterPrompt(false);
       router.push(nextPath(session));
     } catch (error) {
-      const message = error instanceof Error ? error.message : "登录失败，请稍后再试。";
+      const message = userFacingErrorMessage(error, "登录失败，请稍后再试。");
       if (activeRoleValue !== "admin" && (message.includes("未找到") || message.includes("先注册"))) {
         setStatusText("未找到账号，请先注册。");
         setShowRegisterPrompt(true);
