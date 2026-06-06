@@ -7,8 +7,8 @@ import { ArrowRight, Building2, CheckCircle2, FileBadge2, Globe2, Mail, Phone, S
 import { isImageValue, uploadCredentialFiles, uploadOrPreviewImage } from "@/lib/file-upload";
 import { compactDate, credentialUploadOptional, money, publicCredentialSummary, requiredCredentialLabel, verificationTypeLabel } from "@/lib/format";
 import { joinProvinceCity, provinceCityOptions, splitProvinceCity } from "@/lib/location-options";
-import { loadMarketplaceData } from "@/lib/store";
-import { VerificationType } from "@/lib/types";
+import { cacheBuyerProfile, loadMarketplaceData } from "@/lib/store";
+import { BuyerProfile, VerificationType } from "@/lib/types";
 import { readAuthSession, setAuthCapability } from "@/lib/auth";
 
 const verificationTypes: VerificationType[] = [
@@ -117,9 +117,13 @@ function AccountProfileContent() {
       headers,
       body: JSON.stringify(input)
     });
-    const payload = await response.json().catch(() => null) as { ok?: boolean; error?: string } | null;
+    const payload = await response.json().catch(() => null) as { ok?: boolean; error?: string; data?: BuyerProfile } | null;
     if (!response.ok || !payload?.ok) {
       throw new Error(payload?.error || "主体资料保存失败，请稍后再试。");
+    }
+
+    if (payload.data) {
+      cacheBuyerProfile(payload.data);
     }
 
     return input;

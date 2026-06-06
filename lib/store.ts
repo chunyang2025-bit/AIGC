@@ -6,6 +6,7 @@ import {
   AbuseReport,
   ActivityEvent,
   BuyerProfile,
+  CreatorProfile,
   DeliverableType,
   MarketplaceData,
   Order,
@@ -140,6 +141,32 @@ export function saveMarketplaceData(data: MarketplaceData) {
   if (typeof window !== "undefined") {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   }
+}
+
+export function cacheBuyerProfile(profile: BuyerProfile) {
+  const data = loadMarketplaceData();
+  saveMarketplaceData({
+    ...data,
+    buyerProfiles: [profile, ...(data.buyerProfiles ?? []).filter((item) => item.id !== profile.id && item.userId !== profile.userId)],
+    users: data.users.map((user) => (
+      user.id === profile.userId
+        ? { ...user, name: profile.displayName ?? profile.companyName, email: profile.contactEmail || user.email, phone: profile.contactPhone || user.phone }
+        : user
+    ))
+  });
+}
+
+export function cacheCreatorProfile(profile: CreatorProfile) {
+  const data = loadMarketplaceData();
+  saveMarketplaceData({
+    ...data,
+    creators: [profile, ...data.creators.filter((item) => item.id !== profile.id && item.userId !== profile.userId)],
+    users: data.users.map((user) => (
+      user.id === profile.userId
+        ? { ...user, name: profile.displayName ?? profile.name, email: profile.contactEmail || user.email, phone: profile.contactPhone || user.phone }
+        : user
+    ))
+  });
 }
 
 function syncFromApi() {
@@ -568,6 +595,7 @@ export function upsertCurrentBuyerProfile(input: {
 
   if (remote) {
     if (session) saveAuthSession({ ...session, status: "pending_review" });
+    cacheBuyerProfile(remote);
     return remote;
   }
 
@@ -661,7 +689,7 @@ export function upsertUnifiedSubjectProfile(input: {
     serviceArea: input.serviceArea
   };
 
-  const remote = requestJson<BuyerProfile>("/api/creators", {
+  const remote = requestJson<CreatorProfile>("/api/creators", {
     method: "POST",
     body: JSON.stringify(mergedCreator)
   });
@@ -708,7 +736,7 @@ export function upsertCurrentCreatorProfile(input: {
   const session = readAuthSession();
   const userId = session?.userId ?? "u-creator-self";
   const profileId = `c-${userId}`;
-  const remote = requestJson<BuyerProfile>("/api/creators", {
+  const remote = requestJson<CreatorProfile>("/api/creators", {
     method: "POST",
     body: JSON.stringify({
       id: profileId,
@@ -720,6 +748,7 @@ export function upsertCurrentCreatorProfile(input: {
 
   if (remote) {
     if (session) saveAuthSession({ ...session, status: "pending_review" });
+    cacheCreatorProfile(remote);
     return remote;
   }
 
