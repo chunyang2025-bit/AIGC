@@ -9,7 +9,7 @@ type FirstActionStep = {
 type FirstActionPanelProps = {
   eyebrow: string;
   title: string;
-  description: string;
+  description?: string;
   primaryLabel: string;
   primaryHref: string;
   steps: FirstActionStep[];
@@ -35,7 +35,7 @@ export function FirstActionPanel({
         <span className="tag green">{eyebrow}</span>
         <div>
           <h2 style={{ margin: "0 0 8px" }}>{title}</h2>
-          <p style={{ margin: 0 }}>{description}</p>
+          {description ? <p style={{ margin: 0 }}>{description}</p> : null}
         </div>
         <div className="tagList">
           {steps.map((step) => (

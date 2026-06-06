@@ -376,7 +376,6 @@ export function ClientHome() {
         <div className="sectionHeader">
           <div>
             <h2>选择你的入口</h2>
-            <p>接派单和培训服务并列存在。派单方可以发布项目或培训需求，服务方可以接项目也可以提供培训。</p>
           </div>
         </div>
         <div className="grid four">
@@ -384,12 +383,11 @@ export function ClientHome() {
             const Icon = item.icon;
             return (
               <div className="card entryCard" key={item.title}>
-                <div className="cardBody stack">
-                  <Icon size={22} />
-                  <strong>{item.title}</strong>
-                  <p className="muted" style={{ margin: 0 }}>{item.text}</p>
-                  <Link className={item.primary ? "btn primary" : "btn"} href={item.href}>
-                    {item.primary ? <Plus size={16} /> : <LogIn size={16} />} {item.cta}
+                  <div className="cardBody stack">
+                    <Icon size={22} />
+                    <strong>{item.title}</strong>
+                    <Link className={item.primary ? "btn primary" : "btn"} href={item.href}>
+                      {item.primary ? <Plus size={16} /> : <LogIn size={16} />} {item.cta}
                   </Link>
                 </div>
               </div>
@@ -402,7 +400,6 @@ export function ClientHome() {
         <div className="sectionHeader">
           <div>
             <h2>两个市场同时运转</h2>
-            <p>底层是同一套主体和服务方资料；前台按项目交付和培训服务拆成四个入口，方便用户快速选择。</p>
           </div>
         </div>
         <div className="grid two">
@@ -410,7 +407,6 @@ export function ClientHome() {
             <div className="cardBody stack">
               <BriefcaseBusiness size={22} />
               <strong>接派单市场</strong>
-              <p className="muted" style={{ margin: 0 }}>适合图片设计、AI短视频、数字人口播、电商内容包、品牌视觉和自动化工作流等交付型需求。</p>
               <Link className="btn" href="/projects">
                 <Search size={16} /> 查看项目需求
               </Link>
@@ -420,7 +416,6 @@ export function ClientHome() {
             <div className="cardBody stack">
               <GraduationCap size={22} />
               <strong>培训服务市场</strong>
-              <p className="muted" style={{ margin: 0 }}>适合企业内训、工作坊、训练营和陪跑，重点匹配培训主题、对象、城市和案例定制能力。</p>
               <Link className="btn" href="/creators">
                 <UsersRound size={16} /> 查看培训服务方
               </Link>
@@ -433,7 +428,6 @@ export function ClientHome() {
         <div className="sectionHeader">
           <div>
             <h2>项目需求大厅</h2>
-            <p>展示非培训类AIGC交付需求，适合接单服务方快速判断可接项目。</p>
           </div>
           <Link className="btn" href="/projects">
             查看全部项目需求 <ArrowRight size={16} />
@@ -455,7 +449,6 @@ export function ClientHome() {
         <div className="sectionHeader">
           <div>
             <h2>接单服务方信息</h2>
-            <p>查看已入驻服务方的项目交付能力、服务包报价、案例和响应速度。</p>
           </div>
           <Link className="btn" href="/creators">
             查看全部服务方 <ArrowRight size={16} />
@@ -472,7 +465,6 @@ export function ClientHome() {
         <div className="sectionHeader">
           <div>
             <h2>培训需求大厅</h2>
-            <p>展示企业内训、工作坊、训练营和陪跑需求，培训方可以先看对象、人数、主题和预算。</p>
           </div>
           <Link className="btn" href="/projects">
             查看全部培训需求 <ArrowRight size={16} />
@@ -494,7 +486,6 @@ export function ClientHome() {
         <div className="sectionHeader">
           <div>
             <h2>培训方信息</h2>
-            <p>展示可提供企业培训的讲师、工作室和机构，重点看可讲主题、培训形式、案例和材料。</p>
           </div>
           <Link className="btn" href="/creators">
             查看全部培训方 <ArrowRight size={16} />
@@ -511,7 +502,6 @@ export function ClientHome() {
         <div className="sectionHeader">
           <div>
             <h2>培训需求方信息</h2>
-            <p>展示正在寻找AIGC培训方案的企业或机构，让培训方知道谁在找课、找讲师、找陪跑。</p>
           </div>
           <Link className="btn" href="/projects">
             查看培训需求方 <ArrowRight size={16} />

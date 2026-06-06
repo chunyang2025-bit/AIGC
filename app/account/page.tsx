@@ -63,7 +63,6 @@ export default function AccountPage() {
   const firstAction = !hasSubjectProfile
     ? {
         title: "先完成主体主页，进入审核队列",
-        description: "这是所有业务身份共用的第一步。完成后才能发布需求、生成服务主页或被运营推荐。",
         primaryLabel: "创建主体主页",
         primaryHref: "/account/profile",
         secondaryLabel: "先看公开市场",
@@ -72,7 +71,6 @@ export default function AccountPage() {
     : !subjectVerified
       ? {
           title: "等待审核时，先补齐会影响通过率的资料",
-          description: "审核期间可以继续补充联系方式、资质说明、主页简介和可公开展示的信息。",
           primaryLabel: "继续完善主体资料",
           primaryHref: "/account/profile",
           secondaryLabel: "查看公开服务方",
@@ -81,7 +79,6 @@ export default function AccountPage() {
       : buyerProfile && !hasAnyDemand
         ? {
             title: "发布第一个需求，让系统开始匹配",
-            description: "你可以发布项目交付需求，也可以发布培训需求。先用 Brief Agent 把想法整理成可审核、可匹配的需求。",
             primaryLabel: "发布项目需求",
             primaryHref: "/post-project",
             secondaryLabel: "发布培训需求",
@@ -90,7 +87,6 @@ export default function AccountPage() {
         : creatorProfile && !hasAnyProviderPage
           ? {
               title: "生成服务主页，获得展示和匹配入口",
-              description: "先把服务定位、报价、案例和联系方式放到主页里，后续再补充更完整的材料。",
               primaryLabel: "生成服务主页",
               primaryHref: "/provider/profile",
               secondaryLabel: "生成培训主页",
@@ -99,7 +95,6 @@ export default function AccountPage() {
           : !hasAnyLead
             ? {
                 title: "推进第一条沟通线索",
-                description: "需求方可以邀请候选服务方；服务方可以查看高匹配需求并表达兴趣。",
                 primaryLabel: buyerProfile ? "进入需求方后台" : "进入服务方后台",
                 primaryHref: buyerProfile ? "/buyer" : "/provider",
                 secondaryLabel: buyerProfile ? "查看服务方大厅" : "查看公开需求",
@@ -107,7 +102,6 @@ export default function AccountPage() {
               }
             : {
                 title: "跟进已有线索，沉淀试运营反馈",
-                description: "记录沟通状态、补充资料、提交试用反馈，让运营知道哪里还卡住。",
                 primaryLabel: buyerProfile ? "查看我的派单" : "查看我的接单",
                 primaryHref: buyerProfile ? "/buyer" : "/provider",
                 secondaryLabel: "提交试用建议",
@@ -123,7 +117,6 @@ export default function AccountPage() {
           </span>
           <div>
             <h1>{subjectName}</h1>
-            <p>先维护一份主体主页，再选择你当前要使用的业务身份。以后需要时，可以继续添加其他业务。</p>
           </div>
         </div>
         <div className="portalStats">
@@ -145,7 +138,6 @@ export default function AccountPage() {
       <FirstActionPanel
         eyebrow="下一步只做这件事"
         title={firstAction.title}
-        description={firstAction.description}
         primaryLabel={firstAction.primaryLabel}
         primaryHref={firstAction.primaryHref}
         secondaryLabel={firstAction.secondaryLabel}
@@ -163,7 +155,6 @@ export default function AccountPage() {
           <div className="spaceBetween">
             <div>
               <h2 style={{ margin: 0 }}>入驻进度</h2>
-              <p className="muted">新主体按这个顺序完成入驻。审核通过前可以继续完善资料和浏览公开信息。</p>
             </div>
             <span className={subjectVerified ? "tag green" : pendingReview ? "tag gold" : "tag"}>
               完整度 {activation.score}%
@@ -196,16 +187,19 @@ export default function AccountPage() {
           <div className="spaceBetween">
             <div>
               <h2 style={{ margin: 0 }}>站内通知</h2>
-              <p className="muted">审核结果、沟通线索和匹配推荐会在这里提醒。</p>
             </div>
-            <span className="tag blue">{notifications.length} 条</span>
+            <span className="tag blue">{notifications.length + 1} 条</span>
           </div>
+          <Link className="miniLead" href="/account/capabilities?intent=dispatch">
+            <span>新手教程：主体主页和四个业务身份</span>
+            <em>先维护主体主页，再按当前目标启用派单、找培训、接单或提供培训。</em>
+          </Link>
           {notifications.length ? notifications.map((item) => (
             <Link className="miniLead" href={item.href} key={item.id}>
               <span>{item.title}</span>
               <em>{item.body}</em>
             </Link>
-          )) : <div className="muted">暂无新的通知。</div>}
+          )) : null}
         </div>
       </section>
 
@@ -219,7 +213,6 @@ export default function AccountPage() {
           </div>
           <div>
             <h2 style={{ margin: 0 }}>主体主页</h2>
-              <p className="muted">名称、头像/Logo、主体类型、城市、基本介绍、联系方式和资质材料只维护一次，需求方和服务方共用。</p>
           </div>
           <div className="toolbarGroup">
             <Link className="btn primary" href="/account/profile">
@@ -243,7 +236,6 @@ export default function AccountPage() {
             </div>
             <div>
               <h2 style={{ margin: 0 }}>需求方身份</h2>
-              <p className="muted">用于发布项目需求或培训需求，查看匹配推荐并邀请服务方沟通。</p>
             </div>
             <div className="grid two compactGrid">
               <div className="metric">
@@ -279,7 +271,6 @@ export default function AccountPage() {
             </div>
             <div>
               <h2 style={{ margin: 0 }}>服务方身份</h2>
-              <p className="muted">用于承接项目需求或提供培训服务，展示服务主页、培训主页和案例报价。</p>
             </div>
             <div className="grid two compactGrid">
               <div className="metric">
@@ -311,7 +302,6 @@ export default function AccountPage() {
           <div className="panelTop">
             <div>
               <strong>我的派单</strong>
-              <div className="muted">查看已发布需求、匹配推荐和沟通线索。</div>
             </div>
             <BriefcaseBusiness size={18} />
           </div>
@@ -348,7 +338,6 @@ export default function AccountPage() {
           <div className="panelTop">
             <div>
               <strong>我的接单</strong>
-              <div className="muted">查看展示页、收到的邀约和接单沟通。</div>
             </div>
             <MessageSquare size={18} />
           </div>

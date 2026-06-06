@@ -165,7 +165,6 @@ function AccountCapabilitiesContent() {
           </span>
           <div>
             <h1>{current.title}</h1>
-            <p>{current.description}</p>
           </div>
           <div className="toolbarGroup">
             {current.primaryHref ? (
@@ -207,7 +206,6 @@ function AccountCapabilitiesContent() {
             </div>
             <span className={current.statusClass}>{current.status}</span>
           </div>
-          <p className="muted" style={{ margin: 0, lineHeight: 1.6 }}>{current.description}</p>
           <div className="grid five">
             {current.steps.map((step, index) => (
               <div className="metric" key={step.label}>
@@ -225,7 +223,6 @@ function AccountCapabilitiesContent() {
           <div className="spaceBetween">
             <div>
               <strong>主体主页共用</strong>
-              <div className="muted">同一个主体资料用于需求方和服务方，不需要重复认证。</div>
             </div>
             <span className={subject.verified ? "tag green" : "tag gold"}>
               {subject.verified ? "已通过审核" : "待平台审核"}
@@ -242,14 +239,12 @@ function AccountCapabilitiesContent() {
         <div className="sectionHeader">
           <div>
             <h2>以后可添加其他业务</h2>
-            <p>先完成当前这条路径。后续业务扩展时，再从主体中心添加其他身份或场景。</p>
           </div>
         </div>
         <div className="grid three">
           {otherFlows.map((flow) => (
             <Link className="toolMiniCard" href={flow.href} key={flow.id}>
               <strong>{flow.label}</strong>
-              <p>使用同一个主体主页继续扩展。</p>
               <span className="row muted">查看 <ArrowRight size={15} /></span>
             </Link>
           ))}
