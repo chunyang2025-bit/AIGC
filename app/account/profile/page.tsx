@@ -159,13 +159,14 @@ function AccountProfileContent() {
         <section className="card">
           <div className="panelTop">
             <div>
-              <strong>主体资料与主页装修</strong>
+              <strong>3分钟完成主体主页</strong>
+              <div className="muted">先保存基础信息即可继续使用；认证材料和主页增强信息可以后续补充。</div>
             </div>
             <Building2 size={18} />
           </div>
           <form className="cardBody form" onSubmit={handleSubmit}>
             <div className="notice">
-              名称、头像、认证类型、城市、介绍、联系方式和资质材料会统一用于需求方主页和服务方展示页。保存后进入下一步。
+              邀请制试运营不强制一次填完。先完成名称、城市、介绍和联系方式，保存后马上进入当前业务路径。
             </div>
             <div className="grid two compactGrid">
               <div className="field">
@@ -265,38 +266,43 @@ function AccountProfileContent() {
               </div>
             </div>
 
-            <div className="grid two compactGrid">
-              <div className="field">
-                <label htmlFor="website">官网/作品页</label>
-                <input id="website" value={websiteUrl} onChange={(event) => setWebsiteUrl(event.target.value)} />
-              </div>
-              <div className="field">
-                <label htmlFor="social">社媒主页</label>
-                <input id="social" value={socialUrl} onChange={(event) => setSocialUrl(event.target.value)} />
-              </div>
-            </div>
-
             <div className="field">
               <label htmlFor="service-area">服务地区/协作方式</label>
               <input id="service-area" value={serviceArea} onChange={(event) => setServiceArea(event.target.value)} />
             </div>
 
-            <div className="field">
-              <label htmlFor="license">{requiredCredentialLabel(verificationType)}{credentialOptional ? "（可选）" : ""}</label>
-              {credentialOptional ? null : <input id="license" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" type="file" onChange={(event) => handleMainCredentialUpload(event.target.files)} />}
-              <input
-                value={businessLicenseFile}
-                onChange={(event) => setBusinessLicenseFile(event.target.value)}
-                placeholder={credentialOptional ? "个人主体可填写作品页、平台主页或实名备注" : "上传后自动填入文件名"}
-                required={!credentialOptional}
-              />
-            </div>
+            <details className="optionalSection">
+              <summary>后补增强信息和认证材料</summary>
+              <div className="optionalSectionBody">
+                <div className="grid two compactGrid">
+                  <div className="field">
+                    <label htmlFor="website">官网/作品页</label>
+                    <input id="website" value={websiteUrl} onChange={(event) => setWebsiteUrl(event.target.value)} />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="social">社媒主页</label>
+                    <input id="social" value={socialUrl} onChange={(event) => setSocialUrl(event.target.value)} />
+                  </div>
+                </div>
 
-            <div className="field">
-              <label htmlFor="qualifications">其他有效资质</label>
-              <input id="qualifications-file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" multiple type="file" onChange={(event) => handleQualificationUpload(event.target.files)} />
-              <textarea id="qualifications" value={qualificationFiles} onChange={(event) => setQualificationFiles(event.target.value)} />
-            </div>
+                <div className="field">
+                  <label htmlFor="license">{requiredCredentialLabel(verificationType)}（可后补）</label>
+                  {credentialOptional ? null : <input id="license" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" type="file" onChange={(event) => handleMainCredentialUpload(event.target.files)} />}
+                  <input
+                    value={businessLicenseFile}
+                    onChange={(event) => setBusinessLicenseFile(event.target.value)}
+                    placeholder={credentialOptional ? "个人主体可填写作品页、平台主页或实名备注" : "上传后自动填入文件名，也可后续补充"}
+                  />
+                  <span className="fieldHint">试运营期间不强制上传；正式认证前建议补齐。</span>
+                </div>
+
+                <div className="field">
+                  <label htmlFor="qualifications">其他有效资质</label>
+                  <input id="qualifications-file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" multiple type="file" onChange={(event) => handleQualificationUpload(event.target.files)} />
+                  <textarea id="qualifications" value={qualificationFiles} onChange={(event) => setQualificationFiles(event.target.value)} />
+                </div>
+              </div>
+            </details>
 
             <div className="toolbarGroup">
               <button className="btn primary" disabled={isSaving} type="submit">

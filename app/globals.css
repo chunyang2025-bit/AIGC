@@ -1779,6 +1779,45 @@ button {
   line-height: 1.45;
 }
 
+.optionalSection {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfa;
+}
+
+.optionalSection summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+  padding: 0 14px;
+  cursor: pointer;
+  color: #22342d;
+  font-weight: 800;
+}
+
+.optionalSection summary::after {
+  content: "展开";
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.optionalSection[open] summary {
+  border-bottom: 1px solid var(--line);
+}
+
+.optionalSection[open] summary::after {
+  content: "收起";
+}
+
+.optionalSectionBody {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+}
+
 .uploadBox {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);

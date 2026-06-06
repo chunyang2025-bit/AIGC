@@ -445,25 +445,6 @@ function ProviderProfileContent() {
             </div>
 
             <div className="field">
-              <label>认证主体类型</label>
-              <div className="checkPillGrid identityGrid">
-                {verificationTypes.map((type) => (
-                  <button
-                    className={identityType === type ? "checkPill active" : "checkPill"}
-                    key={type}
-                    onClick={() => {
-                      setIdentityType(type);
-                      setCredentialFile(type === "individual" ? "" : `${requiredCredentialLabel(type)}.pdf`);
-                    }}
-                    type="button"
-                  >
-                    <CheckCircle2 size={15} /> {verificationTypeLabel(type)}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="field">
               <label>可接需求类型</label>
               <div className="checkPillGrid">
                 {projectCategoryOptions.map(({ value: category, label }) => (
@@ -479,56 +460,6 @@ function ProviderProfileContent() {
                 ))}
               </div>
             </div>
-
-            {offersTraining ? (
-              <div className="briefBlock">
-                <div className="spaceBetween">
-                  <strong>AIGC培训能力</strong>
-                  <span className="tag blue">培训服务</span>
-                </div>
-                <div className="field">
-                  <label htmlFor="training-topics">可讲主题</label>
-                  <input id="training-topics" value={trainingTopics} onChange={(event) => setTrainingTopics(event.target.value)} placeholder="提示词工程、AI办公、AI营销、AI设计、AI视频、数字人" />
-                </div>
-                <div className="field">
-                  <label>培训形式</label>
-                  <div className="tagList">
-                    {trainingFormatOptions.map((item) => (
-                      <button className={trainingFormats.includes(item.value) ? "tag green" : "tag"} key={item.value} onClick={() => toggleTrainingFormat(item.value)} type="button">
-                        {item.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="grid two compactGrid">
-                  <div className="field">
-                    <label htmlFor="training-audience">适合对象</label>
-                    <input id="training-audience" value={trainingAudience} onChange={(event) => setTrainingAudience(event.target.value)} placeholder="管理层、市场团队、设计团队、教师、开发团队" />
-                  </div>
-                  <div className="field">
-                    <label htmlFor="training-cities">可线下城市</label>
-                    <input id="training-cities" value={trainingCities} onChange={(event) => setTrainingCities(event.target.value)} placeholder="全国线上、杭州、上海、北京" />
-                  </div>
-                </div>
-                <div className="field">
-                  <label htmlFor="training-cases">培训案例</label>
-                  <textarea id="training-cases" value={trainingCases} onChange={(event) => setTrainingCases(event.target.value)} placeholder="每行一个案例，例如：为某电商团队做AI商品图工作坊，30人，半天实操" />
-                </div>
-                <div className="grid two compactGrid">
-                  <div className="field">
-                    <label htmlFor="training-materials">交付材料</label>
-                    <input id="training-materials" value={trainingMaterials} onChange={(event) => setTrainingMaterials(event.target.value)} placeholder="课件、练习、工具清单、录播、课后答疑" />
-                  </div>
-                  <div className="field">
-                    <label htmlFor="training-pricing">报价说明</label>
-                    <input id="training-pricing" value={trainingPricingNote} onChange={(event) => setTrainingPricingNote(event.target.value)} placeholder="半日/全天/按人/按项目报价" />
-                  </div>
-                </div>
-                <button className={trainingCustomizable ? "tag green" : "tag"} onClick={() => setTrainingCustomizable((value) => !value)} type="button">
-                  {trainingCustomizable ? "已选择" : "可选"} · 支持企业定制案例
-                </button>
-              </div>
-            ) : null}
 
             <div className="field">
               <label htmlFor="creator-skills">技能标签</label>
@@ -571,30 +502,6 @@ function ProviderProfileContent() {
             </div>
 
             <div className="field">
-              <label htmlFor="service-packages">服务包/报价</label>
-              <div className="briefBlock">
-                <div className="grid two compactGrid">
-                  <input aria-label="服务包名称" placeholder="服务包名称，例如：基础短视频包" value={packageName} onChange={(event) => setPackageName(event.target.value)} />
-                  <input aria-label="价格" inputMode="numeric" placeholder="价格，例如：1200" value={packagePrice} onChange={(event) => setPackagePrice(event.target.value)} />
-                </div>
-                <div className="grid three compactGrid">
-                  <input aria-label="交付天数" inputMode="numeric" placeholder="交付天数" value={packageDeliveryDays} onChange={(event) => setPackageDeliveryDays(event.target.value)} />
-                  <input aria-label="修改次数" inputMode="numeric" placeholder="修改次数" value={packageRevisions} onChange={(event) => setPackageRevisions(event.target.value)} />
-                  <input aria-label="交付物" placeholder="交付物，用顿号分隔" value={packageDeliverables} onChange={(event) => setPackageDeliverables(event.target.value)} />
-                </div>
-                <input aria-label="服务包说明" placeholder="说明，例如：适合单条短视频试投" value={packageDescription} onChange={(event) => setPackageDescription(event.target.value)} />
-                <button className="btn" onClick={addServicePackage} type="button">添加服务包</button>
-              </div>
-              <textarea
-                id="service-packages"
-                value={servicePackages}
-                onChange={(event) => setServicePackages(event.target.value)}
-                placeholder={"基础短视频包 | 1200 | 5 | 1 | 脚本、成片、字幕 | 适合单条短视频试投\n电商图片包 | 1800 | 4 | 2 | 主图、场景图、详情页图 | 适合商品上新"}
-              />
-              <span className="fieldHint">每行一个服务包，格式：名称 | 价格 | 交付天数 | 修改次数 | 交付物 | 说明。</span>
-            </div>
-
-            <div className="field">
               <label htmlFor="response-time">响应速度</label>
               <input id="response-time" value={responseTime} onChange={(event) => setResponseTime(event.target.value)} />
             </div>
@@ -610,39 +517,9 @@ function ProviderProfileContent() {
               </div>
             </div>
 
-            <div className="grid two compactGrid">
-              <div className="field">
-                <label htmlFor="creator-website">官网/作品页</label>
-                <input id="creator-website" value={websiteUrl} onChange={(event) => setWebsiteUrl(event.target.value)} />
-              </div>
-              <div className="field">
-                <label htmlFor="creator-social">社媒主页</label>
-                <input id="creator-social" value={socialUrl} onChange={(event) => setSocialUrl(event.target.value)} />
-              </div>
-            </div>
-
             <div className="field">
               <label htmlFor="creator-area">服务地区/协作方式</label>
               <input id="creator-area" value={serviceArea} onChange={(event) => setServiceArea(event.target.value)} />
-            </div>
-
-            <div className="field">
-              <label htmlFor="creator-credential">{requiredCredentialLabel(identityType)}{credentialOptional ? "（可选）" : ""}</label>
-              {credentialOptional ? null : <input id="creator-credential" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" type="file" onChange={(event) => handleCredentialUpload(event.target.files)} />}
-              <input
-                value={credentialFile}
-                onChange={(event) => setCredentialFile(event.target.value)}
-                placeholder={credentialOptional ? "个人主体可填写作品页、平台主页或实名备注" : "上传后自动填入文件名"}
-                required={!credentialOptional}
-              />
-              <span className="fieldHint">{credentialRequirementHint(identityType)}</span>
-            </div>
-
-            <div className="field">
-              <label htmlFor="creator-qualifications">其他资质/证明材料</label>
-              <input id="creator-qualifications-file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" multiple type="file" onChange={(event) => handleQualificationUpload(event.target.files)} />
-              <textarea id="creator-qualifications" value={qualificationFiles} onChange={(event) => setQualificationFiles(event.target.value)} />
-              <span className="fieldHint">可多选文件；每行一个资质，例如品牌授权、过往案例授权、行业证书等。</span>
             </div>
 
             <div className="field">
@@ -650,22 +527,149 @@ function ProviderProfileContent() {
               <textarea id="creator-bio" value={bio} onChange={(event) => setBio(event.target.value)} required />
             </div>
 
-            <div className="field">
-              <label htmlFor="creator-resume">简历/履历（可后续补充）</label>
-              <textarea id="creator-resume" value={resume} onChange={(event) => setResume(event.target.value)} />
-              <span className="fieldHint">建议补充过往经历或培训背景；先不填也可以生成主页，后续补全会提升推荐权重。</span>
-            </div>
+            <details className="optionalSection">
+              <summary>后补增强信息、服务包和认证材料</summary>
+              <div className="optionalSectionBody">
+                <div className="grid two compactGrid">
+                  <div className="field">
+                    <label htmlFor="creator-website">官网/作品页</label>
+                    <input id="creator-website" value={websiteUrl} onChange={(event) => setWebsiteUrl(event.target.value)} />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="creator-social">社媒主页</label>
+                    <input id="creator-social" value={socialUrl} onChange={(event) => setSocialUrl(event.target.value)} />
+                  </div>
+                </div>
 
-            <div className="field">
-              <label htmlFor="creator-portfolio">代表作</label>
-              <textarea
-                id="creator-portfolio"
-                value={portfolio}
-                onChange={(event) => setPortfolio(event.target.value)}
-                placeholder={"智能台灯短视频 | AI Short Video | 3版开头钩子和15秒竖屏成片 | https://example.com/case\n咖啡店海报系列 | Image Design | 6张社媒海报和门店屏幕图 | https://example.com/poster"}
-              />
-              <span className="fieldHint">每行一个代表作，格式：标题 | 品类英文值 | 项目说明 | 链接。旧格式纯标题也兼容。</span>
-            </div>
+                <div className="field">
+                  <label>认证主体类型</label>
+                  <div className="checkPillGrid identityGrid">
+                    {verificationTypes.map((type) => (
+                      <button
+                        className={identityType === type ? "checkPill active" : "checkPill"}
+                        key={type}
+                        onClick={() => {
+                          setIdentityType(type);
+                          setCredentialFile(type === "individual" ? "" : `${requiredCredentialLabel(type)}.pdf`);
+                        }}
+                        type="button"
+                      >
+                        <CheckCircle2 size={15} /> {verificationTypeLabel(type)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="field">
+                  <label htmlFor="creator-credential">{requiredCredentialLabel(identityType)}（可后补）</label>
+                  {credentialOptional ? null : <input id="creator-credential" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" type="file" onChange={(event) => handleCredentialUpload(event.target.files)} />}
+                  <input
+                    value={credentialFile}
+                    onChange={(event) => setCredentialFile(event.target.value)}
+                    placeholder={credentialOptional ? "个人主体可填写作品页、平台主页或实名备注" : "上传后自动填入文件名，也可后续补充"}
+                  />
+                  <span className="fieldHint">{credentialRequirementHint(identityType)} 试运营期间可先保存主页，正式认证前再补齐。</span>
+                </div>
+
+                <div className="field">
+                  <label htmlFor="creator-qualifications">其他资质/证明材料</label>
+                  <input id="creator-qualifications-file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" multiple type="file" onChange={(event) => handleQualificationUpload(event.target.files)} />
+                  <textarea id="creator-qualifications" value={qualificationFiles} onChange={(event) => setQualificationFiles(event.target.value)} />
+                  <span className="fieldHint">可多选文件；每行一个资质，例如品牌授权、过往案例授权、行业证书等。</span>
+                </div>
+
+                <div className="field">
+                  <label htmlFor="service-packages">服务包/报价</label>
+                  <div className="briefBlock">
+                    <div className="grid two compactGrid">
+                      <input aria-label="服务包名称" placeholder="服务包名称，例如：基础短视频包" value={packageName} onChange={(event) => setPackageName(event.target.value)} />
+                      <input aria-label="价格" inputMode="numeric" placeholder="价格，例如：1200" value={packagePrice} onChange={(event) => setPackagePrice(event.target.value)} />
+                    </div>
+                    <div className="grid three compactGrid">
+                      <input aria-label="交付天数" inputMode="numeric" placeholder="交付天数" value={packageDeliveryDays} onChange={(event) => setPackageDeliveryDays(event.target.value)} />
+                      <input aria-label="修改次数" inputMode="numeric" placeholder="修改次数" value={packageRevisions} onChange={(event) => setPackageRevisions(event.target.value)} />
+                      <input aria-label="交付物" placeholder="交付物，用顿号分隔" value={packageDeliverables} onChange={(event) => setPackageDeliverables(event.target.value)} />
+                    </div>
+                    <input aria-label="服务包说明" placeholder="说明，例如：适合单条短视频试投" value={packageDescription} onChange={(event) => setPackageDescription(event.target.value)} />
+                    <button className="btn" onClick={addServicePackage} type="button">添加服务包</button>
+                  </div>
+                  <textarea
+                    id="service-packages"
+                    value={servicePackages}
+                    onChange={(event) => setServicePackages(event.target.value)}
+                    placeholder={"基础短视频包 | 1200 | 5 | 1 | 脚本、成片、字幕 | 适合单条短视频试投\n电商图片包 | 1800 | 4 | 2 | 主图、场景图、详情页图 | 适合商品上新"}
+                  />
+                  <span className="fieldHint">每行一个服务包，格式：名称 | 价格 | 交付天数 | 修改次数 | 交付物 | 说明。</span>
+                </div>
+
+                <div className="field">
+                  <label htmlFor="creator-resume">简历/履历</label>
+                  <textarea id="creator-resume" value={resume} onChange={(event) => setResume(event.target.value)} />
+                  <span className="fieldHint">建议补充过往经历或培训背景；后续补全会提升推荐权重。</span>
+                </div>
+
+                <div className="field">
+                  <label htmlFor="creator-portfolio">代表作</label>
+                  <textarea
+                    id="creator-portfolio"
+                    value={portfolio}
+                    onChange={(event) => setPortfolio(event.target.value)}
+                    placeholder={"智能台灯短视频 | AI Short Video | 3版开头钩子和15秒竖屏成片 | https://example.com/case\n咖啡店海报系列 | Image Design | 6张社媒海报和门店屏幕图 | https://example.com/poster"}
+                  />
+                  <span className="fieldHint">每行一个代表作，格式：标题 | 品类英文值 | 项目说明 | 链接。旧格式纯标题也兼容。</span>
+                </div>
+
+                {offersTraining ? (
+                  <div className="briefBlock">
+                    <div className="spaceBetween">
+                      <strong>AIGC培训能力</strong>
+                      <span className="tag blue">培训服务</span>
+                    </div>
+                    <div className="field">
+                      <label htmlFor="training-topics">可讲主题</label>
+                      <input id="training-topics" value={trainingTopics} onChange={(event) => setTrainingTopics(event.target.value)} placeholder="提示词工程、AI办公、AI营销、AI设计、AI视频、数字人" />
+                    </div>
+                    <div className="field">
+                      <label>培训形式</label>
+                      <div className="tagList">
+                        {trainingFormatOptions.map((item) => (
+                          <button className={trainingFormats.includes(item.value) ? "tag green" : "tag"} key={item.value} onClick={() => toggleTrainingFormat(item.value)} type="button">
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="grid two compactGrid">
+                      <div className="field">
+                        <label htmlFor="training-audience">适合对象</label>
+                        <input id="training-audience" value={trainingAudience} onChange={(event) => setTrainingAudience(event.target.value)} placeholder="管理层、市场团队、设计团队、教师、开发团队" />
+                      </div>
+                      <div className="field">
+                        <label htmlFor="training-cities">可线下城市</label>
+                        <input id="training-cities" value={trainingCities} onChange={(event) => setTrainingCities(event.target.value)} placeholder="全国线上、杭州、上海、北京" />
+                      </div>
+                    </div>
+                    <div className="field">
+                      <label htmlFor="training-cases">培训案例</label>
+                      <textarea id="training-cases" value={trainingCases} onChange={(event) => setTrainingCases(event.target.value)} placeholder="每行一个案例，例如：为某电商团队做AI商品图工作坊，30人，半天实操" />
+                    </div>
+                    <div className="grid two compactGrid">
+                      <div className="field">
+                        <label htmlFor="training-materials">交付材料</label>
+                        <input id="training-materials" value={trainingMaterials} onChange={(event) => setTrainingMaterials(event.target.value)} placeholder="课件、练习、工具清单、录播、课后答疑" />
+                      </div>
+                      <div className="field">
+                        <label htmlFor="training-pricing">报价说明</label>
+                        <input id="training-pricing" value={trainingPricingNote} onChange={(event) => setTrainingPricingNote(event.target.value)} placeholder="半日/全天/按人/按项目报价" />
+                      </div>
+                    </div>
+                    <button className={trainingCustomizable ? "tag green" : "tag"} onClick={() => setTrainingCustomizable((value) => !value)} type="button">
+                      {trainingCustomizable ? "已选择" : "可选"} · 支持企业定制案例
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            </details>
 
             <div className="toolbarGroup">
               <button className="btn primary" type="submit">
