@@ -63,6 +63,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Link href="/terms">服务协议</Link>
               <Link href="/privacy">隐私政策</Link>
               <Link href="/rules">入驻规则</Link>
+              <Link href="/admin-entry">后台入口</Link>
               <Link href="/disclaimer">免责声明</Link>
             </div>
           </footer>

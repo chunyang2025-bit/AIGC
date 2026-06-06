@@ -14,6 +14,10 @@ export default function RulesPage() {
             <p>接单方可先基础入驻并浏览公开需求；通过审核后可主动向派单方发起沟通并发送展示页。</p>
           </div>
           <div className="briefBlock">
+            <strong>个人主体审核</strong>
+            <p>个人主体、个人创作者和个人培训讲师也需要平台审核。个人证照材料可选，但主页内容、联系方式、作品页或实名备注需要真实可信。</p>
+          </div>
+          <div className="briefBlock">
             <strong>禁止内容</strong>
             <p>禁止虚假需求、虚假案例、侵权素材、违法广告、冒用资质、诱导站外欺诈和其他违反法律法规的信息。</p>
           </div>
