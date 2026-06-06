@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, Building2, CheckCircle2, FileBadge2, Globe2, Mail, Phone, Save, ShieldCheck } from "lucide-react";
 import { isImageValue, uploadCredentialFiles, uploadOrPreviewImage } from "@/lib/file-upload";
-import { compactDate, credentialRequirementHint, credentialUploadOptional, money, publicCredentialSummary, requiredCredentialLabel, verificationTypeLabel } from "@/lib/format";
+import { compactDate, credentialUploadOptional, money, publicCredentialSummary, requiredCredentialLabel, verificationTypeLabel } from "@/lib/format";
 import { joinProvinceCity, provinceCityOptions, splitProvinceCity } from "@/lib/location-options";
 import { loadMarketplaceData, upsertUnifiedSubjectProfile } from "@/lib/store";
 import { VerificationType } from "@/lib/types";
@@ -35,8 +35,8 @@ function AccountProfileContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const intent = searchParams.get("intent") ?? "dispatch";
-  const data = loadMarketplaceData();
-  const session = readAuthSession();
+  const data = useMemo(() => loadMarketplaceData(), []);
+  const session = useMemo(() => readAuthSession(), []);
   const buyerProfile = data.buyerProfiles?.find((profile) => profile.userId === session?.userId);
   const creatorProfile = data.creators.find((creator) => creator.userId === session?.userId);
   const subjectName = buyerProfile?.companyName ?? creatorProfile?.name ?? session?.name ?? "";
@@ -147,8 +147,8 @@ function AccountProfileContent() {
             <ShieldCheck size={15} /> 统一主体主页
           </span>
           <div>
-            <h1>先创建主体主页，再继续当前业务</h1>
-            <p>主体资料只需要填写一次。保存后会回到你刚才选择的路径，后续也可以复用这份资料添加其他业务。</p>
+            <h1>创建主体主页</h1>
+            <p>填写主体基础信息，保存后继续当前业务路径。</p>
           </div>
         </div>
       </section>
@@ -158,11 +158,13 @@ function AccountProfileContent() {
           <div className="panelTop">
             <div>
               <strong>主体资料与主页装修</strong>
-              <div className="muted">这份资料会作为派单方主页和接单方展示页的共同基础。</div>
             </div>
             <Building2 size={18} />
           </div>
           <form className="cardBody form" onSubmit={handleSubmit}>
+            <div className="notice">
+              名称、头像、认证类型、城市、介绍、联系方式和资质材料会统一用于需求方主页和服务方展示页。保存后进入下一步。
+            </div>
             <div className="grid two compactGrid">
               <div className="field">
                 <label htmlFor="subject-name">名称</label>
@@ -183,7 +185,6 @@ function AccountProfileContent() {
                   </span>
                   <div>
                     <input id="avatar-file" accept="image/*" type="file" onChange={(event) => handleAvatarUpload(event.target.files)} />
-                    <span className="fieldHint">上传后会同步用于派单方主页和接单方展示页。</span>
                   </div>
                 </div>
               </div>
@@ -287,14 +288,12 @@ function AccountProfileContent() {
                 placeholder={credentialOptional ? "个人主体可填写作品页、平台主页或实名备注" : "上传后自动填入文件名"}
                 required={!credentialOptional}
               />
-              <span className="fieldHint">{credentialRequirementHint(verificationType)}</span>
             </div>
 
             <div className="field">
               <label htmlFor="qualifications">其他有效资质</label>
               <input id="qualifications-file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" multiple type="file" onChange={(event) => handleQualificationUpload(event.target.files)} />
               <textarea id="qualifications" value={qualificationFiles} onChange={(event) => setQualificationFiles(event.target.value)} />
-              <span className="fieldHint">可多选文件；每行一个资质，例如品牌授权、作品授权、行业证书等。</span>
             </div>
 
             <div className="toolbarGroup">
@@ -313,7 +312,6 @@ function AccountProfileContent() {
           <div className="panelTop">
             <div>
               <strong>主体主页预览</strong>
-              <div className="muted">这会成为派单方和接单方共用的公开基础资料。</div>
             </div>
             <Building2 size={18} />
           </div>
