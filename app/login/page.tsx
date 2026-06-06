@@ -33,14 +33,17 @@ function LoginContent() {
   const requestedRole = searchParams.get("role");
   const requestedNext = searchParams.get("next");
   const requestedIntent = searchParams.get("intent");
-  const [account, setAccount] = useState("");
+  const [account, setAccount] = useState(searchParams.get("account") ?? "");
   const [password, setPassword] = useState("");
   const [agreed, setAgreed] = useState(false);
   const [statusText, setStatusText] = useState("");
   const [showRegisterPrompt, setShowRegisterPrompt] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const activeRoleValue: UserRole = requestedRole === "admin" ? "admin" : "buyer";
+  const activeRoleValue: UserRole = requestedRole === "admin" ? "admin" : requestedRole === "accept" ? "creator" : "buyer";
+  const registerRoleQuery = requestedRole === "accept" ? "role=accept&" : "";
+  const roleLabel = requestedRole === "admin" ? adminRole.title : requestedRole === "accept" ? "接单服务方" : "主体账号";
+  const roleSubtitle = requestedRole === "admin" ? adminRole.subtitle : requestedRole === "accept" ? "登录后继续完善服务主页或发起沟通" : "登录后继续当前业务路径";
   const registerAccount = account.trim();
 
   function nextPath(session: AuthSession) {
@@ -142,8 +145,8 @@ function LoginContent() {
               {requestedRole === "admin" ? <ShieldCheck size={22} /> : <UserCog size={22} />}
             </div>
             <div>
-              <strong>{requestedRole === "admin" ? adminRole.title : "主体账号"}</strong>
-              <span>{requestedRole === "admin" ? adminRole.subtitle : "登录后继续当前业务路径"}</span>
+              <strong>{roleLabel}</strong>
+              <span>{roleSubtitle}</span>
             </div>
           </div>
 
@@ -174,7 +177,7 @@ function LoginContent() {
           {activeRoleValue !== "admin" ? (
             <div className="registerPrompt">
               <span>{showRegisterPrompt ? "未找到账号？" : "没有账号？"}</span>
-              <Link href={`/register?account=${encodeURIComponent(registerAccount)}${requestedNext ? `&next=${encodeURIComponent(requestedNext)}` : ""}${requestedIntent ? `&intent=${encodeURIComponent(requestedIntent)}` : ""}`}>
+              <Link href={`/register?${registerRoleQuery}account=${encodeURIComponent(registerAccount)}${requestedNext ? `&next=${encodeURIComponent(requestedNext)}` : ""}${requestedIntent ? `&intent=${encodeURIComponent(requestedIntent)}` : ""}`}>
                 先注册
               </Link>
             </div>

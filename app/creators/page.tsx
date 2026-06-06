@@ -21,6 +21,7 @@ function CreatorsContent() {
   const listType = searchParams.get("type") === "creator" ? "creator" : "trainer";
   const projectId = searchParams.get("project");
   const project = projectId ? data.projects.find((item) => item.id === projectId) : null;
+  const projectContactable = Boolean(project && ["pending_review", "open", "matching", "in_progress"].includes(project.status));
   const [category, setCategory] = useState<ProjectCategory | "All">(project?.category ?? (listType === "trainer" ? "AIGC Training" : "All"));
   const [budget, setBudget] = useState("all");
   const [sort, setSort] = useState("recommended");
@@ -189,7 +190,7 @@ function CreatorsContent() {
           <p>游客可优先查看部分信息；注册登录并开通能力后可查看全部并发起沟通。</p>
         </div>
         {project ? (
-          <span className={project.status === "open" || project.status === "matching" ? "tag blue" : "tag gold"}>
+          <span className={projectContactable ? "tag blue" : "tag gold"}>
             <MessageSquarePlus size={13} /> 可直接邀请
           </span>
         ) : null}
@@ -201,12 +202,22 @@ function CreatorsContent() {
             creator={creator}
             key={creator.id}
             invited={project ? projectLeads.some((order) => order.creatorId === creator.id) : false}
-            onInvite={project && (project.status === "open" || project.status === "matching") && !projectLeads.some((order) => order.creatorId === creator.id) ? () => invite(creator.id) : undefined}
+            onInvite={project && projectContactable && !projectLeads.some((order) => order.creatorId === creator.id) ? () => invite(creator.id) : undefined}
             onToggleCandidate={project ? () => setCandidateIds(toggleCandidateCreator(project.id, creator.id)) : undefined}
             candidateSelected={project ? isCandidateCreator(project.id, creator.id) : false}
           />
         ))}
       </div>
+      {!creators.length ? (
+        <section className="emptyState">
+          <strong>{listType === "trainer" ? "暂时还没有培训名师" : "暂时还没有创作者"}</strong>
+          <span>试运营刚启动，可以先发布需求或自己创建服务主页。后台认证通过后，服务方会进入公开展示。</span>
+          <div className="toolbarGroup">
+            <button className="btn primary" onClick={() => router.push(buyerEntry)} type="button">先发布需求</button>
+            <button className="btn" onClick={() => router.push(creatorEntry)} type="button">创建服务主页</button>
+          </div>
+        </section>
+      ) : null}
       {!session && creators.length > pagedCreators.length ? (
         <section className="notice stack">
           <strong>登录后查看全部{listType === "trainer" ? "培训名师" : "创作者"}</strong>

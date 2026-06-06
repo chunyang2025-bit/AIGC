@@ -107,6 +107,20 @@ function ProjectsContent() {
           />
         ))}
       </div>
+      {!visibleProjects.length ? (
+        <section className="emptyState">
+          <strong>{isTrainingList ? "暂时还没有公开培训需求" : "暂时还没有公开派单需求"}</strong>
+          <span>试运营刚启动，未审核需求会先在需求方后台试用匹配，不会直接进入公开大厅。你可以先发布需求，或创建服务主页等待邀约。</span>
+          <div className="toolbarGroup">
+            <Link className="btn primary" href={isTrainingList ? trainingEntry : buyerEntry}>
+              <Plus size={16} /> {isTrainingList ? "发布培训需求" : "发布派单需求"}
+            </Link>
+            <Link className="btn" href={creatorEntry}>
+              <UserCog size={16} /> 创建服务主页
+            </Link>
+          </div>
+        </section>
+      ) : null}
       {!session && visibleProjects.length > pagedProjects.length ? (
         <section className="notice stack">
           <strong>登录后查看全部{isTrainingList ? "培训需求" : "派单信息"}</strong>

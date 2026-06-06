@@ -23,7 +23,8 @@ function passwordValid(value: string) {
 function RegisterContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const role = searchParams.get("role") === "admin" ? "admin" : "buyer";
+  const roleParam = searchParams.get("role");
+  const role = roleParam === "admin" ? "admin" : roleParam === "accept" ? "creator" : "buyer";
   const requestedNext = searchParams.get("next");
   const requestedIntent = searchParams.get("intent");
   const [account, setAccount] = useState(searchParams.get("account") ?? "");
@@ -65,7 +66,8 @@ function RegisterContent() {
       setStatusText(role === "admin" ? "后台账号注册成功，请登录运营后台。" : "注册成功，请登录后继续当前业务路径。");
       const nextQuery = requestedNext ? `&next=${encodeURIComponent(requestedNext)}` : "";
       const intentQuery = requestedIntent ? `&intent=${encodeURIComponent(requestedIntent)}` : "";
-      router.push(role === "admin" ? "/login?role=admin" : `/login?account=${encodeURIComponent(account.trim())}${nextQuery}${intentQuery}`);
+      const loginRole = role === "admin" ? "admin" : role === "creator" ? "accept" : "dispatch";
+      router.push(role === "admin" ? "/login?role=admin" : `/login?role=${loginRole}&account=${encodeURIComponent(account.trim())}${nextQuery}${intentQuery}`);
     } catch (error) {
       setStatusText(userFacingErrorMessage(error, "注册失败，请稍后再试。"));
     } finally {
@@ -101,8 +103,8 @@ function RegisterContent() {
               {role === "admin" ? <ShieldCheck size={22} /> : <UserCog size={22} />}
             </div>
             <div>
-              <strong>{role === "admin" ? "平台运营" : "主体账号"}</strong>
-              <span>{role === "admin" ? "审核、举报和风控后台" : "注册后继续当前业务路径"}</span>
+              <strong>{role === "admin" ? "平台运营" : role === "creator" ? "接单服务方" : "主体账号"}</strong>
+              <span>{role === "admin" ? "审核、举报和风控后台" : role === "creator" ? "注册后完善服务主页并试用接单" : "注册后继续当前业务路径"}</span>
             </div>
           </div>
 
