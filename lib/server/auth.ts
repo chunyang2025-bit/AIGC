@@ -32,10 +32,12 @@ export function getServerSupabase() {
 function authAccount(input: Record<string, unknown>) {
   const account = String(input.account || input.email || input.phone || "").trim();
   const isEmail = account.includes("@");
+  const explicitPhone = String(input.phone || "").trim();
+  const phone = !isEmail && explicitPhone.startsWith("+") ? explicitPhone : "";
   return {
     account,
     email: String(input.email || (isEmail ? account : `${account}@phone.aigclancer.local`)),
-    phone: String(input.phone || (isEmail ? "" : account))
+    phone
   };
 }
 

@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     role: String(body.role || "buyer"),
     account,
     email: String(body.email || (account.includes("@") ? account : `${account}@phone.aigclancer.local`)),
-    phone: String(body.phone || (account.includes("@") ? "" : account))
+    phone: String(body.phone || "").trim().startsWith("+") ? String(body.phone || "").trim() : ""
   };
 
   const data = await getMarketplaceData();
