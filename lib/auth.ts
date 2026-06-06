@@ -59,45 +59,29 @@ export function createAuthSession(input: { role: UserRole; phone: string; email:
   return session;
 }
 
-function requestState() {
-  const xhr = new XMLHttpRequest();
-  xhr.open("GET", "/api/state", false);
-  xhr.setRequestHeader("Accept", "application/json");
-
-  try {
-    xhr.send();
-  } catch {
-    return null;
-  }
-
-  if (xhr.status < 200 || xhr.status >= 300) return null;
-
-  try {
-    return JSON.parse(xhr.responseText) as {
-      ok: boolean;
-      data?: {
-        buyerProfiles?: Array<{ userId: string; verified: boolean }>;
-        creators: Array<{ userId: string; verified: boolean }>;
-      };
-    };
-  } catch {
-    return null;
-  }
-}
-
 function inferAccountStatus(userId: string, role: UserRole): AccountStatus {
   if (role === "admin") return "approved";
 
-  const state = requestState();
-  if (!state?.ok || !state.data) return "registered";
+  if (typeof window === "undefined") return "registered";
 
-  const subject =
-    role === "buyer"
-      ? state.data.buyerProfiles?.find((profile) => profile.userId === userId)
-      : state.data.creators.find((creator) => creator.userId === userId);
+  const cached = window.localStorage.getItem("linggong-zhichuang-demo-v2");
+  if (!cached) return "registered";
 
-  if (!subject) return "registered";
-  return subject.verified ? "approved" : "pending_review";
+  try {
+    const state = JSON.parse(cached) as {
+      buyerProfiles?: Array<{ userId: string; verified: boolean }>;
+      creators?: Array<{ userId: string; verified: boolean }>;
+    };
+    const subject =
+      role === "buyer"
+        ? state.buyerProfiles?.find((profile) => profile.userId === userId)
+        : state.creators?.find((creator) => creator.userId === userId);
+
+    if (!subject) return "registered";
+    return subject.verified ? "approved" : "pending_review";
+  } catch {
+    return "registered";
+  }
 }
 
 function normalizeAccount(account: string) {
@@ -110,7 +94,7 @@ function accountPhone(account: string, phone?: string) {
   return normalized.includes("@") ? "" : normalized;
 }
 
-function requestAuthUser(path: string, input: {
+async function requestAuthUser(path: string, input: {
   role: UserRole;
   account: string;
   password?: string;
@@ -120,12 +104,13 @@ function requestAuthUser(path: string, input: {
   name?: string;
   inviteCode?: string;
 }) {
-  const xhr = new XMLHttpRequest();
-  xhr.open("POST", path, false);
-  xhr.setRequestHeader("Accept", "application/json");
-  xhr.setRequestHeader("Content-Type", "application/json");
-  xhr.send(
-    JSON.stringify({
+  const response = await fetch(path, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
       role: input.role,
       account: normalizeAccount(input.account),
       phone: accountPhone(input.account, input.phone),
@@ -136,9 +121,9 @@ function requestAuthUser(path: string, input: {
       name: input.name || normalizeAccount(input.account) || "新用户",
       inviteCode: input.inviteCode
     })
-  );
+  });
 
-  const parsed = JSON.parse(xhr.responseText) as {
+  const parsed = await response.json().catch(() => null) as {
     ok: boolean;
     error?: string;
     data?: {
@@ -151,10 +136,10 @@ function requestAuthUser(path: string, input: {
       accessToken?: string;
       refreshToken?: string;
     };
-  };
+  } | null;
 
-  if (xhr.status < 200 || xhr.status >= 300 || !parsed.ok) {
-    throw new Error(userFacingErrorMessage(parsed.error, "请求失败，请稍后再试。"));
+  if (!response.ok || !parsed?.ok) {
+    throw new Error(userFacingErrorMessage(parsed?.error, "请求失败，请稍后再试。"));
   }
 
   return parsed.data ?? null;
@@ -189,8 +174,8 @@ function saveUserSession(user: {
   return session;
 }
 
-export function registerAccount(input: { role: UserRole; account: string; password: string; name?: string; inviteCode?: string }) {
-  const user = requestAuthUser("/api/auth/register", input);
+export async function registerAccount(input: { role: UserRole; account: string; password: string; name?: string; inviteCode?: string }) {
+  const user = await requestAuthUser("/api/auth/register", input);
   if (!user) {
     throw new Error("注册失败，请检查手机号、邮箱和网络状态。");
   }
@@ -198,7 +183,7 @@ export function registerAccount(input: { role: UserRole; account: string; passwo
   return user;
 }
 
-export function loginAccount(input: {
+export async function loginAccount(input: {
   role: UserRole;
   account: string;
   phone?: string;
@@ -207,7 +192,7 @@ export function loginAccount(input: {
   authMethod?: "password" | "code";
   name?: string;
 }) {
-  const user = requestAuthUser("/api/auth/login", input);
+  const user = await requestAuthUser("/api/auth/login", input);
   if (!user) {
     throw new Error("未找到账号，请先注册。");
   }

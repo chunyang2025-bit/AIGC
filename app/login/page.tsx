@@ -66,7 +66,7 @@ function LoginContent() {
     return false;
   }
 
-  function loginByPassword() {
+  async function loginByPassword() {
     if (!requireAgreement()) return;
     if (!account.trim() || !password.trim()) {
       setStatusText("请输入手机号/邮箱和密码。");
@@ -75,7 +75,7 @@ function LoginContent() {
     }
     try {
       setIsSubmitting(true);
-      const session = loginAccount({
+      const session = await loginAccount({
         role: activeRoleValue,
         account: account.trim(),
         password: password.trim(),

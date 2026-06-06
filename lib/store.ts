@@ -120,13 +120,6 @@ export function loadMarketplaceData(): MarketplaceData {
     return normalizeData(cloneData(demoData));
   }
 
-  const remote = requestJson<MarketplaceData>("/api/state");
-  if (remote) {
-    const normalized = normalizeData(remote);
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
-    return normalized;
-  }
-
   const cached = window.localStorage.getItem(STORAGE_KEY);
   if (!cached) {
     const initial = cloneData(demoData);
@@ -189,7 +182,6 @@ export function createProject(input: {
   });
 
   if (remote) {
-    syncFromApi();
     return remote;
   }
 
@@ -264,7 +256,6 @@ export function resubmitProject(projectId: string, input: {
   });
 
   if (remote) {
-    syncFromApi();
     return remote;
   }
 
@@ -323,7 +314,6 @@ export function inviteCreator(projectId: string, creatorId: string, input: { mes
   });
 
   if (remote) {
-    syncFromApi();
     return remote;
   }
 
@@ -395,7 +385,6 @@ export function expressInterestInProject(
   });
 
   if (remote) {
-    syncFromApi();
     return remote;
   }
 
@@ -579,7 +568,6 @@ export function upsertCurrentBuyerProfile(input: {
 
   if (remote) {
     if (session) saveAuthSession({ ...session, status: "pending_review" });
-    syncFromApi();
     return remote;
   }
 
@@ -679,7 +667,6 @@ export function upsertUnifiedSubjectProfile(input: {
   });
 
   if (remote) {
-    syncFromApi();
     return buyerProfile;
   }
 
@@ -733,7 +720,6 @@ export function upsertCurrentCreatorProfile(input: {
 
   if (remote) {
     if (session) saveAuthSession({ ...session, status: "pending_review" });
-    syncFromApi();
     return remote;
   }
 

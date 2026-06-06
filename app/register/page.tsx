@@ -37,7 +37,7 @@ function RegisterContent() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function submitRegister() {
+  async function submitRegister() {
     if (!agreed) {
       setStatusText("请先阅读并勾选协议后注册。");
       return;
@@ -56,7 +56,7 @@ function RegisterContent() {
     }
     try {
       setIsSubmitting(true);
-      registerAccount({
+      await registerAccount({
         role,
         account: account.trim(),
         password,
@@ -68,7 +68,7 @@ function RegisterContent() {
         router.push("/login?role=admin");
         return;
       }
-      loginAccount({
+      await loginAccount({
         role,
         account: account.trim(),
         password,
