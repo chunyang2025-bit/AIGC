@@ -8,7 +8,7 @@ import { categoryLabel } from "@/lib/format";
 import { projectCategories } from "@/lib/project-categories";
 import { inviteCreator, loadMarketplaceData } from "@/lib/store";
 import { ProjectCategory } from "@/lib/types";
-import { isApproved, loginNextPath, readAuthSession } from "@/lib/auth";
+import { loginNextPath, readAuthSession } from "@/lib/auth";
 import { isCandidateCreator, readCandidateCreatorIds, toggleCandidateCreator } from "@/lib/candidates";
 
 const categories: Array<ProjectCategory | "All"> = ["All", ...projectCategories];
@@ -63,12 +63,12 @@ function CreatorsContent() {
       router.push("/login");
       return;
     }
-    if (project.status !== "open" && project.status !== "matching") {
+    if (!["pending_review", "open", "matching", "in_progress"].includes(project.status)) {
       router.push(`/buyer/projects/${project.id}`);
       return;
     }
     const buyerProfile = data.buyerProfiles?.find((profile) => profile.userId === session?.userId);
-    if (!(buyerProfile?.verified ?? isApproved(session))) {
+    if (!buyerProfile) {
       router.push("/account/profile");
       return;
     }
@@ -106,7 +106,10 @@ function CreatorsContent() {
               <UsersRound size={13} /> 正在为需求检索创作者
             </span>
             <h2>{project.title}</h2>
-            <p>{project.status === "open" || project.status === "matching" ? "你可以使用 Agent 推荐，也可以在信息大厅中自主搜索并邀请创作者推进下一步工作。" : "需求审核通过后，才能邀请创作者推进下一步工作。"}</p>
+            <p>{project.status === "open" || project.status === "matching" ? "你可以使用 Agent 推荐，也可以在信息大厅中自主搜索并邀请创作者推进下一步工作。" : "试运营期间可先邀请创作者推进沟通；需求审核通过后会进入公开大厅展示。"}</p>
+            {data.buyerProfiles?.find((profile) => profile.userId === session?.userId && !profile.verified) ? (
+              <div className="notice">未审核、未认证：可先试用邀请流程，正式合作前建议完成认证。</div>
+            ) : null}
           </div>
           <button className="btn primary" onClick={() => router.push(`/projects/${project.id}`)}>
             返回匹配结果

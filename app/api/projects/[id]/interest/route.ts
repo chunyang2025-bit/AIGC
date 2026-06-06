@@ -22,8 +22,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
     return apiFail(403, user.suspendedReason || "账号已被限制，暂不能发起沟通");
   }
   const project = data.projects.find((item) => item.id === params.id);
-  if (project && project.status !== "open" && project.status !== "matching") {
-    return apiFail(409, "需求审核通过后才能发起沟通");
+  if (project && !["pending_review", "open", "matching", "in_progress"].includes(project.status)) {
+    return apiFail(409, "当前需求状态暂不能发起沟通，请等待需求方补充或重新提交");
   }
   const currentCreator = actor ? data.creators.find((creator) => creator.userId === actor.id) : null;
   if (isSupabaseServerConfigured() && !currentCreator) {

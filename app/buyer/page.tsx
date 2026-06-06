@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Bot, BriefcaseBusiness, CheckCircle2, Clock, Plus, Search, UsersRound } from "lucide-react";
 import { compactDate, money, orderStatusLabel, projectStatusLabel } from "@/lib/format";
 import { loadMarketplaceData } from "@/lib/store";
-import { isApproved, readAuthSession } from "@/lib/auth";
+import { readAuthSession } from "@/lib/auth";
 import { buyerActionItems, buyerProjectNextStep } from "@/lib/opportunities";
 import { FirstActionPanel } from "@/components/FirstActionPanel";
 
@@ -16,27 +16,18 @@ export default function BuyerPortalPage() {
   const session = readAuthSession();
   const buyerId = session?.userId ?? "";
   const buyerProfile = data.buyerProfiles?.find((profile) => profile.userId === buyerId);
-  const approved = buyerProfile?.verified ?? isApproved(session);
+  const verified = Boolean(buyerProfile?.verified);
   const projects = data.projects.filter((project) => project.buyerId === buyerId);
   const leads = data.orders.filter((order) => order.buyerId === buyerId);
   const activeLeads = leads.filter((order) => order.status !== "approved");
   const agentProjects = projects.filter((project) => project.agentBrief);
-  const actionItems = buyerActionItems(data, buyerId, approved);
-  const openProject = projects.find((project) => project.status === "open" || project.status === "matching");
+  const actionItems = buyerActionItems(data, buyerId, Boolean(buyerProfile));
+  const openProject = projects.find((project) => ["pending_review", "open", "matching", "in_progress"].includes(project.status));
   const hasTrainingDemand = projects.some((project) => project.category === "AIGC Training");
-  const firstAction = !approved
-    ? {
-        title: "先让主体审核通过，才能正式发布和邀请",
-        description: "审核期间可以继续完善主体资料，也可以先浏览服务方大厅，记下想沟通的候选方。",
-        primaryLabel: "完善主体资料",
-        primaryHref: "/account/profile",
-        secondaryLabel: "查看服务方大厅",
-        secondaryHref: "/creators"
-      }
-    : !projects.length
+  const firstAction = !projects.length
       ? {
           title: "发布第一个需求，让平台开始推荐服务方",
-          description: "用 Brief Agent 把一句话想法变成可审核、可匹配的需求。项目交付和培训需求都可以发布。",
+          description: "用 Brief Agent 把一句话想法变成可匹配的需求。试运营期间可先发布、匹配和邀请。",
           primaryLabel: "发布项目需求",
           primaryHref: "/post-project",
           secondaryLabel: "发布培训需求",
@@ -45,7 +36,7 @@ export default function BuyerPortalPage() {
       : !leads.length
         ? {
             title: "邀请 2-3 位候选服务方，产生第一条沟通线索",
-            description: openProject ? `优先处理「${openProject.title}」，从匹配推荐或服务方大厅发起邀请。` : "需求审核通过后，立即邀请候选服务方沟通。",
+            description: openProject ? `优先处理「${openProject.title}」，从匹配推荐或服务方大厅发起邀请。` : "先从已发布需求进入匹配推荐，邀请候选服务方沟通。",
             primaryLabel: openProject ? "查看匹配推荐" : "查看我的需求",
             primaryHref: openProject ? `/buyer/projects/${openProject.id}` : "/buyer",
             secondaryLabel: "查看服务方大厅",
@@ -84,10 +75,10 @@ export default function BuyerPortalPage() {
           </span>
           <div>
             <h1>我的派单后台</h1>
-            <p>免费发布内容需求，启动 Brief Agent，审核通过后查看匹配结果，并邀请创作者建立沟通线索。</p>
+            <p>免费发布内容需求，启动 Brief Agent，试运营期间可先查看匹配结果并邀请创作者建立沟通线索。</p>
           </div>
           <div className="toolbarGroup">
-            <Link className={approved ? "btn primary" : "btn"} href={approved ? "/post-project" : "/account/profile"}>
+            <Link className="btn primary" href="/post-project">
               <Plus size={16} /> 启动需求 Agent
             </Link>
             <Link className="btn" href="/account/capabilities?intent=service">
@@ -114,9 +105,9 @@ export default function BuyerPortalPage() {
         </div>
       </section>
 
-      {!approved ? (
+      {!verified ? (
         <section className="notice">
-          你的主体资料正在审核中。审核通过后才能正式发布需求和主动邀请创作者；审核期间可以继续完善主页、浏览创作者信息大厅。
+          风险提示：你的主体资料未审核、未认证。试运营期间可先发布需求、查看匹配并邀请沟通；查看具体信息或推进正式合作时建议完成认证。
         </section>
       ) : null}
 
@@ -129,7 +120,7 @@ export default function BuyerPortalPage() {
         secondaryLabel={firstAction.secondaryLabel}
         secondaryHref={firstAction.secondaryHref}
         steps={[
-          { label: "主体审核", done: approved },
+          { label: "主体认证", done: verified },
           { label: "发布需求", done: Boolean(projects.length) },
           { label: "培训需求", done: hasTrainingDemand },
           { label: "首条线索", done: Boolean(leads.length) }
@@ -183,7 +174,7 @@ export default function BuyerPortalPage() {
             </thead>
             <tbody>
               {projects.map((project) => {
-                const nextStep = buyerProjectNextStep(project, data, approved);
+                const nextStep = buyerProjectNextStep(project, data, Boolean(buyerProfile));
                 return (
                   <tr key={project.id}>
                     <td>
@@ -210,9 +201,9 @@ export default function BuyerPortalPage() {
                   <td colSpan={6}>
                     <div className="emptyState">
                       <strong>还没有发布需求</strong>
-                      <span>先用 Brief Agent 把想法整理成清晰需求，提交审核后即可进入匹配。</span>
-                      <Link className="btn primary" href={approved ? "/post-project" : "/account/profile"}>
-                        <Plus size={16} /> {approved ? "发布第一个需求" : "完善主体资料"}
+                      <span>先用 Brief Agent 把想法整理成清晰需求，提交后即可进入试运营匹配。</span>
+                      <Link className="btn primary" href="/post-project">
+                        <Plus size={16} /> 发布第一个需求
                       </Link>
                     </div>
                   </td>
@@ -243,8 +234,8 @@ export default function BuyerPortalPage() {
             {!leads.length ? (
               <div className="emptyState">
                 <strong>还没有合作线索</strong>
-                <span>需求审核通过后，可以从匹配推荐或创作者大厅邀请接单方。</span>
-                <Link className="btn" href={projects.some((project) => project.status === "open" || project.status === "matching") ? `/creators?project=${projects.find((project) => project.status === "open" || project.status === "matching")?.id}` : "/post-project"}>
+                <span>发布需求后，可以从匹配推荐或创作者大厅邀请接单方。</span>
+                <Link className="btn" href={projects.some((project) => ["pending_review", "open", "matching", "in_progress"].includes(project.status)) ? `/creators?project=${projects.find((project) => ["pending_review", "open", "matching", "in_progress"].includes(project.status))?.id}` : "/post-project"}>
                   <Search size={16} /> {projects.length ? "去邀请创作者" : "先发布需求"}
                 </Link>
               </div>
@@ -260,7 +251,7 @@ export default function BuyerPortalPage() {
         <div className="sectionHeader">
           <div>
             <h2>需求方下一步</h2>
-            <p>平台会引导需求方把模糊想法变成清晰需求，审核通过后找到合适创作者沟通。</p>
+            <p>平台会引导需求方把模糊想法变成清晰需求，先试用匹配和沟通，再用认证提升信任。</p>
           </div>
         </div>
         <div className="grid">

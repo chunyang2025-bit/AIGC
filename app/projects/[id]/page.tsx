@@ -26,7 +26,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
     notFound();
   }
 
-  if (project.status !== "open" && project.status !== "matching") {
+  if (!["pending_review", "open", "matching", "in_progress"].includes(project.status)) {
     notFound();
   }
 
@@ -61,7 +61,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
 
   function submitInterest(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!currentCreator || !currentCreator.verified) return;
+    if (!currentCreator) return;
 
     const order = expressInterestInProject(projectId, currentCreator.id, {
       intro
@@ -345,13 +345,18 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                   <div className="notice">
                     <Link2 size={15} /> 将发送展示页：/creators/{currentCreator.id}
                   </div>
-                  {currentCreator.verified && (project.status === "open" || project.status === "matching") ? (
+                  {!currentCreator.verified ? (
+                    <div className="notice">
+                      风险提示：你的展示页未审核、未认证。试运营期间可先发送沟通意向，查看具体信息或推进正式合作时建议完成认证。
+                    </div>
+                  ) : null}
+                  {["pending_review", "open", "matching", "in_progress"].includes(project.status) ? (
                     <button className="btn primary" type="submit">
                       <Send size={16} /> {isTrainingProject ? "发送展示页并提交方案意向" : "发送我的展示页并邀约聊天"}
                     </button>
                   ) : (
                     <div className="notice">
-                      当前账号资料已提交审核。审核通过后才能向派单方发起沟通。
+                      当前需求状态暂不能发起沟通，请等待需求方补充或重新提交。
                     </div>
                   )}
                 </form>

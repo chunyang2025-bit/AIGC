@@ -165,7 +165,7 @@ function RegisterContent() {
           <div className="dispatchRoleTips">
             <div>
               <CheckCircle2 size={15} />
-              <span>{role === "admin" ? "默认本地邀请码为 AIGC-ADMIN-2026，生产环境请配置 ADMIN_INVITE_CODE" : "注册后需要完善主体主页并提交审核"}</span>
+              <span>{role === "admin" ? "默认本地邀请码为 AIGC-ADMIN-2026，生产环境请配置 ADMIN_INVITE_CODE" : "注册后完善主体主页，即可先试用核心功能"}</span>
             </div>
           </div>
         </aside>

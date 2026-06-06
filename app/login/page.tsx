@@ -45,8 +45,8 @@ function LoginContent() {
 
   function nextPath(session: AuthSession) {
     if (requestedNext && requestedNext.startsWith("/")) return requestedNext;
-    if (session.status === "approved") return roleWorkbenchPath(session.role);
-    return requestedIntent ? `${roleProfilePath(session.role)}?intent=${requestedIntent}` : roleProfilePath(session.role);
+    if (session.status === "registered") return requestedIntent ? `${roleProfilePath(session.role)}?intent=${requestedIntent}` : roleProfilePath(session.role);
+    return roleWorkbenchPath(session.role);
   }
 
   useEffect(() => {

@@ -7,7 +7,7 @@ import { ArrowLeft, Bot, CheckCircle2, FileBadge2, FileText, Search, Sparkles, U
 import { CreatorCard } from "@/components/CreatorCard";
 import { categoryLabel, compactDate, money, orderStatusLabel, projectStatusLabel } from "@/lib/format";
 import { getProjectMatches, inviteCreator, loadMarketplaceData } from "@/lib/store";
-import { isApproved, readAuthSession } from "@/lib/auth";
+import { readAuthSession } from "@/lib/auth";
 import { isCandidateCreator, readCandidateCreatorIds, toggleCandidateCreator } from "@/lib/candidates";
 import { buyerProjectNextStep, creatorInviteChecklist, projectTrainingConversion } from "@/lib/opportunities";
 import { trainingFormatLabel } from "@/lib/training";
@@ -26,8 +26,8 @@ export default function BuyerProjectDetailPage({ params }: { params: { id: strin
   const [candidateIds, setCandidateIds] = useState(readCandidateCreatorIds(project.id));
   const leads = data.orders.filter((order) => order.projectId === project.id);
   const buyerProfile = data.buyerProfiles?.find((profile) => profile.userId === session?.userId);
-  const approved = buyerProfile?.verified ?? isApproved(session);
-  const projectReviewed = project.status === "open" || project.status === "matching";
+  const verified = Boolean(buyerProfile?.verified);
+  const canTrialInvite = Boolean(buyerProfile) && ["pending_review", "open", "matching", "in_progress"].includes(project.status);
   const isTrainingProject = project.category === "AIGC Training";
   const inviteActionLabel = isTrainingProject ? "索要培训方案" : "邀请沟通";
   const invitedActionLabel = isTrainingProject ? "已索要方案" : "已邀请";
@@ -35,7 +35,7 @@ export default function BuyerProjectDetailPage({ params }: { params: { id: strin
     isTrainingProject
       ? `我们正在为「${project.title}」筛选AIGC培训服务方。请先提供课程大纲、报价、过往企业培训案例，并给出可预约15分钟沟通的时间。培训对象：${project.trainingRequirement?.audience || "待沟通"}；预计人数：${project.trainingRequirement?.headcount || "待沟通"}；培训形式：${project.trainingRequirement ? trainingFormatLabel(project.trainingRequirement.format) : "待沟通"}。`
       : `已邀请 ${creatorName} 沟通需求「${project.title}」。`;
-  const nextStep = buyerProjectNextStep(project, data, approved);
+  const nextStep = buyerProjectNextStep(project, data, Boolean(buyerProfile));
   const conversion = projectTrainingConversion(project);
   const candidateRows = candidateIds.flatMap((id) => {
     const creator = data.creators.find((item) => item.id === id);
@@ -165,7 +165,10 @@ export default function BuyerProjectDetailPage({ params }: { params: { id: strin
                 </div>
               ) : null}
               {project.status === "pending_review" ? (
-                <div className="notice">需求正在平台运营审核中，审核通过后将公开展示并开放创作者沟通。</div>
+                <div className="notice">需求正在平台运营审核中。试运营期间你可以先查看推荐并邀请沟通；审核通过后会进入公开大厅展示。</div>
+              ) : null}
+              {buyerProfile && !verified ? (
+                <div className="notice">风险提示：当前主体未审核、未认证。可以先试用匹配和沟通，查看具体信息或推进正式合作时建议完成认证。</div>
               ) : null}
               {project.status === "rejected" ? (
                 <div className="notice">
@@ -254,7 +257,7 @@ export default function BuyerProjectDetailPage({ params }: { params: { id: strin
                     onToggleCandidate={() => setCandidateIds(toggleCandidateCreator(project.id, creator.id))}
                     candidateSelected={isCandidateCreator(project.id, creator.id)}
                     onInvite={
-                      approved && projectReviewed && !invited
+                      canTrialInvite && !invited
                         ? () => {
                             const order = inviteCreator(project.id, creator.id, { message: inviteMessage(creator.name) });
                             if (order) {
@@ -270,8 +273,8 @@ export default function BuyerProjectDetailPage({ params }: { params: { id: strin
                 );
               })}
             </div>
-            {!approved ? <div className="notice">当前主体主页正在审核，审核通过后才能{isTrainingProject ? "索要培训方案" : "邀请创作者"}。</div> : null}
-            {approved && !projectReviewed ? <div className="notice">需求审核通过后才能{isTrainingProject ? "索要培训方案" : "邀请创作者"}。</div> : null}
+            {buyerProfile && !verified ? <div className="notice">未审核、未认证：可先{isTrainingProject ? "索要培训方案" : "邀请创作者"}试用流程，正式合作前建议完成认证。</div> : null}
+            {!canTrialInvite ? <div className="notice">当前需求状态暂不能{isTrainingProject ? "索要培训方案" : "邀请创作者"}，请先补充或重新提交需求。</div> : null}
           </section>
 
           <section className="card">
@@ -397,7 +400,7 @@ export default function BuyerProjectDetailPage({ params }: { params: { id: strin
                         <button className="btn" onClick={() => setCandidateIds(toggleCandidateCreator(project.id, row.creator.id))} type="button">移出候选</button>
                         <button
                           className="btn primary"
-                          disabled={!approved || !projectReviewed || row.invited}
+                          disabled={!canTrialInvite || row.invited}
                           onClick={() => {
                             const order = inviteCreator(project.id, row.creator.id, { message: inviteMessage(row.creator.name) });
                             if (order) router.push(`/orders/${order.id}`);

@@ -16,7 +16,7 @@ function normalizeIntent(value: string | null): BusinessIntent {
 
 function statusText(enabled: boolean, verified?: boolean) {
   if (!enabled) return "未启用";
-  return verified ? "已通过审核" : "待平台审核";
+  return verified ? "已通过审核" : "未认证/可试用";
 }
 
 function AccountCapabilitiesContent() {
@@ -61,7 +61,7 @@ function AccountCapabilitiesContent() {
       qualificationFiles: subject.qualificationFiles
     });
     setAuthCapability("buyer", subject.verified ? "approved" : "pending_review");
-    router.push(subject.verified ? "/buyer" : "/account");
+    router.push("/buyer");
   }
 
   const flows = {
@@ -72,14 +72,14 @@ function AccountCapabilitiesContent() {
       description: "把图片、短视频、数字人、文案、PPT或工作流需求发布出来，获得推荐服务方和候选对比。",
       status: statusText(Boolean(subject), subject.verified),
       statusClass: subject.verified ? "tag green" : "tag gold",
-      primaryLabel: subject.verified ? "发布项目需求" : "提交需求方身份审核",
-      primaryHref: subject.verified ? "/post-project" : undefined,
-      primaryAction: subject.verified ? undefined : enableDemandIdentity,
+      primaryLabel: subject.verified ? "发布项目需求" : "试用发布项目需求",
+      primaryHref: "/post-project",
+      primaryAction: undefined,
       secondaryLabel: "查看项目需求大厅",
       secondaryHref: "/projects",
       steps: [
         { label: "主体主页", done: true },
-        { label: "主体审核", done: subject.verified },
+        { label: "主体认证", done: subject.verified },
         { label: "发布需求Brief", done: data.projects.some((project) => project.buyerId === session.userId && project.category !== "AIGC Training") },
         { label: "获得匹配推荐", done: data.matches.some((match) => data.projects.some((project) => project.id === match.projectId && project.buyerId === session.userId)) },
         { label: "邀请服务方沟通", done: data.orders.some((order) => order.buyerId === session.userId) }
@@ -92,14 +92,14 @@ function AccountCapabilitiesContent() {
       description: "说明培训对象、人数、主题、形式和目标，向讲师或培训机构索要课程方案、报价和可沟通时间。",
       status: statusText(Boolean(subject), subject.verified),
       statusClass: subject.verified ? "tag green" : "tag gold",
-      primaryLabel: subject.verified ? "发布培训需求" : "提交需求方身份审核",
-      primaryHref: subject.verified ? "/post-project?category=AIGC%20Training" : undefined,
-      primaryAction: subject.verified ? undefined : enableDemandIdentity,
+      primaryLabel: subject.verified ? "发布培训需求" : "试用发布培训需求",
+      primaryHref: "/post-project?category=AIGC%20Training",
+      primaryAction: undefined,
       secondaryLabel: "查看培训方",
       secondaryHref: "/creators",
       steps: [
         { label: "主体主页", done: true },
-        { label: "主体审核", done: subject.verified },
+        { label: "主体认证", done: subject.verified },
         { label: "填写培训对象", done: data.projects.some((project) => project.buyerId === session.userId && project.trainingRequirement?.audience) },
         { label: "索要课程方案", done: data.orders.some((order) => order.buyerId === session.userId) },
         { label: "比较讲师方案", done: data.orders.filter((order) => order.buyerId === session.userId).length >= 2 }
@@ -191,7 +191,7 @@ function AccountCapabilitiesContent() {
             <span>当前状态</span>
           </div>
           <div className="metric">
-            <strong>{subject.verified ? "已认证" : "审核中"}</strong>
+            <strong>{subject.verified ? "已认证" : "未认证"}</strong>
             <span>主体主页</span>
           </div>
         </div>
@@ -215,6 +215,9 @@ function AccountCapabilitiesContent() {
               </div>
             ))}
           </div>
+          {!subject.verified ? (
+            <div className="notice">试运营期间不强制审核。你可以先使用发布、匹配和沟通功能；查看具体信息或推进正式合作时，平台会引导完成审核认证。</div>
+          ) : null}
         </div>
       </section>
 
@@ -225,7 +228,7 @@ function AccountCapabilitiesContent() {
               <strong>主体主页共用</strong>
             </div>
             <span className={subject.verified ? "tag green" : "tag gold"}>
-              {subject.verified ? "已通过审核" : "待平台审核"}
+              {subject.verified ? "已通过审核" : "未认证/待审核"}
             </span>
           </div>
           <div className="toolbarGroup">

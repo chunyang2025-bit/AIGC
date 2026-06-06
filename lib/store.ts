@@ -331,7 +331,7 @@ export function inviteCreator(projectId: string, creatorId: string, input: { mes
   const project = data.projects.find((item) => item.id === projectId);
   const creator = data.creators.find((item) => item.id === creatorId);
 
-  if (!project || !creator || (project.status !== "open" && project.status !== "matching")) {
+  if (!project || !creator || !["pending_review", "open", "matching", "in_progress"].includes(project.status)) {
     return null;
   }
 
@@ -403,7 +403,7 @@ export function expressInterestInProject(
   const project = data.projects.find((item) => item.id === projectId);
   const creator = data.creators.find((item) => item.id === creatorId);
 
-  if (!project || !creator || (project.status !== "open" && project.status !== "matching")) {
+  if (!project || !creator || !["pending_review", "open", "matching", "in_progress"].includes(project.status)) {
     return null;
   }
 

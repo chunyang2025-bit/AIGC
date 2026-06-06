@@ -377,7 +377,7 @@ function ProviderProfileContent() {
           </div>
           {loadedCreatorRemix ? (
             <div className="notice">
-              已参考「{loadedCreatorRemix}」的主页结构。请替换为你的真实服务能力、案例、报价和联系方式后再提交审核。
+              已参考「{loadedCreatorRemix}」的主页结构。请替换为你的真实服务能力、案例、报价和联系方式后再保存主页。
             </div>
           ) : null}
           <form className="cardBody form" onSubmit={handleSubmit}>

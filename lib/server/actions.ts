@@ -136,6 +136,10 @@ export function isPublicProject(project: Project) {
   return project.status === "open" || project.status === "matching";
 }
 
+function isTrialContactableProject(project: Project) {
+  return project.status === "pending_review" || project.status === "open" || project.status === "matching" || project.status === "in_progress";
+}
+
 export function registerUser(data: MarketplaceData, input: Record<string, unknown>) {
   const role = ["buyer", "creator", "admin"].includes(String(input.role))
     ? (String(input.role) as UserRole)
@@ -347,7 +351,7 @@ export function inviteCreator(data: MarketplaceData, projectId: string, input: R
   const creatorId = String(input.creatorId || "");
   const project = data.projects.find((item) => item.id === projectId);
   const creator = data.creators.find((item) => item.id === creatorId);
-  if (!project || !creator || !isPublicProject(project)) return null;
+  if (!project || !creator || !isTrialContactableProject(project)) return null;
 
   const order: Order = {
     id: id("o"),
@@ -386,7 +390,7 @@ export function expressInterest(data: MarketplaceData, projectId: string, input:
   const creatorId = String(input.creatorId || "c-self");
   const project = data.projects.find((item) => item.id === projectId);
   const creator = data.creators.find((item) => item.id === creatorId);
-  if (!project || !creator || !isPublicProject(project)) return null;
+  if (!project || !creator || !isTrialContactableProject(project)) return null;
 
   const existing = data.orders.find((item) => item.projectId === projectId && item.creatorId === creatorId);
   const order =

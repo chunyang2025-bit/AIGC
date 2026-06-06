@@ -7,7 +7,7 @@ import { Banknote, BriefcaseBusiness, CalendarDays, CheckCircle2, Copy, FileText
 import { categoryLabel, compactDate, money, orderStatusLabel } from "@/lib/format";
 import { isImageValue } from "@/lib/file-upload";
 import { loadMarketplaceData } from "@/lib/store";
-import { isApproved, readAuthSession } from "@/lib/auth";
+import { readAuthSession } from "@/lib/auth";
 import { creatorProjectScore, creatorServiceConversion, opportunityPools } from "@/lib/opportunities";
 import { FirstActionPanel } from "@/components/FirstActionPanel";
 
@@ -31,7 +31,7 @@ export default function ProviderPortalPage() {
     return null;
   }
 
-  const approved = creator?.verified ?? isApproved(session);
+  const verified = Boolean(creator?.verified);
   const leads = data.orders.filter((order) => order.creatorId === creator.id);
   const recommendedOpportunities = data.matches
     .filter((match) => match.creatorId === creator.id)
@@ -51,10 +51,10 @@ export default function ProviderPortalPage() {
   const hasTrainingProfile = Boolean(creator.categories.includes("AIGC Training") && creator.trainingProfile?.topics?.length);
   const hasServicePackage = Boolean(creator.servicePackages?.length || (creator.priceMin && creator.priceMax));
   const hasPortfolio = Boolean(creator.portfolioItems?.length || creator.portfolio.length);
-  const providerFirstAction = !approved
+  const providerFirstAction = !verified
     ? {
-        title: "先补齐服务主页，提高审核通过率",
-        description: "审核期间可以继续补服务定位、案例、报价和联系方式。审核通过后才能主动向派单方发起沟通。",
+        title: "先补齐服务主页，提高认证通过率",
+        description: "试运营期间可先浏览需求并发起沟通。补齐服务定位、案例、报价和联系方式，会降低未认证带来的信任风险。",
         primaryLabel: "完善服务主页",
         primaryHref: "/provider/profile",
         secondaryLabel: "先看公开需求",
@@ -117,8 +117,8 @@ export default function ProviderPortalPage() {
       href: "/projects"
     },
     {
-      label: "获得发起沟通权限",
-      done: approved,
+      label: "完成主页认证",
+      done: verified,
       href: "/provider/profile"
     }
   ];
@@ -165,8 +165,8 @@ export default function ProviderPortalPage() {
               ))}
             </div>
             <div className="spaceBetween">
-              <span className={approved ? "tag green" : "tag gold"}>
-                <CheckCircle2 size={13} /> {approved ? "已认证" : "审核中"}
+              <span className={verified ? "tag green" : "tag gold"}>
+                <CheckCircle2 size={13} /> {verified ? "已认证" : "未认证/可试用"}
               </span>
               <span className="muted">评分 {creator.rating.toFixed(1)}</span>
             </div>
@@ -174,9 +174,9 @@ export default function ProviderPortalPage() {
         </div>
       </section>
 
-      {!approved ? (
+      {!verified ? (
         <section className="notice">
-          你已完成基础入驻，可以浏览公开需求并继续完善展示页。审核通过后才能向派单方发起沟通。
+          风险提示：你的服务主页未审核、未认证。试运营期间可先浏览需求并发起沟通；查看具体信息或推进正式合作时建议完成认证。
         </section>
       ) : null}
 
@@ -189,7 +189,7 @@ export default function ProviderPortalPage() {
         secondaryLabel={providerFirstAction.secondaryLabel}
         secondaryHref={providerFirstAction.secondaryHref}
         steps={[
-          { label: "主页审核", done: approved },
+          { label: "主页认证", done: verified },
           { label: "服务包报价", done: hasServicePackage },
           { label: "代表作", done: hasPortfolio },
           { label: "培训主页", done: hasTrainingProfile },

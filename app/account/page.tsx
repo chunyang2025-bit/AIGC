@@ -12,7 +12,7 @@ import { FirstActionPanel } from "@/components/FirstActionPanel";
 
 function statusText(hasProfile: boolean, verified?: boolean) {
   if (!hasProfile) return "未开通";
-  return verified ? "已通过审核" : "待平台审核";
+  return verified ? "已通过审核" : "未认证/可试用";
 }
 
 function statusClass(hasProfile: boolean, verified?: boolean) {
@@ -70,11 +70,11 @@ export default function AccountPage() {
       }
     : !subjectVerified
       ? {
-          title: "等待审核时，先补齐会影响通过率的资料",
-          primaryLabel: "继续完善主体资料",
-          primaryHref: "/account/profile",
-          secondaryLabel: "查看公开服务方",
-          secondaryHref: "/creators"
+          title: "未认证也可以先试用完整流程",
+          primaryLabel: buyerProfile ? "进入需求方后台" : "进入服务方后台",
+          primaryHref: buyerProfile ? "/buyer" : "/provider",
+          secondaryLabel: "继续完善认证资料",
+          secondaryHref: "/account/profile"
         }
       : buyerProfile && !hasAnyDemand
         ? {
@@ -126,7 +126,7 @@ export default function AccountPage() {
           </div>
           <div className="metric">
             <strong>{subjectVerified ? 1 : 0}</strong>
-            <span>主体审核</span>
+            <span>主体认证</span>
           </div>
           <div className="metric">
             <strong>{[buyerProfile, creatorProfile, buyerProfile, hasTrainingCapability].filter(Boolean).length}</strong>
@@ -248,14 +248,14 @@ export default function AccountPage() {
               </div>
             </div>
             <div className="toolbarGroup">
-              <Link className="btn primary" href={buyerProfile?.verified ? "/buyer" : "/account/capabilities?intent=dispatch"}>
+              <Link className="btn primary" href={buyerProfile ? "/buyer" : "/account/capabilities?intent=dispatch"}>
                 {buyerProfile ? "进入需求方后台" : "先完善主体主页"}
               </Link>
-              <Link className="btn" href={buyerProfile?.verified ? "/post-project" : "/account/profile"}>
-                {buyerProfile?.verified ? "发布项目需求" : "补充主体资料"}
+              <Link className="btn" href={buyerProfile ? "/post-project" : "/account/profile"}>
+                {buyerProfile ? "发布项目需求" : "补充主体资料"}
               </Link>
-              <Link className="btn" href={buyerProfile?.verified ? "/post-project?category=AIGC%20Training" : "/account/capabilities?intent=training_demand"}>
-                {buyerProfile?.verified ? "发布培训需求" : "准备找培训"}
+              <Link className="btn" href={buyerProfile ? "/post-project?category=AIGC%20Training" : "/account/capabilities?intent=training_demand"}>
+                {buyerProfile ? "发布培训需求" : "准备找培训"}
               </Link>
             </div>
           </div>
@@ -283,7 +283,7 @@ export default function AccountPage() {
               </div>
             </div>
             <div className="toolbarGroup">
-              <Link className="btn primary" href={creatorProfile?.verified ? "/provider" : "/account/capabilities?intent=service"}>
+              <Link className="btn primary" href={creatorProfile ? "/provider" : "/account/capabilities?intent=service"}>
                 {creatorProfile ? "进入服务方后台" : "先完善主体主页"}
               </Link>
               <Link className="btn" href="/provider/profile">
@@ -322,13 +322,13 @@ export default function AccountPage() {
                 <em>{projectStatusLabel(project.status)} · {money(project.budget)} · {compactDate(project.createdAt)}</em>
               </Link>
             ))}
-            {myProjects.length === 0 ? <div className="muted">通过审核后发布第一个需求。</div> : null}
+            {myProjects.length === 0 ? <div className="muted">试运营期间资料填好后即可发布第一个需求。</div> : null}
             <div className="toolbarGroup">
-              <Link className="btn primary" href={buyerProfile?.verified ? "/buyer" : "/account/capabilities?intent=dispatch"}>
+              <Link className="btn primary" href={buyerProfile ? "/buyer" : "/account/capabilities?intent=dispatch"}>
                 进入我的派单
               </Link>
-              <Link className="btn" href={buyerProfile?.verified ? "/post-project" : "/account/profile"}>
-                {buyerProfile?.verified ? "发布需求" : "完善派单认证"}
+              <Link className="btn" href={buyerProfile ? "/post-project" : "/account/profile"}>
+                {buyerProfile ? "发布需求" : "完善派单认证"}
               </Link>
             </div>
           </div>
@@ -370,7 +370,7 @@ export default function AccountPage() {
               <div className="muted">启用服务方身份后，这里会显示你的展示页和沟通线索。</div>
             )}
             <div className="toolbarGroup">
-              <Link className="btn primary" href={creatorProfile?.verified ? "/provider" : "/account/capabilities?intent=service"}>
+              <Link className="btn primary" href={creatorProfile ? "/provider" : "/account/capabilities?intent=service"}>
                 进入我的接单
               </Link>
               <Link className="btn" href="/projects">
@@ -382,7 +382,7 @@ export default function AccountPage() {
       </div>
 
       <section className="notice">
-        <Clock size={15} /> 需求方需完成主体资质审核后才能发布需求；服务方审核通过后可主动发起沟通。
+        <Clock size={15} /> 试运营期间不强制审核。资料填好后可先试用发布、匹配和沟通；未审核、未认证会保留风险提示，正式合作前建议完成认证。
       </section>
     </main>
   );

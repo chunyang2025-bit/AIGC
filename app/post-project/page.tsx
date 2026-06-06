@@ -9,7 +9,7 @@ import { deliverableTypeOptions, projectUseCaseOptions, urgencyOptions } from "@
 import { projectCategoryOptions } from "@/lib/project-categories";
 import { trainingFormatLabel, trainingFormatOptions } from "@/lib/training";
 import { createProject, loadMarketplaceData, resubmitProject } from "@/lib/store";
-import { isApproved, readAuthSession } from "@/lib/auth";
+import { readAuthSession } from "@/lib/auth";
 import { DeliverableType, ProjectCategory, ProjectUrgency, ProjectUseCase, TrainingFormat } from "@/lib/types";
 import { projectCompleteness } from "@/lib/growth";
 import { BetaNotice } from "@/components/BetaNotice";
@@ -22,7 +22,7 @@ function PostProjectContent() {
   const session = readAuthSession();
   const data = loadMarketplaceData();
   const buyerProfile = data.buyerProfiles?.find((profile) => profile.userId === session?.userId);
-  const approved = buyerProfile?.verified ?? isApproved(session);
+  const verified = Boolean(buyerProfile?.verified);
   const editProjectId = searchParams.get("edit");
   const editProject = editProjectId ? data.projects.find((project) => project.id === editProjectId && project.buyerId === session?.userId) : undefined;
   const editMode = Boolean(editProject);
@@ -108,7 +108,7 @@ function PostProjectContent() {
     tags: projectTags,
     agentBrief: draft.agentBrief
   });
-  const canPublish = approved && completeness.score >= 80;
+  const canPublish = Boolean(buyerProfile) && completeness.score >= 80;
 
   useEffect(() => {
     if (editProject || draftSource !== "tool") return;
@@ -234,13 +234,13 @@ function PostProjectContent() {
       <div className="pageHeader">
         <div>
           <h1>{startsAsTraining || editProject?.category === "AIGC Training" ? "培训需求发布 Agent" : "项目需求发布 Agent"}</h1>
-          <p>{editMode ? "修改后重新提交审核。审核通过前不会公开展示，也不能邀请服务方。" : startsAsTraining ? "免费提交培训需求，重点填写培训对象、人数、主题、形式、城市、时长和目标，再匹配培训服务方。" : "免费提交项目交付需求，用对话式输入生成结构化 Brief。你可以手动调整标题、意向预算、交付物和周期，再进入审核与服务方匹配。"}</p>
+          <p>{editMode ? "修改后重新提交。试运营期间可先查看匹配并邀请服务方，未认证状态会保留风险提示。" : startsAsTraining ? "免费提交培训需求，重点填写培训对象、人数、主题、形式、城市、时长和目标，再匹配培训服务方。" : "免费提交项目交付需求，用对话式输入生成结构化 Brief。你可以手动调整标题、意向预算、交付物和周期，再进入试运营匹配。"}</p>
         </div>
       </div>
 
       <BetaNotice />
       {editProject?.rejectedReason ? <div className="notice">上次审核意见：{editProject.rejectedReason}</div> : null}
-      {loadedToolDraft ? <div className="notice">已带入你在首页生成的 Brief。可以继续调整标题、交付范围、预算、周期和联系方式，再提交审核。</div> : null}
+      {loadedToolDraft ? <div className="notice">已带入你在首页生成的 Brief。可以继续调整标题、交付范围、预算、周期和联系方式，再提交需求。</div> : null}
       {loadedRemixSource ? <div className="notice">已参考「{loadedRemixSource}」生成发布草稿。请替换成你的真实业务背景、素材范围、预算和联系方式后再提交。</div> : null}
       <div className="notice">
         {isTrainingProject
@@ -570,11 +570,11 @@ function PostProjectContent() {
               }}
               disabled={!canPublish}
             >
-              <SendHorizonal size={16} /> {canPublish ? (editMode ? "重新提交审核" : "提交审核") : approved ? "补全需求后提交审核" : "审核通过后可提交需求"}
+              <SendHorizonal size={16} /> {canPublish ? (editMode ? "重新提交需求" : "提交需求并试用匹配") : buyerProfile ? "补全需求后提交" : "先完善主体主页"}
             </button>
-            {canPublish ? <div className="notice">提交免费需求后将进入平台运营审核，审核通过后会公开展示并开放创作者沟通。</div> : null}
-            {!approved ? <div className="notice">当前主体主页正在审核，审核通过后才能正式发布需求。</div> : null}
-            {approved && completeness.score < 80 ? <div className="notice">需求完整度达到 80% 后才能公开发布。建议补充联系方式、参考资料、资质材料和清晰描述。</div> : null}
+            {canPublish ? <div className="notice">试运营期间提交后可先查看推荐并发起沟通；未审核、未认证会显示风险提示，审核通过后再进入公开大厅。</div> : null}
+            {buyerProfile && !verified ? <div className="notice">当前主体主页未审核、未认证。可以先试用发布和匹配，查看具体联系方式或推进正式合作时会引导认证。</div> : null}
+            {buyerProfile && completeness.score < 80 ? <div className="notice">需求完整度达到 80% 后才能提交。建议补充联系方式、参考资料、资质材料和清晰描述。</div> : null}
           </div>
         </aside>
       </div>

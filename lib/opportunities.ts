@@ -159,8 +159,8 @@ export function buyerProjectNextStep(project: Project, data: MarketplaceData, ap
 
   if (!approved) {
     return {
-      label: "完善主体资料",
-      description: "主体审核通过后才能公开发布需求和主动邀请创作者。",
+      label: "继续完善认证",
+      description: "试运营期间可先使用匹配和邀约；完成认证后会提升信任并进入更正式的展示。",
       href: "/account/profile",
       tone: "gold" as const
     };
@@ -168,10 +168,10 @@ export function buyerProjectNextStep(project: Project, data: MarketplaceData, ap
 
   if (project.status === "pending_review") {
     return {
-      label: "等待审核",
-      description: "需求审核通过后会进入推荐和邀约流程。",
+      label: leads.length ? "跟进试用线索" : matches.length ? "邀请推荐创作者" : "查看匹配推荐",
+      description: "需求正在审核中。试运营期间可先查看推荐并邀请沟通，审核通过后会进入公开大厅。",
       href: `/buyer/projects/${project.id}`,
-      tone: "gold" as const
+      tone: "green" as const
     };
   }
 
@@ -230,20 +230,20 @@ export function buyerProjectNextStep(project: Project, data: MarketplaceData, ap
 
 export function buyerActionItems(data: MarketplaceData, buyerId: string, approved: boolean) {
   const projects = data.projects.filter((project) => project.buyerId === buyerId);
-  const openProject = projects.find((project) => (project.status === "open" || project.status === "matching") && !data.orders.some((order) => order.projectId === project.id));
+  const openProject = projects.find((project) => ["pending_review", "open", "matching", "in_progress"].includes(project.status) && !data.orders.some((order) => order.projectId === project.id));
   const rejectedProject = projects.find((project) => project.status === "rejected" || project.status === "removed");
   const activeLead = data.orders.find((order) => order.buyerId === buyerId && (order.status === "active" || order.status === "revision"));
 
   return [
     {
       label: approved ? "发布新需求" : "完善主体资料",
-      description: approved ? "用 Brief Agent 快速整理一个可审核、可匹配的需求。" : "审核通过后才能正式发布需求和邀请创作者。",
+      description: approved ? "用 Brief Agent 快速整理一个可匹配的需求。" : "试运营期间可先发布和邀请，完善认证后更容易被信任。",
       href: approved ? "/post-project" : "/account/profile",
-      done: approved ? projects.length > 0 : approved
+      done: approved ? projects.length > 0 : false
     },
     {
       label: openProject ? "邀请推荐创作者" : "等待可邀约需求",
-      description: openProject ? `「${openProject.title}」可以先邀请 2-3 位创作者沟通。` : "需求审核通过后，这里会提醒你邀请候选创作者。",
+      description: openProject ? `「${openProject.title}」可以先邀请 2-3 位创作者沟通。` : "发布需求后，这里会提醒你邀请候选创作者。",
       href: openProject ? `/buyer/projects/${openProject.id}` : "/buyer",
       done: !openProject
     },
@@ -264,7 +264,7 @@ export function buyerActionItems(data: MarketplaceData, buyerId: string, approve
 
 export function creatorInviteChecklist(creator: CreatorProfile, project: Project, invited: boolean) {
   return [
-    { label: "需求已通过审核", done: project.status === "open" || project.status === "matching" },
+    { label: "需求可试用沟通", done: ["pending_review", "open", "matching", "in_progress"].includes(project.status) },
     { label: "接单方已认证", done: creator.verified },
     { label: "服务品类匹配", done: creator.categories.includes(project.category) },
     { label: "意向预算匹配报价", done: project.budget >= creator.priceMin && project.budget <= creator.priceMax },

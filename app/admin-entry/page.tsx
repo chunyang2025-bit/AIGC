@@ -43,7 +43,7 @@ export default function AdminEntryPage() {
           <div className="cardBody stack">
             <ShieldCheck size={22} />
             <strong>派单方主页审核</strong>
-            <p className="muted" style={{ margin: 0 }}>企业、机构、个人主体都进入审核队列，通过后才能正式发布需求和邀请服务方。</p>
+            <p className="muted" style={{ margin: 0 }}>企业、机构、个人主体都进入审核队列。试运营期间不阻断使用，审核通过后提升信任并进入更完整展示。</p>
           </div>
         </section>
         <section className="card">
@@ -57,7 +57,7 @@ export default function AdminEntryPage() {
           <div className="cardBody stack">
             <ShieldCheck size={22} />
             <strong>需求审核</strong>
-            <p className="muted" style={{ margin: 0 }}>需求审核通过后才会进入公开大厅，并开放候选推荐和沟通线索。</p>
+            <p className="muted" style={{ margin: 0 }}>需求提交后可先试用候选推荐和沟通线索；审核通过后进入公开大厅展示。</p>
           </div>
         </section>
       </div>

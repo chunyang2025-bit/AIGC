@@ -31,8 +31,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
   if (isSupabaseServerConfigured() && actor && project?.buyerId !== actor.id) {
     return apiFail(403, "只能邀请自己需求下的接单方");
   }
-  if (project && project.status !== "open" && project.status !== "matching") {
-    return apiFail(409, "需求审核通过后才能邀请接单方");
+  if (project && !["pending_review", "open", "matching", "in_progress"].includes(project.status)) {
+    return apiFail(409, "当前需求状态暂不能邀请接单方，请先补充或重新提交需求");
   }
   const order = inviteCreator(data, params.id, body);
   if (!order) {

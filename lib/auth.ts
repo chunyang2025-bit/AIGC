@@ -255,7 +255,7 @@ export function roleEntryPath(role: UserRole, approvedPath: string) {
   const session = readAuthSession();
   if (!session) return roleLoginPath(role);
   if (session.role === "admin") return role === "admin" ? approvedPath : roleLoginPath(role);
-  if (inferAccountStatus(session.userId, role) !== "approved") return roleProfilePath(role);
+  if (inferAccountStatus(session.userId, role) === "registered") return roleProfilePath(role);
   return approvedPath;
 }
 

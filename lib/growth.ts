@@ -60,8 +60,8 @@ export function onboardingCompleteness(input: {
   const items: ChecklistItem[] = [
     { label: "注册账号", done: true, weight: 15 },
     { label: "完善主体主页", done: input.hasProfile, weight: 20 },
-    { label: "提交审核资料", done: input.submittedReview, weight: 20 },
-    { label: "平台审核通过", done: input.verified, weight: 20 },
+    { label: "补充认证资料", done: input.submittedReview, weight: 20 },
+    { label: "平台认证通过", done: input.verified, weight: 20 },
     { label: "开通派单/接单能力", done: input.hasCapability, weight: 15 },
     { label: "产生首次沟通", done: input.hasLead, weight: 10 }
   ];
@@ -81,7 +81,7 @@ export function notificationsForUser(data: MarketplaceData, userId: string) {
     notifications.push({
       id: "profile-missing",
       title: "请先完善主体主页",
-      body: "完善名称、城市、联系方式和认证类型后，才能提交审核并开通派单/接单能力。",
+      body: "完善名称、城市、联系方式和认证类型后，即可开通派单/接单能力并进入试运营流程。",
       href: "/account/profile",
       level: "warning"
     });
@@ -91,8 +91,8 @@ export function notificationsForUser(data: MarketplaceData, userId: string) {
     const reason = buyerProfile?.rejectedReason || creatorProfile?.rejectedReason;
     notifications.push({
       id: "review-pending",
-      title: reason ? "审核需补充资料" : "主体资料待审核",
-      body: reason || "平台运营会核验主体信息、联系方式和资质材料。审核期间可以继续完善资料。",
+      title: reason ? "认证需补充资料" : "未认证/可试用",
+      body: reason || "平台运营会核验主体信息、联系方式和资质材料。试运营期间可以先使用核心功能，正式合作前建议完成认证。",
       href: "/account/profile",
       level: reason ? "warning" : "info"
     });
