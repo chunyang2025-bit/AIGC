@@ -1,11 +1,11 @@
 "use client";
 
-import { Suspense, useEffect, useMemo } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, BriefcaseBusiness, CheckCircle2, Clock, FileBadge2, ShieldAlert, ShieldCheck, UserRound } from "lucide-react";
 import { credentialUploadOptional, requiredCredentialLabel, verificationTypeLabel } from "@/lib/format";
-import { loadMarketplaceData } from "@/lib/store";
+import { loadMarketplaceData, submitReview } from "@/lib/store";
 import { readAuthSession } from "@/lib/auth";
 import { BuyerProfile, CreatorProfile } from "@/lib/types";
 
@@ -76,6 +76,13 @@ function statusLabel(hasProfile: boolean, verified?: boolean, rejectedReason?: s
   return "待运营审核";
 }
 
+function reviewTimeLabel(value?: string) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")} ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+}
+
 function AccountVerificationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -91,12 +98,40 @@ function AccountVerificationContent() {
   const hasAnyProfile = Boolean(subject || creator);
   const verified = Boolean(subject?.verified || creator?.verified);
   const reviewReason = subject?.rejectedReason || creator?.rejectedReason;
+  const latestReviewSubmission = data.activityEvents.find((event) =>
+    event.userId === session?.userId && event.eventType === "submit_review"
+  );
+  const [submitStatus, setSubmitStatus] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (!session) router.push(`/login?next=${encodeURIComponent(`/account/verification?intent=${intent}`)}`);
   }, [intent, router, session]);
 
   if (!session) return null;
+
+  function handleSubmitReview() {
+    const targetType = creator ? "creator" : subject ? "buyer" : null;
+    const targetId = creator?.id ?? subject?.id ?? "";
+
+    if (!targetType || !targetId) {
+      setSubmitStatus("请先保存主体主页或服务主页，再提交认证审核。");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubmitStatus("");
+
+    try {
+      submitReview(targetType, targetId);
+      setSubmitStatus("认证审核已提交。现在可以去运营后台的待审核队列查看。");
+      router.refresh();
+    } catch (error) {
+      setSubmitStatus(error instanceof Error ? error.message : "提交认证审核失败，请稍后再试。");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   return (
     <main className="main">
@@ -113,6 +148,9 @@ function AccountVerificationContent() {
             <Link className="btn primary" href={continueHref(intent)}>
               <ArrowRight size={16} /> {continueLabel(intent)}
             </Link>
+            <button className="btn" disabled={!hasAnyProfile || isSubmitting} onClick={handleSubmitReview} type="button">
+              <ShieldCheck size={16} /> {isSubmitting ? "正在提交审核..." : "提交认证审核"}
+            </button>
             <Link className="btn" href="/account/profile">
               <FileBadge2 size={16} /> 补充主体认证资料
             </Link>
@@ -142,6 +180,12 @@ function AccountVerificationContent() {
           <ShieldAlert size={16} /> 上次审核意见：{reviewReason}
         </section>
       ) : null}
+      {latestReviewSubmission ? (
+        <section className="notice">
+          <Clock size={16} /> 最近一次提交认证审核：{reviewTimeLabel(latestReviewSubmission.createdAt)}
+        </section>
+      ) : null}
+      {submitStatus ? <section className="notice">{submitStatus}</section> : null}
 
       <section className="card selectedCapability">
         <div className="cardBody stack">
@@ -174,6 +218,12 @@ function AccountVerificationContent() {
           </div>
           <div className="notice">
             试运营期间未认证不阻断使用，可以先发布、匹配和沟通；当用户查看具体联系方式、推进正式合作或提升公开信任时，会引导补齐认证。
+          </div>
+          <div className="toolbarGroup">
+            <button className="btn primary" disabled={!hasAnyProfile || isSubmitting} onClick={handleSubmitReview} type="button">
+              <ShieldCheck size={16} /> {isSubmitting ? "正在提交审核..." : "正式提交认证审核"}
+            </button>
+            <Link className="btn" href="/admin-entry">查看后台审核说明</Link>
           </div>
         </div>
       </section>

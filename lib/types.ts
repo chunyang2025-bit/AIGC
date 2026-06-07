@@ -263,6 +263,7 @@ export type ActivityEvent = {
   eventType:
     | "login"
     | "browse"
+    | "submit_review"
     | "post_project"
     | "invite_creator"
     | "send_message"

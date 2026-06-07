@@ -817,6 +817,45 @@ export function verifySubject(data: MarketplaceData, input: Record<string, unkno
   return creator;
 }
 
+export function submitSubjectReview(data: MarketplaceData, input: Record<string, unknown>) {
+  const subjectType = String(input.subjectType || input.type);
+  const idValue = String(input.id || input.subjectId || input.userId || "");
+
+  if (subjectType === "buyer") {
+    data.buyerProfiles = (data.buyerProfiles ?? []).map((profile) =>
+      profile.id === idValue || profile.userId === idValue ? { ...profile, verified: false, rejectedReason: undefined } : profile
+    );
+    const profile = data.buyerProfiles.find((item) => item.id === idValue || item.userId === idValue);
+    if (profile) {
+      addActivity(data, {
+        userId: profile.userId,
+        role: "buyer",
+        eventType: "submit_review",
+        targetType: "buyer_profile",
+        targetId: profile.id,
+        note: "用户提交认证审核"
+      });
+    }
+    return profile;
+  }
+
+  data.creators = data.creators.map((creator) =>
+    creator.id === idValue || creator.userId === idValue ? { ...creator, verified: false, rejectedReason: undefined } : creator
+  );
+  const creator = data.creators.find((item) => item.id === idValue || item.userId === idValue);
+  if (creator) {
+    addActivity(data, {
+      userId: creator.userId,
+      role: "creator",
+      eventType: "submit_review",
+      targetType: "creator",
+      targetId: creator.id,
+      note: "用户提交认证审核"
+    });
+  }
+  return creator;
+}
+
 export function reviewProject(data: MarketplaceData, input: Record<string, unknown>) {
   const idValue = String(input.id || input.projectId || "");
   const status = String(input.status || "");

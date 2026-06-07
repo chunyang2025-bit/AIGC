@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BriefcaseBusiness, Download, ShieldCheck, UsersRound } from "lucide-react";
+import { BriefcaseBusiness, Clock3, Download, ShieldCheck, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { activeOrders, monthlyActiveUsers } from "@/lib/analytics";
@@ -95,6 +95,33 @@ export default function AdminPage() {
   const thirtyDayMetrics = windowMetrics(data, 30);
   const recentOrders = data.orders.slice(0, 20);
   const recentActivity = data.activityEvents.slice().reverse().slice(0, 50);
+  const recentReviewSubmissions = data.activityEvents
+    .filter((event) => event.eventType === "submit_review")
+    .slice(0, 8)
+    .map((event) => {
+      const buyer = (data.buyerProfiles ?? []).find((profile) => profile.id === event.targetId || profile.userId === event.userId);
+      const creator = data.creators.find((profile) => profile.id === event.targetId || profile.userId === event.userId);
+      const user = data.users.find((item) => item.id === event.userId);
+
+      return {
+        ...event,
+        label:
+          buyer?.displayName ??
+          buyer?.companyName ??
+          creator?.displayName ??
+          creator?.name ??
+          user?.name ??
+          event.userId,
+        contact:
+          buyer?.contactEmail ||
+          buyer?.contactPhone ||
+          creator?.contactEmail ||
+          creator?.contactPhone ||
+          user?.email ||
+          user?.phone ||
+          "-"
+      };
+    });
   const contactedLeads = data.orders.filter((order) => ["contacted", "meeting_scheduled", "revision", "delivered", "approved"].includes(order.status));
   const meetingLeads = data.orders.filter((order) => order.status === "meeting_scheduled");
   const intentLeads = data.orders.filter((order) => order.status === "approved");
@@ -474,6 +501,27 @@ export default function AdminPage() {
               <p className="muted" style={{ margin: 0 }}>{suspendedAccounts[0]?.name ?? "暂无受限账号。"}</p>
             </div>
           </article>
+        </div>
+      </section>
+
+      <section className="card">
+        <div className="panelTop">
+          <div>
+            <strong>最新认证提交</strong>
+            <div className="muted">这里只显示用户主动点击“提交认证审核”的记录。</div>
+          </div>
+          <Clock3 size={18} />
+        </div>
+        <div className="cardBody stack">
+          {recentReviewSubmissions.length ? recentReviewSubmissions.map((event) => (
+            <div className="miniLead" key={event.id}>
+              <span>{event.label} · {targetTypeLabel(event.targetType)}</span>
+              <em>{event.contact} · {new Date(event.createdAt).toLocaleString("zh-CN", { hour12: false })}</em>
+            </div>
+          )) : <div className="muted">还没有用户正式提交认证审核。</div>}
+          <div className="notice">
+            审核动作仍在下方“派单方审核”和“创作者审核”区完成；这里负责明确告诉你哪些资料是最新送审的。
+          </div>
         </div>
       </section>
 

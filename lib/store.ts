@@ -858,6 +858,72 @@ export function verifySubject(subjectType: "buyer" | "creator", id: string, veri
   return false;
 }
 
+export function submitReview(subjectType: "buyer" | "creator", id: string) {
+  const remote = requestJson<BuyerProfile | CreatorProfile>("/api/review-submission", {
+    method: "POST",
+    body: JSON.stringify({ subjectType, id })
+  });
+
+  if (remote) {
+    syncFromApi();
+    const session = readAuthSession();
+    if (session) saveAuthSession({ ...session, status: "pending_review" });
+    return remote;
+  }
+
+  const data = loadMarketplaceData();
+  const now = new Date().toISOString();
+  const next: MarketplaceData =
+    subjectType === "buyer"
+      ? (() => {
+          const profile = (data.buyerProfiles ?? []).find((item) => item.id === id || item.userId === id);
+          const activityEvent: ActivityEvent = {
+            id: `a-${Date.now()}`,
+            userId: profile?.userId ?? readAuthSession()?.userId ?? "u-buyer-1",
+            role: "buyer",
+            eventType: "submit_review",
+            targetType: "buyer_profile",
+            targetId: profile?.id ?? id,
+            note: "用户提交认证审核",
+            createdAt: now
+          };
+
+          return {
+            ...data,
+            buyerProfiles: (data.buyerProfiles ?? []).map((item) =>
+              item.id === id || item.userId === id ? { ...item, verified: false, rejectedReason: undefined } : item
+            ),
+            activityEvents: [activityEvent, ...data.activityEvents]
+          };
+        })()
+      : (() => {
+          const creator = data.creators.find((item) => item.id === id || item.userId === id);
+          const activityEvent: ActivityEvent = {
+            id: `a-${Date.now()}`,
+            userId: creator?.userId ?? readAuthSession()?.userId ?? "u-creator-self",
+            role: "creator",
+            eventType: "submit_review",
+            targetType: "creator",
+            targetId: creator?.id ?? id,
+            note: "用户提交认证审核",
+            createdAt: now
+          };
+
+          return {
+            ...data,
+            creators: data.creators.map((item) =>
+              item.id === id || item.userId === id ? { ...item, verified: false, rejectedReason: undefined } : item
+            ),
+            activityEvents: [activityEvent, ...data.activityEvents]
+          };
+        })();
+
+  saveMarketplaceData(next);
+  const session = readAuthSession();
+  if (session) saveAuthSession({ ...session, status: "pending_review" });
+  return true;
+}
+
 export function reviewProject(projectId: string, status: "open" | "rejected" | "removed", rejectedReason?: string) {
   const remote = requestJson<Project>(`/api/admin/projects/${projectId}/review`, {
     method: "PATCH",

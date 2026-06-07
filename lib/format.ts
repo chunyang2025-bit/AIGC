@@ -124,6 +124,7 @@ export function activityEventLabel(value: string) {
   const labels: Record<string, string> = {
     login: "登录",
     browse: "浏览",
+    submit_review: "提交认证审核",
     post_project: "发布需求",
     invite_creator: "邀请创作者",
     send_message: "发送消息",
