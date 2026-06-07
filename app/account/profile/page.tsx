@@ -35,7 +35,8 @@ function AccountProfileContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const intent = searchParams.get("intent") ?? "dispatch";
-  const nextPath = `/account/capabilities?intent=${encodeURIComponent(intent)}`;
+  const nextPath = `/account/verification?intent=${encodeURIComponent(intent)}`;
+  const capabilityPath = `/account/capabilities?intent=${encodeURIComponent(intent)}`;
   const data = useMemo(() => loadMarketplaceData(), []);
   const session = useMemo(() => readAuthSession(), []);
   const buyerProfile = data.buyerProfiles?.find((profile) => profile.userId === session?.userId);
@@ -154,7 +155,7 @@ function AccountProfileContent() {
           </span>
           <div>
             <h1>创建主体主页</h1>
-            <p>填写主体基础信息，保存后继续当前业务路径。</p>
+            <p>填写主体基础信息，保存后进入认证中心，确认审核状态和下一步业务路径。</p>
           </div>
         </div>
       </section>
@@ -170,7 +171,7 @@ function AccountProfileContent() {
           </div>
           <form className="cardBody form" onSubmit={handleSubmit}>
             <div className="notice">
-              邀请制试运营不强制一次填完。先完成名称、城市、介绍和联系方式，保存后马上进入当前业务路径。
+              邀请制试运营不强制一次填完。先完成名称、城市、介绍和联系方式，保存后进入认证中心；可继续试用业务，也可补齐认证材料等待运营审核。
             </div>
             <div className="grid two compactGrid">
               <div className="field">
@@ -310,9 +311,9 @@ function AccountProfileContent() {
 
             <div className="toolbarGroup">
               <button className="btn primary" disabled={isSaving} type="submit">
-                <Save size={16} /> {isSaving ? "正在保存..." : "保存主体主页并继续"}
+                <Save size={16} /> {isSaving ? "正在保存..." : "保存并查看认证状态"}
               </button>
-              <Link className="btn" href={nextPath}>
+              <Link className="btn" href={capabilityPath}>
                 已有主体资料，继续当前业务 <ArrowRight size={16} />
               </Link>
             </div>

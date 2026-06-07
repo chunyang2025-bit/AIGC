@@ -54,7 +54,7 @@ export default function AccountPage() {
   });
   const activationSteps = activation.items.map((item, index) => ({
     ...item,
-    href: index === 1 || index === 2 ? "/account/profile" : index === 4 ? "/account/capabilities?intent=dispatch" : index === 5 ? buyerProfile ? "/buyer" : "/provider" : "/account"
+    href: index === 1 ? "/account/profile" : index === 2 || index === 3 ? "/account/verification" : index === 4 ? "/account/capabilities?intent=dispatch" : index === 5 ? buyerProfile ? "/buyer" : "/provider" : "/account"
   }));
   const notifications = notificationsForUser(data, session.userId);
   const hasAnyDemand = myProjects.length > 0;
@@ -73,8 +73,8 @@ export default function AccountPage() {
           title: "未认证也可以先试用完整流程",
           primaryLabel: buyerProfile ? "进入需求方后台" : "进入服务方后台",
           primaryHref: buyerProfile ? "/buyer" : "/provider",
-          secondaryLabel: "继续完善认证资料",
-          secondaryHref: "/account/profile"
+          secondaryLabel: "查看认证状态",
+          secondaryHref: "/account/verification"
         }
       : buyerProfile && !hasAnyDemand
         ? {
@@ -171,7 +171,8 @@ export default function AccountPage() {
           </div>
           {pendingReview ? (
             <section className="notice">
-              <Clock size={15} /> 资料已提交平台审核。预计1-2个工作日内完成；如被驳回，运营后台会记录原因，你可以回到主体主页修改后再次提交。
+              <Clock size={15} /> 资料已提交平台审核。预计1-2个工作日内完成；认证标准、缺项和补充入口可在认证中心查看。
+              <Link className="btn" href="/account/verification">查看认证中心</Link>
             </section>
           ) : null}
           {!hasSubjectProfile ? (
@@ -188,11 +189,15 @@ export default function AccountPage() {
             <div>
               <h2 style={{ margin: 0 }}>站内通知</h2>
             </div>
-            <span className="tag blue">{notifications.length + 1} 条</span>
+            <span className="tag blue">{notifications.length + 2} 条</span>
           </div>
           <Link className="miniLead" href="/account/capabilities?intent=dispatch">
             <span>新手教程：主体主页和四个业务身份</span>
             <em>先维护主体主页，再按当前目标启用派单、找培训、接单或提供培训。</em>
+          </Link>
+          <Link className="miniLead" href="/account/verification">
+            <span>认证教程：提交方式、审核入口和通过标准</span>
+            <em>保存主页即进入待审核；补齐联系方式、主体类型和资质材料后由运营后台人工通过。</em>
           </Link>
           {notifications.length ? notifications.map((item) => (
             <Link className="miniLead" href={item.href} key={item.id}>
@@ -217,6 +222,9 @@ export default function AccountPage() {
           <div className="toolbarGroup">
             <Link className="btn primary" href="/account/profile">
               {hasSubjectProfile ? "查看/编辑主体主页" : "创建主体主页"}
+            </Link>
+            <Link className="btn" href="/account/verification">
+              认证中心
             </Link>
             <Link className="btn" href="/account/capabilities?intent=dispatch">
               管理业务身份

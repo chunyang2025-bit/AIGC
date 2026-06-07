@@ -216,7 +216,13 @@ function AccountCapabilitiesContent() {
             ))}
           </div>
           {!subject.verified ? (
-            <div className="notice">试运营期间不强制审核。你可以先使用发布、匹配和沟通功能；查看具体信息或推进正式合作时，平台会引导完成审核认证。</div>
+            <div className="notice stack">
+              <span>试运营期间不强制审核。你可以先使用发布、匹配和沟通功能；认证中心会展示当前审核状态、通过标准和缺项。</span>
+              <div className="toolbarGroup">
+                <Link className="btn" href={`/account/verification?intent=${intent}`}>查看认证中心</Link>
+                <Link className="btn" href={`/account/profile?intent=${intent}`}>补充主体资料</Link>
+              </div>
+            </div>
           ) : null}
         </div>
       </section>
@@ -233,6 +239,7 @@ function AccountCapabilitiesContent() {
           </div>
           <div className="toolbarGroup">
             <Link className="btn" href={`/account/profile?intent=${intent}`}>编辑主体主页</Link>
+            <Link className="btn" href={`/account/verification?intent=${intent}`}>认证中心</Link>
             <Link className="btn" href="/account">返回主体中心</Link>
           </div>
         </div>
