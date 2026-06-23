@@ -9,6 +9,10 @@
     "lint": "next lint",
     "check:env": "node scripts/env-ready-check.mjs",
     "check:predeploy": "node scripts/predeploy-check.mjs",
+    "check:smoke": "node scripts/local-smoke-check.mjs",
+    "check:collab": "node scripts/local-collab-flow-check.mjs",
+    "check:acceptance": "node scripts/local-acceptance-e2e.mjs",
+    "check:acceptance:reset": "ALLOW_RESET=true node scripts/local-acceptance-e2e.mjs",
     "check:pilot": "node scripts/pilot-readiness-check.mjs",
     "check:prod": "node scripts/production-check.mjs"
   },

@@ -13,6 +13,19 @@ npm run dev
 
 打开 `http://localhost:3000`。
 
+本地回归命令：
+
+```bash
+npm run check:smoke
+npm run check:collab
+npm run check:acceptance
+```
+
+- `check:smoke`：安全的最小链路回归，不会清空现有 Supabase 业务数据。
+- `check:collab`：覆盖兴趣沟通、邀请、消息、线索状态、举报、反馈处理的协作流回归。
+- `check:acceptance`：更完整的本地验收流程，默认也不会清库。
+- `check:acceptance:reset`：会先调用 `/api/reset` 清空当前 `.env.local` 指向的数据，再重建验收数据，只适合明确要重置测试库时使用。
+
 当前版本在本地可完整跑通受控 Demo。没有配置 Supabase 时会使用本地演示数据源；配置 Supabase 后，注册/登录走 Supabase Auth，核心业务数据写入结构化业务表，写入接口会校验 Bearer Token，头像和资质材料会上传到 Supabase Storage。
 
 ```bash

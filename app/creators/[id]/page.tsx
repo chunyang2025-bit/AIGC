@@ -6,7 +6,7 @@ import { ArrowLeft, BriefcaseBusiness, CheckCircle2, Clock, Copy, ExternalLink, 
 import { categoryLabel, money, publicCredentialSummary, verificationTypeLabel } from "@/lib/format";
 import { isImageValue } from "@/lib/file-upload";
 import { trainingFormatLabel } from "@/lib/training";
-import { loadMarketplaceData } from "@/lib/store";
+import { loadMarketplaceData, loadPublicMarketplaceData } from "@/lib/store";
 import { loginNextPath, readAuthSession } from "@/lib/auth";
 import { ReportButton } from "@/components/ReportButton";
 import { PortfolioItem } from "@/lib/types";
@@ -14,7 +14,7 @@ import { saveRemixDraft } from "@/lib/remix-draft";
 
 export default function CreatorDetailPage({ params }: { params: { id: string } }) {
   const session = readAuthSession();
-  const data = loadMarketplaceData();
+  const data = session ? loadMarketplaceData() : loadPublicMarketplaceData();
   const creator = data.creators.find((item) => item.id === params.id);
 
   if (!creator) {
@@ -74,7 +74,7 @@ export default function CreatorDetailPage({ params }: { params: { id: string } }
         </Link>
         {!session ? (
           <Link className="btn primary" href={loginNextPath("buyer", `/creators/${creator.id}`)}>
-            免费注册后联系
+            {session ? "直接联系" : "注册后联系"}
           </Link>
         ) : null}
       </div>
@@ -152,7 +152,7 @@ export default function CreatorDetailPage({ params }: { params: { id: string } }
             {!session ? (
               <>
                 <div className="notice">先查看展示页；进一步沟通、邀请候选方和查看完整联系资料需要注册登录。</div>
-                <Link className="btn primary" href={loginNextPath("buyer", `/creators/${creator.id}`)}>注册/登录后沟通</Link>
+                <Link className="btn primary" href={loginNextPath("buyer", `/creators/${creator.id}`)}>登录后沟通</Link>
               </>
             ) : !buyerProfile ? (
               <>

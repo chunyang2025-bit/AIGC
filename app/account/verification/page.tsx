@@ -1,15 +1,17 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, BriefcaseBusiness, CheckCircle2, Clock, FileBadge2, ShieldAlert, ShieldCheck, UserRound } from "lucide-react";
 import { credentialUploadOptional, requiredCredentialLabel, verificationTypeLabel } from "@/lib/format";
+import { hasActiveReviewSubmission } from "@/lib/review-status";
 import { loadMarketplaceData, submitReview } from "@/lib/store";
 import { readAuthSession } from "@/lib/auth";
 import { BuyerProfile, CreatorProfile } from "@/lib/types";
 
 type BusinessIntent = "dispatch" | "service" | "training_demand" | "training_provider";
+type ReviewStage = "empty" | "saved" | "submitted" | "approved" | "rejected";
 
 function normalizeIntent(value: string | null): BusinessIntent {
   if (value === "service" || value === "training_demand" || value === "training_provider") return value;
@@ -69,13 +71,6 @@ function creatorChecks(profile?: CreatorProfile) {
   ];
 }
 
-function statusLabel(hasProfile: boolean, verified?: boolean, rejectedReason?: string) {
-  if (!hasProfile) return "未提交";
-  if (verified) return "已认证";
-  if (rejectedReason) return "需补充";
-  return "待运营审核";
-}
-
 function reviewTimeLabel(value?: string) {
   if (!value) return "";
   const date = new Date(value);
@@ -83,21 +78,77 @@ function reviewTimeLabel(value?: string) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")} ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 }
 
+function getStage(input: {
+  hasProfile: boolean;
+  hasDraft?: boolean;
+  submitted: boolean;
+  verified: boolean;
+  rejectedReason?: string;
+}): ReviewStage {
+  if (!input.hasProfile) return "empty";
+  if (input.rejectedReason) return "rejected";
+  if (input.hasDraft && input.submitted) return "submitted";
+  if (input.hasDraft) return "saved";
+  if (input.verified) return "approved";
+  if (input.submitted) return "submitted";
+  return "saved";
+}
+
+function stageLabel(stage: ReviewStage) {
+  if (stage === "empty") return "未提交";
+  if (stage === "saved") return "资料已保存";
+  if (stage === "submitted") return "待运营审核";
+  if (stage === "approved") return "已认证";
+  return "需补充";
+}
+
+function stageClass(stage: ReviewStage) {
+  if (stage === "approved") return "tag green";
+  if (stage === "saved") return "tag blue";
+  if (stage === "submitted" || stage === "rejected") return "tag gold";
+  return "tag";
+}
+
+function stageDescription(stage: ReviewStage) {
+  if (stage === "empty") return "请先保存主体主页或服务主页。";
+  if (stage === "saved") return "主页资料已经保存完成，下一步只需要提交认证审核。";
+  if (stage === "submitted") return "认证资料已进入运营后台待审核队列，接下来等待人工核验。";
+  if (stage === "approved") return "认证已通过，可继续使用全部业务路径。";
+  return "请根据审核意见补充资料后重新提交。";
+}
+
+function stageMetricLabel(stage: ReviewStage) {
+  if (stage === "approved") return "已通过";
+  if (stage === "submitted") return "已提交";
+  if (stage === "saved") return "待提交";
+  if (stage === "rejected") return "需补充";
+  return "未开始";
+}
+
 function AccountVerificationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const intent = normalizeIntent(searchParams.get("intent"));
-  const session = useMemo(() => readAuthSession(), []);
-  const data = useMemo(() => loadMarketplaceData(), []);
+  const saved = searchParams.get("saved") === "1";
+  const [session, setSession] = useState(() => readAuthSession());
+  const [data, setData] = useState(() => loadMarketplaceData());
   const subject = data.buyerProfiles?.find((profile) => profile.userId === session?.userId);
   const creator = data.creators.find((profile) => profile.userId === session?.userId);
+  const reviewProfile = creator ?? subject;
   const subjectChecklist = subjectChecks(subject);
   const creatorChecklist = creatorChecks(creator);
-  const subjectScore = subjectChecklist.filter((item) => item.done).length;
-  const creatorScore = creatorChecklist.filter((item) => item.done).length;
   const hasAnyProfile = Boolean(subject || creator);
   const verified = Boolean(subject?.verified || creator?.verified);
-  const reviewReason = subject?.rejectedReason || creator?.rejectedReason;
+  const hasReviewDraft = Boolean(reviewProfile?.reviewDraft);
+  const reviewReason = reviewProfile?.reviewDraftRejectedReason || subject?.rejectedReason || creator?.rejectedReason;
+  const reviewSubmitted = session ? hasActiveReviewSubmission(data, session.userId, creator ? "creator" : "buyer_profile") : false;
+  const stage = getStage({
+    hasProfile: hasAnyProfile,
+    hasDraft: hasReviewDraft,
+    submitted: reviewSubmitted,
+    verified,
+    rejectedReason: reviewReason
+  });
   const latestReviewSubmission = data.activityEvents.find((event) =>
     event.userId === session?.userId && event.eventType === "submit_review"
   );
@@ -105,12 +156,14 @@ function AccountVerificationContent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!session) router.push(`/login?next=${encodeURIComponent(`/account/verification?intent=${intent}`)}`);
+    if (!session) {
+      router.push(`/login?next=${encodeURIComponent(`/account/verification?intent=${intent}`)}`);
+    }
   }, [intent, router, session]);
 
   if (!session) return null;
 
-  function handleSubmitReview() {
+  async function handleSubmitReview() {
     const targetType = creator ? "creator" : subject ? "buyer" : null;
     const targetId = creator?.id ?? subject?.id ?? "";
 
@@ -123,9 +176,11 @@ function AccountVerificationContent() {
     setSubmitStatus("");
 
     try {
-      submitReview(targetType, targetId);
-      setSubmitStatus("认证审核已提交。现在可以去运营后台的待审核队列查看。");
-      router.refresh();
+      await submitReview(targetType, targetId);
+      setSession(readAuthSession());
+      setData(loadMarketplaceData());
+      setSubmitStatus("认证审核已提交，资料已进入后台待审核队列。");
+      router.replace(`/account/verification?intent=${encodeURIComponent(intent)}`);
     } catch (error) {
       setSubmitStatus(error instanceof Error ? error.message : "提交认证审核失败，请稍后再试。");
     } finally {
@@ -141,18 +196,31 @@ function AccountVerificationContent() {
             <ShieldCheck size={15} /> 认证中心
           </span>
           <div>
-            <h1>{statusLabel(hasAnyProfile, verified, reviewReason)}</h1>
-            <p>保存主体主页即视为提交基础审核；补齐下方资料后，平台运营会在后台人工通过或驳回。</p>
+            <h1>{stageLabel(stage)}</h1>
+            <p>{stageDescription(stage)}</p>
           </div>
           <div className="toolbarGroup">
-            <Link className="btn primary" href={continueHref(intent)}>
-              <ArrowRight size={16} /> {continueLabel(intent)}
-            </Link>
-            <button className="btn" disabled={!hasAnyProfile || isSubmitting} onClick={handleSubmitReview} type="button">
-              <ShieldCheck size={16} /> {isSubmitting ? "正在提交审核..." : "提交认证审核"}
-            </button>
+            {stage === "saved" || stage === "rejected" ? (
+              <button
+                className="btn primary"
+                disabled={isSubmitting}
+                onClick={handleSubmitReview}
+                type="button"
+              >
+                <ShieldCheck size={16} /> {isSubmitting ? "正在提交审核..." : "提交认证审核"}
+              </button>
+            ) : (
+              <Link className="btn primary" href={continueHref(intent)}>
+                <ArrowRight size={16} /> {continueLabel(intent)}
+              </Link>
+            )}
+            {stage === "saved" || stage === "rejected" ? (
+              <Link className="btn" href={continueHref(intent)}>
+                <ArrowRight size={16} /> {continueLabel(intent)}
+              </Link>
+            ) : null}
             <Link className="btn" href="/account/profile">
-              <FileBadge2 size={16} /> 补充主体认证资料
+              <FileBadge2 size={16} /> 补充主体资料
             </Link>
             <Link className="btn" href="/provider/profile">
               <UserRound size={16} /> 补充服务方资料
@@ -161,26 +229,44 @@ function AccountVerificationContent() {
         </div>
         <div className="portalStats">
           <div className="metric">
-            <strong>{subject ? `${subjectScore}/5` : "0/5"}</strong>
+            <strong>{subject ? `${subjectChecklist.filter((item) => item.done).length}/5` : "0/5"}</strong>
             <span>主体资料</span>
           </div>
           <div className="metric">
-            <strong>{creator ? `${creatorScore}/5` : "0/5"}</strong>
+            <strong>{creator ? `${creatorChecklist.filter((item) => item.done).length}/5` : "0/5"}</strong>
             <span>服务资料</span>
           </div>
           <div className="metric">
-            <strong>{verified ? "通过" : "人工审核"}</strong>
-            <span>认证方式</span>
+            <strong>{stageMetricLabel(stage)}</strong>
+            <span>认证状态</span>
           </div>
         </div>
       </section>
 
+      {saved && stage === "saved" ? (
+        <section className="notice">
+          <CheckCircle2 size={16} /> 主页资料已保存成功，下一步请提交认证审核。
+        </section>
+      ) : null}
+      {stage === "saved" ? (
+        <section className="notice">保存不等于送审。只有点击“提交认证审核”，资料才会进入后台待审核队列。</section>
+      ) : null}
+      {stage === "approved" ? (
+        <section className="notice">
+          已认证资料可以继续修改。简介、案例、报价、服务说明这类展示信息会直接更新；主体名称、认证类型、资质文件这类关键信息变更后，会自动回到“资料已保存”，需要你重新提交审核。
+        </section>
+      ) : null}
+      {hasReviewDraft ? (
+        <section className="notice">
+          你当前有一版认证变更草稿。旧的已认证主页会继续对外展示；这版变更只有审核通过后才会替换线上版本。
+        </section>
+      ) : null}
       {reviewReason ? (
         <section className="notice">
           <ShieldAlert size={16} /> 上次审核意见：{reviewReason}
         </section>
       ) : null}
-      {latestReviewSubmission ? (
+      {stage === "submitted" && latestReviewSubmission?.createdAt ? (
         <section className="notice">
           <Clock size={16} /> 最近一次提交认证审核：{reviewTimeLabel(latestReviewSubmission.createdAt)}
         </section>
@@ -191,40 +277,43 @@ function AccountVerificationContent() {
         <div className="cardBody stack">
           <div className="spaceBetween">
             <div>
-              <span className={verified ? "tag green" : hasAnyProfile ? "tag gold" : "tag"}>
-                {statusLabel(hasAnyProfile, verified, reviewReason)}
-              </span>
-              <h2 style={{ margin: "10px 0 0" }}>认证怎么通过</h2>
+              <span className={stageClass(stage)}>{stageLabel(stage)}</span>
+              <h2 style={{ margin: "10px 0 0" }}>{stage === "submitted" ? "认证审核进度" : "保存后下一步"}</h2>
+              <div className="muted" style={{ marginTop: 8 }}>
+                {stage === "submitted" ? "资料已送入审核队列，接下来等待运营核验。" : stage === "approved" ? "认证已经通过，后续可继续使用各条业务路径。" : "主页资料已经保存完成，接下来提交认证审核即可。"}
+              </div>
             </div>
             <Clock size={20} />
           </div>
           <div className="grid four">
             <div className="metric">
               <strong>1</strong>
-              <span>保存主体主页，进入审核队列</span>
+              <span>保存主体主页</span>
             </div>
             <div className="metric">
               <strong>2</strong>
-              <span>补齐联系方式和认证材料</span>
+              <span>{stage === "submitted" ? "等待运营后台审核" : "提交认证审核"}</span>
             </div>
             <div className="metric">
               <strong>3</strong>
-              <span>运营后台人工核验真实性</span>
+              <span>{stage === "submitted" ? "通过后公开展示已认证标识" : "运营后台人工核验真实性"}</span>
             </div>
             <div className="metric">
               <strong>4</strong>
-              <span>通过后公开展示已认证标识</span>
+              <span>{stage === "submitted" ? "继续发布、匹配和沟通" : "通过后公开展示已认证标识"}</span>
             </div>
           </div>
           <div className="notice">
-            试运营期间未认证不阻断使用，可以先发布、匹配和沟通；当用户查看具体联系方式、推进正式合作或提升公开信任时，会引导补齐认证。
+            试运营期间未认证不阻断使用，可以先发布、匹配和沟通；查看具体信息或推进正式合作前，再完成认证即可。
           </div>
-          <div className="toolbarGroup">
-            <button className="btn primary" disabled={!hasAnyProfile || isSubmitting} onClick={handleSubmitReview} type="button">
-              <ShieldCheck size={16} /> {isSubmitting ? "正在提交审核..." : "正式提交认证审核"}
-            </button>
-            <Link className="btn" href="/admin-entry">查看后台审核说明</Link>
-          </div>
+          {stage === "saved" || stage === "rejected" ? (
+            <div className="toolbarGroup">
+              <button className="btn primary" disabled={isSubmitting} onClick={handleSubmitReview} type="button">
+                <ShieldCheck size={16} /> {isSubmitting ? "正在提交审核..." : "正式提交认证审核"}
+              </button>
+              <Link className="btn" href={continueHref(intent)}>继续当前业务</Link>
+            </div>
+          ) : null}
         </div>
       </section>
 
@@ -238,9 +327,7 @@ function AccountVerificationContent() {
             <BriefcaseBusiness size={18} />
           </div>
           <div className="cardBody stack">
-            <span className={subject?.verified ? "tag green" : subject ? "tag gold" : "tag"}>
-              {statusLabel(Boolean(subject), subject?.verified, subject?.rejectedReason)}
-            </span>
+            <span className={stageClass(stage)}>{stageLabel(stage)}</span>
             {subject ? <div className="muted">认证类型：{verificationTypeLabel(subject.verificationType)}</div> : null}
             {subjectChecklist.map((item) => (
               <div className="miniLead" key={item.label}>
@@ -264,9 +351,7 @@ function AccountVerificationContent() {
             <UserRound size={18} />
           </div>
           <div className="cardBody stack">
-            <span className={creator?.verified ? "tag green" : creator ? "tag gold" : "tag"}>
-              {statusLabel(Boolean(creator), creator?.verified, creator?.rejectedReason)}
-            </span>
+            <span className={stageClass(stage)}>{stageLabel(stage)}</span>
             {creator ? <div className="muted">认证类型：{verificationTypeLabel(creator.verificationType ?? creator.identityType)}</div> : null}
             {creatorChecklist.map((item) => (
               <div className="miniLead" key={item.label}>
@@ -287,14 +372,14 @@ function AccountVerificationContent() {
           <div className="spaceBetween">
             <div>
               <h2 style={{ margin: 0 }}>谁来审核</h2>
-              <div className="muted">普通用户不需要自己找后台入口，资料保存后会自动出现在运营后台的待审核队列。</div>
+              <div className="muted">普通用户不需要自己找后台入口，提交认证审核后会自动出现在运营后台的待审核队列。</div>
             </div>
             <ShieldCheck size={20} />
           </div>
           <div className="grid three">
             <div className="metric">
               <strong>用户</strong>
-              <span>保存/补充资料</span>
+              <span>保存资料并提交认证审核</span>
             </div>
             <div className="metric">
               <strong>运营</strong>
@@ -306,7 +391,7 @@ function AccountVerificationContent() {
             </div>
           </div>
           <div className="notice">
-            运营后台入口：登录平台运营账号后进入“主体审核”，可通过或驳回。驳回原因会显示在本页，用户修改主页后即重新进入审核队列。
+            运营后台入口：登录平台运营账号后进入“主体审核”。如被驳回，原因会显示在本页；修改资料后可重新提交认证审核。
           </div>
         </div>
       </section>

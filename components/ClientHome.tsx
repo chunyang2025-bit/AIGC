@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, BriefcaseBusiness, Building2, CheckCircle2, GraduationCap, Handshake, LogIn, Plus, Search, Sparkles, UsersRound } from "lucide-react";
 import { CreatorCard } from "./CreatorCard";
@@ -8,14 +8,15 @@ import { ProjectCard } from "./ProjectCard";
 import { draftProjectBrief } from "@/lib/brief-agent";
 import { categoryLabel, money } from "@/lib/format";
 import { isImageValue } from "@/lib/file-upload";
-import { loadMarketplaceData } from "@/lib/store";
-import { loginNextPath } from "@/lib/auth";
+import { loadPublicMarketplaceData } from "@/lib/store";
+import { loginNextPath, readAuthSession, AUTH_SESSION_EVENT } from "@/lib/auth";
 import { saveGrowthToolDraft } from "@/lib/tool-draft";
 
 type ToolMode = "project" | "training" | "pricing" | "course";
 
 export function ClientHome() {
-  const data = loadMarketplaceData();
+  const data = loadPublicMarketplaceData();
+  const [isLoggedIn, setIsLoggedIn] = useState(() => Boolean(readAuthSession()));
   const [toolMode, setToolMode] = useState<ToolMode>("project");
   const [toolIdea, setToolIdea] = useState("我想做一组适合小红书和抖音的AIGC商品短视频，用来测试新品转化。");
   const [toolSaved, setToolSaved] = useState(false);
@@ -33,7 +34,8 @@ export function ClientHome() {
   const serviceCreators = data.creators.filter((creator) => !creator.categories.includes("AIGC Training"));
   const serviceProjects = data.projects.filter((project) => project.category !== "AIGC Training");
   const featured = [...trainingCreators, ...data.creators.filter((creator) => !creator.categories.includes("AIGC Training"))].slice(0, 3);
-  const sampleProject = trainingProjects[0] ?? data.projects[0];
+  const sampleDispatchProject = serviceProjects[0] ?? data.projects[0];
+  const sampleTrainingProject = trainingProjects[0] ?? data.projects.find((project) => project.category === "AIGC Training");
   const trainingDemanders = Array.from(new Set(trainingProjects.map((project) => project.buyerId)))
     .map((buyerId) => {
       const profile = (data.buyerProfiles ?? []).find((item) => item.userId === buyerId);
@@ -51,9 +53,9 @@ export function ClientHome() {
       };
     })
     .slice(0, 3);
-  const sampleMatches = sampleProject
+  const sampleMatches = sampleDispatchProject
     ? data.matches
-        .filter((match) => match.projectId === sampleProject.id)
+        .filter((match) => match.projectId === sampleDispatchProject.id)
         .sort((a, b) => b.score - a.score)
         .slice(0, 3)
         .map((match) => ({
@@ -110,10 +112,17 @@ export function ClientHome() {
     }
   ];
   const toolPrimaryText = toolMode === "pricing"
-    ? "注册后发布需求并匹配服务方"
+    ? "发布需求并匹配服务方"
     : toolMode === "course"
-      ? "注册后发布培训需求"
-      : "注册后发布这个需求";
+      ? "发布培训需求"
+      : "发布这个需求";
+
+  useEffect(() => {
+    const syncSession = () => setIsLoggedIn(Boolean(readAuthSession()));
+    window.addEventListener(AUTH_SESSION_EVENT, syncSession);
+    syncSession();
+    return () => window.removeEventListener(AUTH_SESSION_EVENT, syncSession);
+  }, []);
 
   function saveCurrentToolDraft() {
     saveGrowthToolDraft({
@@ -265,8 +274,8 @@ export function ClientHome() {
             <span className="eyebrow">
               <Sparkles size={15} /> 免费工具
             </span>
-            <h2>先生成一份可发布的需求，再决定要不要注册</h2>
-            <p>输入一句话，先拿到项目 Brief、培训需求、报价参考或课程大纲。生成后再决定是否发布需求、匹配服务方或索要培训方案。</p>
+            <h2>{isLoggedIn ? "继续完善你的需求或主页" : "先生成一份可发布的需求，再决定要不要注册"}</h2>
+            <p>{isLoggedIn ? "你已经登录，可以直接把当前结果带入发布页，继续调整预算、周期和联系方式。" : "输入一句话，先拿到项目 Brief、培训需求、报价参考或课程大纲。生成后再决定是否发布需求、匹配服务方或索要培训方案。"}</p>
             <div className="tabs">
               {toolTabs.map((tab) => (
                 <button className={toolMode === tab.value ? "tab active" : "tab"} onClick={() => updateToolMode(tab.value)} type="button" key={tab.value}>
@@ -288,13 +297,17 @@ export function ClientHome() {
                 <CheckCircle2 size={16} /> {toolSaved ? "已保存，可继续发布" : toolMode === "course" ? "保存课程大纲" : toolMode === "pricing" ? "保存报价参考" : "保存这份Brief"}
               </button>
               <Link className="btn primary" href={toolPublishEntry} onClick={saveCurrentToolDraft}>
-                <Plus size={16} /> {toolPrimaryText}
+                <Plus size={16} /> {isLoggedIn ? (toolMode === "course" ? "直接发布培训需求" : toolMode === "pricing" ? "继续发布并匹配服务方" : "直接发布这个需求") : toolPrimaryText}
               </Link>
               <Link className="btn" href={isTrainingTool ? "/creators" : "/projects"}>
                 <Search size={16} /> 先看看市场
               </Link>
             </div>
-            <div className="notice">注册后会把这份结果自动带入发布表单，你只需要继续调整预算、周期和联系方式。</div>
+            <div className="notice">
+              {isLoggedIn
+                ? "你已经登录，系统会把这份结果自动带入发布表单，你只需要继续调整预算、周期和联系方式。"
+                : "保存后可继续发布，系统会把这份结果自动带入发布表单，你只需要继续调整预算、周期和联系方式。"}
+            </div>
           </div>
           <aside className="toolResult">
             <div className="spaceBetween">
@@ -343,8 +356,8 @@ export function ClientHome() {
         <div className="valuePreview">
           <div className="sectionHeader">
             <div>
-              <h2>注册前先看平台能给什么</h2>
-              <p>游客可以先查看公开需求、服务方主页、培训需求样例、匹配结果和 Brief Agent 生成效果。</p>
+              <h2>{isLoggedIn ? "继续看你能直接行动的内容" : "注册前先看平台能给什么"}</h2>
+              <p>{isLoggedIn ? "你已登录，可以直接发布、完善主页、查看待办和跟进线索。公开市场依然可看，但提示会更偏向下一步动作。" : "游客可以先查看公开需求、服务方主页、培训需求样例、匹配结果和 Brief Agent 生成效果。"}</p>
             </div>
           </div>
           <div className="grid">
@@ -356,11 +369,15 @@ export function ClientHome() {
               <strong>创作者/讲师大厅</strong>
               <p>查看服务主页、培训主页、案例、服务包报价和可接方向。</p>
             </Link>
-            <Link className="toolMiniCard" href={sampleProject ? `/projects/${sampleProject.id}` : "/projects"}>
-              <strong>示例培训需求</strong>
-              <p>{sampleProject?.title ?? "查看企业AI培训需求如何被结构化展示。"}</p>
+            <Link className="toolMiniCard" href={sampleDispatchProject ? `/projects/${sampleDispatchProject.id}` : "/projects"}>
+              <strong>示例派单需求</strong>
+              <p>{sampleDispatchProject?.title ?? "查看项目交付需求如何被结构化展示。"}</p>
             </Link>
-            <Link className="toolMiniCard" href={sampleProject ? `/projects/${sampleProject.id}` : "/projects"}>
+            <Link className="toolMiniCard" href={sampleTrainingProject ? `/projects/${sampleTrainingProject.id}` : "/projects?type=training"}>
+              <strong>示例培训需求</strong>
+              <p>{sampleTrainingProject?.title ?? "查看企业AI培训需求如何被结构化展示。"}</p>
+            </Link>
+            <Link className="toolMiniCard" href={sampleDispatchProject ? `/projects/${sampleDispatchProject.id}` : "/projects"}>
               <strong>示例匹配结果</strong>
               <p>{sampleMatches.length ? sampleMatches.map((match) => match.creator!.name).join("、") : "查看系统如何推荐候选服务方。"}</p>
             </Link>
@@ -382,12 +399,12 @@ export function ClientHome() {
           {entryCards.map((item) => {
             const Icon = item.icon;
             return (
-              <div className="card entryCard" key={item.title}>
+            <div className="card entryCard" key={item.title}>
                   <div className="cardBody stack">
                     <Icon size={22} />
                     <strong>{item.title}</strong>
                     <Link className={item.primary ? "btn primary" : "btn"} href={item.href}>
-                      {item.primary ? <Plus size={16} /> : <LogIn size={16} />} {item.cta}
+                      {item.primary ? <Plus size={16} /> : <LogIn size={16} />} {isLoggedIn ? item.title.includes("接单") || item.title.includes("培训") ? "继续进入" : "继续发布" : item.cta}
                   </Link>
                 </div>
               </div>
@@ -396,6 +413,7 @@ export function ClientHome() {
         </div>
       </section>
 
+      {isLoggedIn ? null : (
       <section className="section">
         <div className="sectionHeader">
           <div>
@@ -423,11 +441,12 @@ export function ClientHome() {
           </div>
         </div>
       </section>
+      )}
 
       <section className="section">
         <div className="sectionHeader">
           <div>
-            <h2>项目需求大厅</h2>
+            <h2>{isLoggedIn ? "你可以直接进入的公开需求" : "项目需求大厅"}</h2>
           </div>
           <Link className="btn" href="/projects">
             查看全部项目需求 <ArrowRight size={16} />
@@ -448,7 +467,7 @@ export function ClientHome() {
       <section className="section">
         <div className="sectionHeader">
           <div>
-            <h2>接单服务方信息</h2>
+            <h2>{isLoggedIn ? "你可以直接联系的服务方" : "接单服务方信息"}</h2>
           </div>
           <Link className="btn" href="/creators">
             查看全部服务方 <ArrowRight size={16} />
@@ -464,7 +483,7 @@ export function ClientHome() {
       <section className="section">
         <div className="sectionHeader">
           <div>
-            <h2>培训需求大厅</h2>
+            <h2>{isLoggedIn ? "你可以继续跟进的培训需求" : "培训需求大厅"}</h2>
           </div>
           <Link className="btn" href="/projects">
             查看全部培训需求 <ArrowRight size={16} />
@@ -485,7 +504,7 @@ export function ClientHome() {
       <section className="section">
         <div className="sectionHeader">
           <div>
-            <h2>培训方信息</h2>
+            <h2>{isLoggedIn ? "你可以直接联系的培训方" : "培训方信息"}</h2>
           </div>
           <Link className="btn" href="/creators">
             查看全部培训方 <ArrowRight size={16} />
@@ -498,6 +517,7 @@ export function ClientHome() {
         </div>
       </section>
 
+      {isLoggedIn ? null : (
       <section className="section">
         <div className="sectionHeader">
           <div>
@@ -534,6 +554,7 @@ export function ClientHome() {
           ))}
         </div>
       </section>
+      )}
 
     </main>
   );

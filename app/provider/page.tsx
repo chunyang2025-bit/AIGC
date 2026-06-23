@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Banknote, BriefcaseBusiness, CalendarDays, CheckCircle2, Copy, FileText, FileUp, Inbox, Search, SendHorizonal, Star, UserRound } from "lucide-react";
@@ -10,12 +10,21 @@ import { loadMarketplaceData } from "@/lib/store";
 import { readAuthSession } from "@/lib/auth";
 import { creatorProjectScore, creatorServiceConversion, opportunityPools } from "@/lib/opportunities";
 import { FirstActionPanel } from "@/components/FirstActionPanel";
+import { CreatorProfile, Order, Project, ProjectMatch } from "@/lib/types";
 
 export default function ProviderPortalPage() {
   const router = useRouter();
-  const data = loadMarketplaceData();
-  const session = readAuthSession();
-  const creator = data.creators.find((item) => item.userId === session?.userId);
+  const [session] = useState(() => readAuthSession());
+  const [data, setData] = useState(() => loadMarketplaceData());
+  const [creator, setCreator] = useState<CreatorProfile | null>(() => data.creators.find((item) => item.userId === session?.userId) ?? null);
+  const [leads, setLeads] = useState<Order[]>(() => {
+    const currentCreator = data.creators.find((item) => item.userId === session?.userId);
+    return currentCreator ? data.orders.filter((order) => order.creatorId === currentCreator.id) : [];
+  });
+  const [matches, setMatches] = useState<ProjectMatch[]>(() => {
+    const currentCreator = data.creators.find((item) => item.userId === session?.userId);
+    return currentCreator ? data.matches.filter((match) => match.creatorId === currentCreator.id) : [];
+  });
   useEffect(() => {
     if (!session) {
       router.push("/login?role=accept");
@@ -27,14 +36,44 @@ export default function ProviderPortalPage() {
     }
   }, [creator, router, session]);
 
+  useEffect(() => {
+    if (!session?.accessToken) return;
+
+    let active = true;
+
+    fetch("/api/account/state", {
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${session.accessToken}`
+      }
+    })
+      .then((response) => response.json().catch(() => null))
+      .then((payload) => {
+        if (!active || !payload?.ok || !payload.data) return;
+        const next = payload.data as {
+          creatorProfile: CreatorProfile | null;
+          creatorOrders: Order[];
+          matches: ProjectMatch[];
+          notificationsData: ReturnType<typeof loadMarketplaceData>;
+        };
+        setCreator(next.creatorProfile);
+        setLeads(next.creatorOrders);
+        setMatches(next.matches);
+        setData(next.notificationsData);
+      })
+      .catch(() => null);
+
+    return () => {
+      active = false;
+    };
+  }, [session?.accessToken]);
+
   if (!session || !creator) {
     return null;
   }
 
   const verified = Boolean(creator?.verified);
-  const leads = data.orders.filter((order) => order.creatorId === creator.id);
-  const recommendedOpportunities = data.matches
-    .filter((match) => match.creatorId === creator.id)
+  const recommendedOpportunities = matches
     .map((match) => ({
       match,
       project: data.projects.find((project) => project.id === match.projectId)

@@ -6,7 +6,7 @@ import { Filter, MessageSquarePlus, Plus, RotateCcw, Search, UserCog, UsersRound
 import { CreatorCard } from "@/components/CreatorCard";
 import { categoryLabel } from "@/lib/format";
 import { projectCategories } from "@/lib/project-categories";
-import { inviteCreator, loadMarketplaceData } from "@/lib/store";
+import { inviteCreator, loadMarketplaceData, loadPublicMarketplaceData } from "@/lib/store";
 import { ProjectCategory } from "@/lib/types";
 import { loginNextPath, readAuthSession } from "@/lib/auth";
 import { isCandidateCreator, readCandidateCreatorIds, toggleCandidateCreator } from "@/lib/candidates";
@@ -16,16 +16,17 @@ const categories: Array<ProjectCategory | "All"> = ["All", ...projectCategories]
 function CreatorsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const data = loadMarketplaceData();
   const session = readAuthSession();
   const listType = searchParams.get("type") === "creator" ? "creator" : "trainer";
   const projectId = searchParams.get("project");
+  const data = projectId ? loadMarketplaceData() : loadPublicMarketplaceData();
   const project = projectId ? data.projects.find((item) => item.id === projectId) : null;
   const projectContactable = Boolean(project && ["pending_review", "open", "matching", "in_progress"].includes(project.status));
   const [category, setCategory] = useState<ProjectCategory | "All">(project?.category ?? (listType === "trainer" ? "AIGC Training" : "All"));
   const [budget, setBudget] = useState("all");
   const [sort, setSort] = useState("recommended");
   const [query, setQuery] = useState("");
+  const [visibleCount, setVisibleCount] = useState(12);
   const [candidateIds, setCandidateIds] = useState<string[]>(project ? readCandidateCreatorIds(project.id) : []);
   const creatorEntry = loginNextPath("creator", "/provider");
   const buyerEntry = loginNextPath("buyer", "/post-project");
@@ -56,7 +57,7 @@ function CreatorsContent() {
       return b.completedProjects - a.completedProjects;
     });
   }, [budget, category, data.creators, listType, project, query, sort]);
-  const previewLimit = session ? creators.length : 6;
+  const previewLimit = session ? visibleCount : 6;
   const pagedCreators = creators.slice(0, previewLimit);
 
   function invite(creatorId: string) {
@@ -129,12 +130,18 @@ function CreatorsContent() {
               id="creator-search"
               placeholder="搜索培训主题、城市、讲师、案例"
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setVisibleCount(12);
+              }}
             />
           </div>
           <div className="field">
             <label htmlFor="category">品类</label>
-            <select id="category" value={category} onChange={(event) => setCategory(event.target.value as ProjectCategory | "All")}>
+            <select id="category" value={category} onChange={(event) => {
+              setCategory(event.target.value as ProjectCategory | "All");
+              setVisibleCount(12);
+            }}>
               {categories.map((item) => (
                 <option key={item} value={item}>
                   {item === "All" ? "全部品类" : categoryLabel(item)}
@@ -144,7 +151,10 @@ function CreatorsContent() {
           </div>
           <div className="field">
             <label htmlFor="budget">报价</label>
-            <select id="budget" value={budget} onChange={(event) => setBudget(event.target.value)}>
+            <select id="budget" value={budget} onChange={(event) => {
+              setBudget(event.target.value);
+              setVisibleCount(12);
+            }}>
               <option value="all">全部报价</option>
               <option value="low">入门预算</option>
               <option value="mid">中等预算</option>
@@ -153,7 +163,10 @@ function CreatorsContent() {
           </div>
           <div className="field">
             <label htmlFor="sort">排序</label>
-            <select id="sort" value={sort} onChange={(event) => setSort(event.target.value)}>
+            <select id="sort" value={sort} onChange={(event) => {
+              setSort(event.target.value);
+              setVisibleCount(12);
+            }}>
               <option value="recommended">综合推荐</option>
               <option value="rating">评分最高</option>
               <option value="projects">完成项目最多</option>
@@ -174,6 +187,7 @@ function CreatorsContent() {
               setBudget("all");
               setSort("recommended");
               setQuery("");
+              setVisibleCount(12);
             }}
           >
             <RotateCcw size={17} />
@@ -187,7 +201,7 @@ function CreatorsContent() {
       <div className="sectionHeader">
         <div>
           <h2>{creators.length} 位服务方</h2>
-          <p>游客可优先查看部分信息；注册登录并开通能力后可查看全部并发起沟通。</p>
+          <p>{session ? "你可以直接浏览服务方、邀请候选并进入派单流程。" : "游客可优先查看部分信息；注册登录并开通能力后可查看全部并发起沟通。"}</p>
         </div>
         {project ? (
           <span className={projectContactable ? "tag blue" : "tag gold"}>
@@ -220,13 +234,19 @@ function CreatorsContent() {
       ) : null}
       {!session && creators.length > pagedCreators.length ? (
         <section className="notice stack">
-          <strong>登录后查看全部{listType === "trainer" ? "培训名师" : "创作者"}</strong>
-          <span>进一步沟通、邀请候选方和开通派单能力需要注册登录。</span>
+          <strong>先注册再继续沟通</strong>
+          <span>登录后可以邀请候选方、查看全部服务方，并进入派单后台。</span>
           <div className="toolbarGroup">
-            <button className="btn primary" onClick={() => router.push(buyerEntry)} type="button">注册/登录后查看全部</button>
-            <button className="btn" onClick={() => router.push("/account/capabilities?intent=dispatch")} type="button">开通派单能力</button>
+            <button className="btn primary" onClick={() => router.push(buyerEntry)} type="button">继续入驻派单</button>
+            <button className="btn" onClick={() => router.push("/account/capabilities?intent=dispatch")} type="button">查看需求方身份</button>
           </div>
         </section>
+      ) : null}
+      {session && creators.length > pagedCreators.length ? (
+        <div className="paginationBar">
+          <span className="muted">已显示 {pagedCreators.length} / {creators.length} 位服务方</span>
+          <button className="btn" onClick={() => setVisibleCount((count) => count + 12)} type="button">继续查看更多</button>
+        </div>
       ) : null}
     </main>
   );

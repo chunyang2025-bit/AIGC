@@ -18,6 +18,8 @@ During the first pilot, also record these daily numbers:
 - Leads created from interest or invitation.
 - Feedback items by category: bug, confusing, missing feature, suggestion, other.
 - Reports and suspended accounts.
+- `/api/health` failures or degraded checks.
+- AI story generation failures caused by provider quota, invalid key, or upstream outage.
 
 ## 1.1 First Batch Marketplace Setup
 

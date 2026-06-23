@@ -238,7 +238,7 @@ function PostProjectContent() {
         </div>
       </div>
 
-      <BetaNotice />
+      <BetaNotice variant={session ? "member" : "guest"} />
       {editProject?.rejectedReason ? <div className="notice">上次审核意见：{editProject.rejectedReason}</div> : null}
       {loadedToolDraft ? <div className="notice">已带入你在首页生成的 Brief。可以继续调整标题、交付范围、预算、周期和联系方式，再提交需求。</div> : null}
       {loadedRemixSource ? <div className="notice">已参考「{loadedRemixSource}」生成发布草稿。请替换成你的真实业务背景、素材范围、预算和联系方式后再提交。</div> : null}

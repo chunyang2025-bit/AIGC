@@ -6,13 +6,13 @@ import { useSearchParams } from "next/navigation";
 import { BriefcaseBusiness, Filter, GraduationCap, Plus, Search, UserCog } from "lucide-react";
 import { ProjectCard } from "@/components/ProjectCard";
 import { BetaNotice } from "@/components/BetaNotice";
-import { loadMarketplaceData } from "@/lib/store";
+import { loadPublicMarketplaceData } from "@/lib/store";
 import { loginNextPath, readAuthSession } from "@/lib/auth";
 import { creatorProjectScore, sortProjectsForCreator } from "@/lib/opportunities";
 
 function ProjectsContent() {
   const searchParams = useSearchParams();
-  const data = loadMarketplaceData();
+  const data = loadPublicMarketplaceData();
   const session = readAuthSession();
   const listType = searchParams.get("type") === "training" ? "training" : "dispatch";
   const currentCreator = data.creators.find((creator) => creator.userId === session?.userId);
@@ -66,7 +66,7 @@ function ProjectsContent() {
         </div>
       </div>
 
-      <BetaNotice />
+      <BetaNotice variant={session ? "member" : "guest"} />
 
       <section className="publicBoardHero">
         <div>
@@ -74,7 +74,7 @@ function ProjectsContent() {
             <BriefcaseBusiness size={15} /> {isTrainingList ? "培训需求" : "派单信息"}
           </span>
           <h2>{isTrainingList ? "先看培训需求" : "先看派单信息"}</h2>
-          <p>游客可优先查看部分信息；注册登录并开通能力后可查看全部并发起沟通。</p>
+          <p>{session ? "你可以直接查看需求、筛选机会并继续进入后台。" : "游客可优先查看部分信息；注册登录并开通能力后可查看全部并发起沟通。"}</p>
         </div>
         <div className="publicSearch">
           <Search size={18} />
@@ -123,15 +123,15 @@ function ProjectsContent() {
       ) : null}
       {!session && visibleProjects.length > pagedProjects.length ? (
         <section className="notice stack">
-          <strong>登录后查看全部{isTrainingList ? "培训需求" : "派单信息"}</strong>
-          <span>继续沟通、收藏候选和开通接单能力需要注册登录。</span>
+          <strong>先注册再继续沟通</strong>
+          <span>登录后可以收藏候选、开通接单能力，并查看全部需求。</span>
           <div className="toolbarGroup">
-            <Link className="btn primary" href={creatorEntry}>注册/登录后查看全部</Link>
-            <Link className="btn" href="/account/capabilities?intent=service">开通接单能力</Link>
+            <Link className="btn primary" href={creatorEntry}>继续入驻接单</Link>
+            <Link className="btn" href="/account/capabilities?intent=service">查看服务方身份</Link>
           </div>
         </section>
       ) : null}
-      {session && visibleCount < visibleProjects.length ? (
+      {session && visibleProjects.length > pagedProjects.length ? (
         <div className="paginationBar">
           <span className="muted">已显示 {pagedProjects.length} / {visibleProjects.length} 个需求</span>
           <button className="btn" onClick={() => setVisibleCount((count) => count + 12)} type="button">加载更多</button>

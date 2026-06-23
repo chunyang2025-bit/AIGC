@@ -7,7 +7,7 @@ import { ArrowRight, Building2, CheckCircle2, FileBadge2, Globe2, Mail, Phone, S
 import { isImageValue, uploadCredentialFiles, uploadOrPreviewImage } from "@/lib/file-upload";
 import { compactDate, credentialUploadOptional, money, publicCredentialSummary, requiredCredentialLabel, verificationTypeLabel } from "@/lib/format";
 import { joinProvinceCity, provinceCityOptions, splitProvinceCity } from "@/lib/location-options";
-import { cacheBuyerProfile, loadMarketplaceData } from "@/lib/store";
+import { loadMarketplaceData, upsertUnifiedSubjectProfile } from "@/lib/store";
 import { BuyerProfile, VerificationType } from "@/lib/types";
 import { readAuthSession, setAuthCapability } from "@/lib/auth";
 
@@ -35,10 +35,10 @@ function AccountProfileContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const intent = searchParams.get("intent") ?? "dispatch";
-  const nextPath = `/account/verification?intent=${encodeURIComponent(intent)}`;
+  const nextPath = `/account/verification?intent=${encodeURIComponent(intent)}&saved=1`;
   const capabilityPath = `/account/capabilities?intent=${encodeURIComponent(intent)}`;
-  const data = useMemo(() => loadMarketplaceData(), []);
-  const session = useMemo(() => readAuthSession(), []);
+  const [data, setData] = useState(() => loadMarketplaceData());
+  const [session, setSession] = useState(() => readAuthSession());
   const buyerProfile = data.buyerProfiles?.find((profile) => profile.userId === session?.userId);
   const creatorProfile = data.creators.find((creator) => creator.userId === session?.userId);
   const subjectName = buyerProfile?.companyName ?? creatorProfile?.name ?? session?.name ?? "";
@@ -87,7 +87,7 @@ function AccountProfileContent() {
   }
 
   async function saveSubjectProfile() {
-    const input = {
+    return upsertUnifiedSubjectProfile({
       companyName,
       displayName,
       avatarUrl,
@@ -103,31 +103,7 @@ function AccountProfileContent() {
       serviceArea,
       businessLicenseFile,
       qualificationFiles: splitList(qualificationFiles)
-    };
-    const headers: HeadersInit = {
-      Accept: "application/json",
-      "Content-Type": "application/json"
-    };
-
-    if (session?.accessToken) {
-      headers.Authorization = `Bearer ${session.accessToken}`;
-    }
-
-    const response = await fetch("/api/buyers", {
-      method: "POST",
-      headers,
-      body: JSON.stringify(input)
     });
-    const payload = await response.json().catch(() => null) as { ok?: boolean; error?: string; data?: BuyerProfile } | null;
-    if (!response.ok || !payload?.ok) {
-      throw new Error(payload?.error || "主体资料保存失败，请稍后再试。");
-    }
-
-    if (payload.data) {
-      cacheBuyerProfile(payload.data);
-    }
-
-    return input;
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -135,10 +111,11 @@ function AccountProfileContent() {
     setSaveStatus("");
     setIsSaving(true);
     try {
-      await saveSubjectProfile();
-      setAuthCapability(session?.role ?? "buyer", "pending_review");
+      const savedProfile = await saveSubjectProfile();
+      setAuthCapability(session?.role ?? "buyer", savedProfile.verified ? "approved" : "registered");
+      setSession(readAuthSession());
+      setData(loadMarketplaceData());
       router.replace(nextPath);
-      router.refresh();
     } catch (error) {
       setSaveStatus(error instanceof Error ? error.message : "主体资料保存失败，请稍后再试。");
     } finally {
@@ -173,6 +150,11 @@ function AccountProfileContent() {
             <div className="notice">
               邀请制试运营不强制一次填完。先完成名称、城市、介绍和联系方式，保存后进入认证中心；可继续试用业务，也可补齐认证材料等待运营审核。
             </div>
+            {buyerProfile?.verified || creatorProfile?.verified ? (
+              <div className="notice">
+                已认证后也可以继续改主页。介绍、联系方式、展示文案会直接更新；如果修改主体名称、认证主体类型或资质材料，系统会要求你重新提交审核。
+              </div>
+            ) : null}
             <div className="grid two compactGrid">
               <div className="field">
                 <label htmlFor="subject-name">名称</label>

@@ -95,6 +95,9 @@ export type CreatorProfile = {
   responseTime: string;
   verified: boolean;
   rejectedReason?: string;
+  reviewDraft?: Record<string, unknown>;
+  reviewDraftSubmittedAt?: string;
+  reviewDraftRejectedReason?: string;
   identityType?: VerificationType;
   verificationType?: VerificationType;
   credentialFile?: string;
@@ -151,6 +154,9 @@ export type BuyerProfile = {
   qualificationFiles: string[];
   verified: boolean;
   rejectedReason?: string;
+  reviewDraft?: Record<string, unknown>;
+  reviewDraftSubmittedAt?: string;
+  reviewDraftRejectedReason?: string;
   cover: string;
 };
 

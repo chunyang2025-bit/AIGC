@@ -1,3 +1,4 @@
+import { hasActiveReviewSubmission } from "./review-status";
 import { MarketplaceData, Project } from "./types";
 
 export type ChecklistItem = {
@@ -60,7 +61,7 @@ export function onboardingCompleteness(input: {
   const items: ChecklistItem[] = [
     { label: "注册账号", done: true, weight: 15 },
     { label: "完善主体主页", done: input.hasProfile, weight: 20 },
-    { label: "补充认证资料", done: input.submittedReview, weight: 20 },
+    { label: "提交认证审核", done: input.submittedReview, weight: 20 },
     { label: "平台认证通过", done: input.verified, weight: 20 },
     { label: "开通派单/接单能力", done: input.hasCapability, weight: 15 },
     { label: "产生首次沟通", done: input.hasLead, weight: 10 }
@@ -75,7 +76,12 @@ export function onboardingCompleteness(input: {
 export function notificationsForUser(data: MarketplaceData, userId: string) {
   const buyerProfile = data.buyerProfiles?.find((profile) => profile.userId === userId);
   const creatorProfile = data.creators.find((creator) => creator.userId === userId);
+  const buyerSubmitted = hasActiveReviewSubmission(data, userId, "buyer_profile");
+  const creatorSubmitted = hasActiveReviewSubmission(data, userId, "creator");
   const notifications: NotificationItem[] = [];
+  const draftReason = buyerProfile?.reviewDraftRejectedReason || creatorProfile?.reviewDraftRejectedReason;
+  const hasDraft = Boolean(buyerProfile?.reviewDraft || creatorProfile?.reviewDraft);
+  const pendingDraft = (buyerProfile?.reviewDraft && buyerSubmitted) || (creatorProfile?.reviewDraft && creatorSubmitted);
 
   if (!buyerProfile && !creatorProfile) {
     notifications.push({
@@ -87,13 +93,25 @@ export function notificationsForUser(data: MarketplaceData, userId: string) {
     });
   }
 
-  if ((buyerProfile && !buyerProfile.verified) || (creatorProfile && !creatorProfile.verified)) {
-    const reason = buyerProfile?.rejectedReason || creatorProfile?.rejectedReason;
+  if (hasDraft || (buyerProfile && !buyerProfile.verified) || (creatorProfile && !creatorProfile.verified)) {
+    const reason = draftReason || buyerProfile?.rejectedReason || creatorProfile?.rejectedReason;
+    const pending =
+      pendingDraft ||
+      (buyerProfile && !buyerProfile.verified && buyerSubmitted) ||
+      (creatorProfile && !creatorProfile.verified && creatorSubmitted);
     notifications.push({
       id: "review-pending",
-      title: reason ? "认证需补充资料" : "未认证/可试用",
-      body: reason || "平台运营会核验主体信息、联系方式和资质材料。试运营期间可以先使用核心功能，正式合作前建议完成认证。",
-      href: "/account/profile",
+      title: reason ? (hasDraft ? "认证变更需补充资料" : "认证需补充资料") : pending ? (hasDraft ? "认证变更待审核" : "认证待运营审核") : hasDraft ? "认证变更已保存" : "主页资料已保存",
+      body:
+        reason ||
+        (pending
+          ? hasDraft
+            ? "新的认证变更资料已提交审核，旧的已认证主页会继续展示，审核通过后再替换。"
+            : "认证资料已提交，正在等待运营人工核验。试运营期间可以先继续使用发布、匹配和沟通功能。"
+          : hasDraft
+            ? "你保存了一版认证变更草稿。进入认证中心提交审核后，新的主体信息或资质才会替换当前已认证主页。"
+            : "主页资料已经保存，但还没有提交认证审核。进入认证中心点一下“提交认证审核”就会进入待审核队列。"),
+      href: "/account/verification",
       level: reason ? "warning" : "info"
     });
   }

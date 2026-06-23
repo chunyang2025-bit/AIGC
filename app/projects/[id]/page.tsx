@@ -1,26 +1,44 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { notFound, useRouter } from "next/navigation";
 import { ArrowLeft, Bot, Building2, CheckCircle2, FileBadge2, FileText, Link2, Send, Sparkles, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { categoryLabel, compactDate, money, projectStatusLabel } from "@/lib/format";
 import { trainingFormatLabel } from "@/lib/training";
 import { ReportButton } from "@/components/ReportButton";
-import { expressInterestInProject, loadMarketplaceData } from "@/lib/store";
+import { expressInterestInProject, loadMarketplaceData, loadPublicMarketplaceData } from "@/lib/store";
 import { loginNextPath, readAuthSession } from "@/lib/auth";
 import { creatorProjectScore, decisionScore, projectDecisionItems, trainingOpportunityItems, trainingOpportunityScore, trainingProposalText } from "@/lib/opportunities";
 import { saveRemixDraft } from "@/lib/remix-draft";
+import { BuyerProfile, CreatorProfile, Project, ProjectMatch } from "@/lib/types";
 
 export default function ProjectDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const session = readAuthSession();
-  const data = loadMarketplaceData();
-  const currentCreator = data.creators.find((creator) => creator.userId === session?.userId);
+  const [session] = useState(() => readAuthSession());
+  const [data] = useState(() => session ? loadMarketplaceData() : loadPublicMarketplaceData());
+  const [currentCreator, setCurrentCreator] = useState<CreatorProfile | null>(() => data.creators.find((creator) => creator.userId === session?.userId) ?? null);
+  const [project, setProject] = useState<Project | null>(() => data.projects.find((item) => item.id === params.id) ?? null);
+  const [buyerProfile, setBuyerProfile] = useState<BuyerProfile | null>(() => {
+    const currentProject = data.projects.find((item) => item.id === params.id);
+    return currentProject ? (data.buyerProfiles ?? []).find((profile) => profile.userId === currentProject.buyerId) ?? null : null;
+  });
+  const [sampleMatches, setSampleMatches] = useState<Array<ProjectMatch & { creator?: CreatorProfile }>>(() => {
+    const currentProject = data.projects.find((item) => item.id === params.id);
+    if (!currentProject) return [];
+    return data.matches
+      .filter((match) => match.projectId === currentProject.id)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3)
+      .map((match) => ({
+        ...match,
+        creator: data.creators.find((creator) => creator.id === match.creatorId)
+      }))
+      .filter((match) => match.creator);
+  });
   const [intro, setIntro] = useState(
     `你好，我是${currentCreator?.name ?? "接单创作者"}。我看过这个需求，想进一步沟通内容方向、周期和素材范围。`
   );
-  const project = data.projects.find((item) => item.id === params.id);
 
   if (!project) {
     notFound();
@@ -33,23 +51,13 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
   const publicProject = project;
   const projectId = project.id;
   const isTrainingProject = project.category === "AIGC Training";
-  const buyerProfile = (data.buyerProfiles ?? []).find((profile) => profile.userId === project.buyerId);
   const buyerName = buyerProfile?.displayName ?? buyerProfile?.companyName ?? data.users.find((user) => user.id === project.buyerId)?.name ?? "需求发布方";
-  const decisionItems = projectDecisionItems(project, buyerProfile);
-  const suitabilityScore = creatorProjectScore(currentCreator, project);
-  const trustScore = decisionScore(project, buyerProfile);
-  const trainingFitItems = isTrainingProject ? trainingOpportunityItems(currentCreator, project, buyerProfile) : [];
-  const trainingFitScore = isTrainingProject ? trainingOpportunityScore(currentCreator, project, buyerProfile) : 0;
-  const generatedTrainingProposal = isTrainingProject ? trainingProposalText(currentCreator, project) : "";
-  const sampleMatches = data.matches
-    .filter((match) => match.projectId === project.id)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 3)
-    .map((match) => ({
-      ...match,
-      creator: data.creators.find((creator) => creator.id === match.creatorId)
-    }))
-    .filter((match) => match.creator);
+  const decisionItems = projectDecisionItems(project, buyerProfile ?? undefined);
+  const suitabilityScore = creatorProjectScore(currentCreator ?? undefined, project);
+  const trustScore = decisionScore(project, buyerProfile ?? undefined);
+  const trainingFitItems = isTrainingProject ? trainingOpportunityItems(currentCreator ?? undefined, project, buyerProfile ?? undefined) : [];
+  const trainingFitScore = isTrainingProject ? trainingOpportunityScore(currentCreator ?? undefined, project, buyerProfile ?? undefined) : 0;
+  const generatedTrainingProposal = isTrainingProject ? trainingProposalText(currentCreator ?? undefined, project) : "";
   const suggestedIntro = [
     `你好，我看过「${project.title}」这个需求。`,
     currentCreator ? `我这边主要做${currentCreator.categories.map(categoryLabel).join("、")}，相关能力包括${currentCreator.skills.slice(0, 4).join("、")}。` : "",
@@ -94,6 +102,44 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
       }
     });
   }
+
+  useEffect(() => {
+    if (!session?.accessToken) return;
+
+    let active = true;
+
+    fetch(`/api/projects/${params.id}`, {
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${session.accessToken}`
+      }
+    })
+      .then((response) => response.json().catch(() => null))
+      .then((payload) => {
+        if (!active || !payload?.ok || !payload.data) return;
+        const next = payload.data as {
+          project: Project;
+          buyerProfile: BuyerProfile | null;
+          currentCreator: CreatorProfile | null;
+          sampleMatches: ProjectMatch[];
+          sampleCreators: CreatorProfile[];
+        };
+        setProject(next.project);
+        setBuyerProfile(next.buyerProfile);
+        setCurrentCreator(next.currentCreator);
+        setSampleMatches(
+          next.sampleMatches.map((match) => ({
+            ...match,
+            creator: next.sampleCreators.find((creator) => creator.id === match.creatorId)
+          })).filter((match) => match.creator)
+        );
+      })
+      .catch(() => null);
+
+    return () => {
+      active = false;
+    };
+  }, [params.id, session?.accessToken]);
 
   return (
     <main className="main">
@@ -280,7 +326,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                     <strong>
                       <Sparkles size={16} /> 示例匹配结果
                     </strong>
-                    <span className="tag green">注册后可发起沟通</span>
+                    <span className="tag green">{session ? "可直接发起沟通" : "登录后可发起沟通"}</span>
                   </div>
                   <p className="muted" style={{ margin: 0, lineHeight: 1.6 }}>
                     先展示系统如何推荐候选服务方，帮助你判断需求发布后能得到什么结果。
@@ -366,7 +412,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                 </Link>
               ) : (
                 <Link className="btn primary" href={loginNextPath("creator", `/projects/${project.id}`)}>
-                  免费注册/登录后发起沟通
+                  登录后发起沟通
                 </Link>
               )}
               {!session ? (

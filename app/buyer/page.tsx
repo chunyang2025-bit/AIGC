@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Bot, BriefcaseBusiness, CheckCircle2, Clock, Plus, Search, UsersRound } from "lucide-react";
@@ -9,16 +9,17 @@ import { loadMarketplaceData } from "@/lib/store";
 import { readAuthSession } from "@/lib/auth";
 import { buyerActionItems, buyerProjectNextStep } from "@/lib/opportunities";
 import { FirstActionPanel } from "@/components/FirstActionPanel";
+import { BuyerProfile, Order, Project } from "@/lib/types";
 
 export default function BuyerPortalPage() {
   const router = useRouter();
-  const data = loadMarketplaceData();
-  const session = readAuthSession();
+  const [session] = useState(() => readAuthSession());
+  const [data, setData] = useState(() => loadMarketplaceData());
   const buyerId = session?.userId ?? "";
-  const buyerProfile = data.buyerProfiles?.find((profile) => profile.userId === buyerId);
+  const [buyerProfile, setBuyerProfile] = useState<BuyerProfile | null>(() => data.buyerProfiles?.find((profile) => profile.userId === buyerId) ?? null);
+  const [projects, setProjects] = useState<Project[]>(() => data.projects.filter((project) => project.buyerId === buyerId));
+  const [leads, setLeads] = useState<Order[]>(() => data.orders.filter((order) => order.buyerId === buyerId));
   const verified = Boolean(buyerProfile?.verified);
-  const projects = data.projects.filter((project) => project.buyerId === buyerId);
-  const leads = data.orders.filter((order) => order.buyerId === buyerId);
   const activeLeads = leads.filter((order) => order.status !== "approved");
   const agentProjects = projects.filter((project) => project.agentBrief);
   const actionItems = buyerActionItems(data, buyerId, Boolean(buyerProfile));
@@ -61,6 +62,38 @@ export default function BuyerPortalPage() {
       router.push("/account/profile");
     }
   }, [buyerProfile, router, session]);
+
+  useEffect(() => {
+    if (!session?.accessToken) return;
+
+    let active = true;
+
+    fetch("/api/account/state", {
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${session.accessToken}`
+      }
+    })
+      .then((response) => response.json().catch(() => null))
+      .then((payload) => {
+        if (!active || !payload?.ok || !payload.data) return;
+        const next = payload.data as {
+          buyerProfile: BuyerProfile | null;
+          projects: Project[];
+          buyerOrders: Order[];
+          notificationsData: ReturnType<typeof loadMarketplaceData>;
+        };
+        setBuyerProfile(next.buyerProfile);
+        setProjects(next.projects);
+        setLeads(next.buyerOrders);
+        setData(next.notificationsData);
+      })
+      .catch(() => null);
+
+    return () => {
+      active = false;
+    };
+  }, [session?.accessToken]);
 
   if (!session || !buyerProfile) {
     return null;

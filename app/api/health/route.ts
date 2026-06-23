@@ -1,6 +1,14 @@
 import { getServerSupabase, isSupabaseServerConfigured } from "../../../lib/server/auth";
 import { getMarketplaceData } from "../../../lib/server/data";
-import { getIntegrationStatus, getProductionEnvChecks, getUploadLimits, isProductionRuntime } from "../../../lib/server/env";
+import {
+  getAiStoryProviderStatus,
+  getIntegrationStatus,
+  getPasswordResetReadiness,
+  getProductionEnvChecks,
+  getRuntimeAppUrl,
+  getUploadLimits,
+  isProductionRuntime
+} from "../../../lib/server/env";
 import { apiOk } from "../../../lib/server/response";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +19,7 @@ type HealthCheck = {
   message: string;
 };
 
-export async function GET() {
+export async function GET(request: Request) {
   const checks: HealthCheck[] = [];
   const isProduction = isProductionRuntime();
   const hasSupabaseConfig = isSupabaseServerConfigured();
@@ -71,6 +79,7 @@ export async function GET() {
   });
 
   const integrations = getIntegrationStatus();
+  const aiStoryProvider = getAiStoryProviderStatus();
   checks.push({
     name: "payment_integration",
     ok: true,
@@ -86,6 +95,20 @@ export async function GET() {
     ok: true,
     message: integrations.sms.configured ? `短信通知已配置：${integrations.sms.provider}` : isProduction ? "生产环境建议配置短信通知" : "本地开发未配置短信通知"
   });
+  checks.push({
+    name: "ai_story_provider",
+    ok: aiStoryProvider.configured,
+    message: aiStoryProvider.configured
+      ? `AI 故事生成已配置：${aiStoryProvider.provider} / ${aiStoryProvider.model}`
+      : "未配置 AI 故事生成服务（DEEPSEEK_API_KEY 或 OPENAI/CODEX API key）"
+  });
+
+  const passwordReset = getPasswordResetReadiness(getRuntimeAppUrl(request));
+  checks.push({
+    name: "password_reset_flow",
+    ok: passwordReset.ok,
+    message: passwordReset.message
+  });
 
   const ok = checks.every((check) => check.ok);
   return apiOk({
@@ -93,6 +116,10 @@ export async function GET() {
     environment: process.env.NODE_ENV,
     checkedAt: new Date().toISOString(),
     integrations,
+    aiStoryProvider,
+    passwordReset: {
+      recoveryUrl: passwordReset.recoveryUrl
+    },
     checks
   });
 }

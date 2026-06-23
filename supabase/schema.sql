@@ -38,6 +38,9 @@ create table if not exists buyer_profiles (
   qualification_files jsonb not null default '[]'::jsonb,
   verified boolean not null default false,
   rejected_reason text,
+  review_draft jsonb,
+  review_draft_submitted_at timestamptz,
+  review_draft_rejected_reason text,
   cover text
 );
 
@@ -61,6 +64,9 @@ create table if not exists creator_profiles (
   response_time text,
   verified boolean not null default false,
   rejected_reason text,
+  review_draft jsonb,
+  review_draft_submitted_at timestamptz,
+  review_draft_rejected_reason text,
   identity_type text,
   verification_type text,
   credential_file text,
@@ -198,7 +204,13 @@ alter table app_users add column if not exists phone text;
 alter table app_users add column if not exists status text not null default 'active';
 alter table app_users add column if not exists suspended_reason text;
 alter table buyer_profiles add column if not exists rejected_reason text;
+alter table buyer_profiles add column if not exists review_draft jsonb;
+alter table buyer_profiles add column if not exists review_draft_submitted_at timestamptz;
+alter table buyer_profiles add column if not exists review_draft_rejected_reason text;
 alter table creator_profiles add column if not exists rejected_reason text;
+alter table creator_profiles add column if not exists review_draft jsonb;
+alter table creator_profiles add column if not exists review_draft_submitted_at timestamptz;
+alter table creator_profiles add column if not exists review_draft_rejected_reason text;
 alter table creator_profiles add column if not exists portfolio_items jsonb not null default '[]'::jsonb;
 alter table creator_profiles add column if not exists service_packages jsonb not null default '[]'::jsonb;
 alter table creator_profiles add column if not exists training_profile jsonb;

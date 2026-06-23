@@ -5,13 +5,13 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, BriefcaseBusiness, Building2, CheckCircle2, ExternalLink, FileBadge2, Globe2, Mail, MapPin, Phone, Sparkles } from "lucide-react";
 import { categoryLabel, compactDate, money, publicCredentialSummary, verificationTypeLabel } from "@/lib/format";
 import { isImageValue } from "@/lib/file-upload";
-import { loadMarketplaceData } from "@/lib/store";
+import { loadMarketplaceData, loadPublicMarketplaceData } from "@/lib/store";
 import { loginNextPath, readAuthSession } from "@/lib/auth";
 import { ReportButton } from "@/components/ReportButton";
 
 export default function BuyerDetailPage({ params }: { params: { id: string } }) {
   const session = readAuthSession();
-  const data = loadMarketplaceData();
+  const data = session ? loadMarketplaceData() : loadPublicMarketplaceData();
   const user = data.users.find((item) => item.id === params.id);
   const profile = (data.buyerProfiles ?? []).find((item) => item.userId === params.id);
 

@@ -1,31 +1,48 @@
-import { getRequestUser, isSupabaseServerConfigured } from "../../../../lib/server/auth";
 import { getMarketplaceData } from "../../../../lib/server/data";
+import { getRequestUser } from "../../../../lib/server/auth";
+import { logRouteInfo } from "../../../../lib/server/route-log";
 import { apiFail, apiOk } from "../../../../lib/server/response";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
-  const data = await getMarketplaceData();
   const actor = await getRequestUser(request);
-  if (isSupabaseServerConfigured() && !actor) {
-    return apiFail(401, "请先登录后再查看合作线索");
+  if (!actor) {
+    return apiFail(401, "请先登录后再查看线索详情");
   }
-  const order = data.orders.find((item) => item.id === params.id);
+
+  const data = await getMarketplaceData();
+  const creator = data.creators.find((item) => item.userId === actor.id);
+  const order = data.orders.find((item) =>
+    item.id === params.id &&
+    (item.buyerId === actor.id || item.creatorId === creator?.id)
+  );
 
   if (!order) {
-    return apiFail(404, "未找到合作线索");
+    return apiFail(404, "未找到该线索");
   }
-  const creator = data.creators.find((item) => item.id === order.creatorId);
-  const allowed = !actor || actor.role === "admin" || order.buyerId === actor.id || creator?.userId === actor.id;
-  if (isSupabaseServerConfigured() && !allowed) {
-    return apiFail(403, "只能查看自己的合作线索");
-  }
+
+  const project = data.projects.find((item) => item.id === order.projectId) ?? null;
+  const orderCreator = data.creators.find((item) => item.id === order.creatorId) ?? null;
+  const messages = data.messages.filter((message) => message.orderId === order.id);
+  const userIds = new Set([
+    order.buyerId,
+    orderCreator?.userId ?? "",
+    ...messages.map((message) => message.senderId)
+  ].filter(Boolean));
+  const users = data.users.filter((user) => userIds.has(user.id));
+
+  logRouteInfo("api/orders/[id]", "ready", {
+    actorId: actor.id,
+    orderId: order.id,
+    messages: messages.length
+  });
 
   return apiOk({
     order,
-    project: data.projects.find((item) => item.id === order.projectId),
-    buyer: data.buyerProfiles?.find((item) => item.userId === order.buyerId),
-    creator,
-    messages: data.messages.filter((item) => item.orderId === order.id)
+    project,
+    creator: orderCreator,
+    messages,
+    users
   });
 }

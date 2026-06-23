@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { notFound, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, CalendarDays, CheckCircle2, CircleDotDashed, MessageSquare, PhoneCall, RotateCcw, UserCheck, XCircle } from "lucide-react";
 import { compactDate, money, orderResultReasonLabel, orderStatusLabel } from "@/lib/format";
 import { createOrderMessage, loadMarketplaceData, updateOrderStatus } from "@/lib/store";
 import { readAuthSession } from "@/lib/auth";
-import { OrderStatus } from "@/lib/types";
+import { CreatorProfile, Message, Order, OrderStatus, Project, User } from "@/lib/types";
 
 const statusActions: Array<{ label: string; status: OrderStatus; icon: React.ReactNode; tone?: "primary" | "danger"; requiresReason?: boolean }> = [
   { label: "已联系", status: "contacted", icon: <UserCheck size={16} /> },
@@ -32,22 +32,57 @@ const resultReasons = [
 
 export default function OrderPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const session = readAuthSession();
-  const data = loadMarketplaceData();
+  const [session] = useState(() => readAuthSession());
+  const [data] = useState(() => loadMarketplaceData());
   const [messageBody, setMessageBody] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<OrderStatus>("not_fit");
   const [resultReason, setResultReason] = useState("budget_mismatch");
   const [resultNote, setResultNote] = useState("");
-  const order = data.orders.find((item) => item.id === params.id);
+  const [order, setOrder] = useState<Order | null>(() => data.orders.find((item) => item.id === params.id) ?? null);
 
   if (!order) {
     notFound();
   }
 
-  const project = data.projects.find((item) => item.id === order.projectId);
-  const creator = data.creators.find((item) => item.id === order.creatorId);
-  const messages = data.messages.filter((message) => message.orderId === order.id).reverse();
+  const [project, setProject] = useState<Project | null>(() => data.projects.find((item) => item.id === order.projectId) ?? null);
+  const [creator, setCreator] = useState<CreatorProfile | null>(() => data.creators.find((item) => item.id === order.creatorId) ?? null);
+  const [messages, setMessages] = useState<Message[]>(() => data.messages.filter((message) => message.orderId === order.id).reverse());
+  const [users, setUsers] = useState<User[]>(() => data.users.filter((user) => user.id === order.buyerId || user.id === creator?.userId || messages.some((message) => message.senderId === user.id)));
   const senderId = session?.role === "creator" ? creator?.userId ?? session.userId : order.buyerId;
+
+  useEffect(() => {
+    if (!session?.accessToken) return;
+
+    let active = true;
+
+    fetch(`/api/orders/${params.id}`, {
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${session.accessToken}`
+      }
+    })
+      .then((response) => response.json().catch(() => null))
+      .then((payload) => {
+        if (!active || !payload?.ok || !payload.data) return;
+        const next = payload.data as {
+          order: Order;
+          project: Project | null;
+          creator: CreatorProfile | null;
+          messages: Message[];
+          users: User[];
+        };
+        setOrder(next.order);
+        setProject(next.project);
+        setCreator(next.creator);
+        setMessages(next.messages.slice().reverse());
+        setUsers(next.users);
+      })
+      .catch(() => null);
+
+    return () => {
+      active = false;
+    };
+  }, [params.id, session?.accessToken]);
 
   return (
     <main className="main">
@@ -68,7 +103,7 @@ export default function OrderPage({ params }: { params: { id: string } }) {
           </div>
           <div className="chat">
             {messages.map((message) => {
-              const sender = data.users.find((user) => user.id === message.senderId);
+              const sender = users.find((user) => user.id === message.senderId) ?? data.users.find((user) => user.id === message.senderId);
               const mine = message.senderId === order.buyerId;
 
               return (
@@ -105,8 +140,17 @@ export default function OrderPage({ params }: { params: { id: string } }) {
                   senderId,
                   body: messageBody.trim()
                 });
+                setMessages((current) => [
+                  ...current,
+                  {
+                    id: `tmp-${Date.now()}`,
+                    orderId: order.id,
+                    senderId,
+                    body: messageBody.trim(),
+                    createdAt: new Date().toISOString()
+                  }
+                ]);
                 setMessageBody("");
-                router.refresh();
               }}
               type="button"
             >
@@ -132,7 +176,7 @@ export default function OrderPage({ params }: { params: { id: string } }) {
                       return;
                     }
                     updateOrderStatus(order.id, action.status);
-                    router.refresh();
+                    setOrder((current) => current ? { ...current, status: action.status } : current);
                   }}
                 >
                   {action.icon} {action.label}
@@ -164,7 +208,13 @@ export default function OrderPage({ params }: { params: { id: string } }) {
                   className="btn danger"
                   onClick={() => {
                     updateOrderStatus(order.id, selectedStatus, { resultReason, resultNote });
-                    router.refresh();
+                    setOrder((current) => current ? {
+                      ...current,
+                      status: selectedStatus,
+                      resultReason,
+                      resultNote,
+                      resultUpdatedAt: new Date().toISOString()
+                    } : current);
                   }}
                   type="button"
                 >

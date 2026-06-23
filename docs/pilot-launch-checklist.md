@@ -15,6 +15,9 @@
 - `/api/health` returns `data.ok: true`.
 - `npm run check:prod` passes.
 - `npm run check:pilot` passes against the production URL.
+- One real `/api/agent/story` request succeeds with the production AI provider.
+- Supabase Auth Email provider is enabled.
+- Supabase Auth redirect URLs include `https://your-domain.example/reset-password`.
 
 ## 2. Seed Supply And Demand
 
@@ -42,6 +45,7 @@ NEXT_PUBLIC_APP_URL=https://your-domain.example npm run check:pilot
 Run these flows on production:
 
 - Buyer registers.
+- Buyer can request a password reset email and finish the reset flow.
 - Buyer completes subject profile.
 - Admin approves buyer.
 - Buyer posts a free project.
@@ -59,6 +63,7 @@ Run these flows on production:
 - Admin can process report.
 - Admin can suspend and unsuspend a test account.
 - Feedback widget can submit a trial suggestion.
+- AI story generation returns a successful response once with a valid access code.
 
 ## 4. First Pilot Window
 

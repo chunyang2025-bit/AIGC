@@ -23,7 +23,8 @@ const payload = await response.json();
 const data = payload.data;
 const checks = Array.isArray(data?.checks) ? data.checks : [];
 const failed = checks.filter((check) => !check.ok);
-const warnings = checks.filter((check) => check.ok && /建议|未配置/.test(String(check.message || "")));
+const warnings = checks.filter((check) => check.ok && /建议|未配置|请确认/.test(String(check.message || "")));
+const aiStoryProvider = data?.aiStoryProvider || {};
 
 console.log(`Production check: ${healthUrl}`);
 console.log(`Environment: ${data?.environment || "unknown"}`);
@@ -38,6 +39,16 @@ if (!data?.ok || failed.length) {
 
 if (warnings.length) {
   console.warn(`Production check passed with ${warnings.length} warning(s). Review optional/recommended integrations before broader rollout.`);
+}
+
+if (!aiStoryProvider.configured) {
+  console.warn("WARN AI story provider is not configured.");
+} else {
+  console.log(`AI story provider: ${aiStoryProvider.provider} / ${aiStoryProvider.model}`);
+}
+
+if (data?.passwordReset?.recoveryUrl) {
+  console.log(`Password reset redirect: ${data.passwordReset.recoveryUrl}`);
 }
 
 console.log("Production check passed.");

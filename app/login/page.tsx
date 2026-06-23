@@ -15,7 +15,7 @@ import {
   Sparkles,
   UserCog
 } from "lucide-react";
-import { AuthSession, loginAccount, readAuthSession, roleProfilePath, roleWorkbenchPath } from "@/lib/auth";
+import { AuthSession, loginAccount, readAuthSession, roleSetupPath, roleWorkbenchPath } from "@/lib/auth";
 import { userFacingErrorMessage } from "@/lib/error-message";
 import { UserRole } from "@/lib/types";
 
@@ -33,6 +33,7 @@ function LoginContent() {
   const requestedRole = searchParams.get("role");
   const requestedNext = searchParams.get("next");
   const requestedIntent = searchParams.get("intent");
+  const resetStatus = searchParams.get("reset");
   const [account, setAccount] = useState(searchParams.get("account") ?? "");
   const [password, setPassword] = useState("");
   const [agreed, setAgreed] = useState(false);
@@ -43,12 +44,12 @@ function LoginContent() {
   const activeRoleValue: UserRole = requestedRole === "admin" ? "admin" : requestedRole === "accept" ? "creator" : "buyer";
   const registerRoleQuery = requestedRole === "accept" ? "role=accept&" : "";
   const roleLabel = requestedRole === "admin" ? adminRole.title : requestedRole === "accept" ? "接单服务方" : "主体账号";
-  const roleSubtitle = requestedRole === "admin" ? adminRole.subtitle : requestedRole === "accept" ? "登录后继续完善服务主页或发起沟通" : "登录后继续当前业务路径";
+  const roleSubtitle = requestedRole === "admin" ? adminRole.subtitle : requestedRole === "accept" ? "登录后继续完善服务主页或发起沟通" : "登录后直接进入你上次选择的业务路径";
   const registerAccount = account.trim();
 
   function nextPath(session: AuthSession) {
     if (requestedNext && requestedNext.startsWith("/")) return requestedNext;
-    if (session.status === "registered") return requestedIntent ? `${roleProfilePath(session.role)}?intent=${requestedIntent}` : roleProfilePath(session.role);
+    if (session.status === "registered") return roleSetupPath(session.role, requestedIntent ?? undefined);
     return roleWorkbenchPath(session.role);
   }
 
@@ -58,6 +59,13 @@ function LoginContent() {
       router.replace(requestedNext);
     }
   }, [requestedNext, router]);
+
+  useEffect(() => {
+    if (resetStatus === "success") {
+      setStatusText("密码已重置，请使用新密码登录。");
+      setShowRegisterPrompt(false);
+    }
+  }, [resetStatus]);
 
   function requireAgreement() {
     if (agreed) return true;
@@ -125,7 +133,7 @@ function LoginContent() {
         <div className="dispatchPoster" aria-label="平台介绍">
           <div className="posterBadge">真实需求</div>
           <div className="posterCard">
-            <span>AIGC供需撮合</span>
+            <span>AIGC服务与培训双边市场</span>
             <strong>AIGClancer</strong>
             <em>认证主体 · 公开需求 · 沟通留痕</em>
           </div>
@@ -137,7 +145,7 @@ function LoginContent() {
         <aside className="dispatchLoginPanel modernAuthPanel">
           <div className="authPanelHeader">
             <h1>登录 AIGClancer</h1>
-            <p>登录后按你刚才选择的入口继续：发布需求、完善服务主页、发布培训需求或完善培训主页。</p>
+            <p>登录后直接进入你刚才选择的入口：发布需求、完善服务主页、发布培训需求或完善培训主页。</p>
           </div>
 
           <div className="selectedRole compact authSelectedRole">
@@ -168,6 +176,12 @@ function LoginContent() {
                 </button>
               </div>
             </label>
+            <div className="registerPrompt">
+              <span>忘记密码？</span>
+              <Link href={`/forgot-password?account=${encodeURIComponent(account.trim())}`}>
+                通过邮箱找回
+              </Link>
+            </div>
             <button className="authPrimary" onClick={loginByPassword} disabled={isSubmitting} type="button">
               {isSubmitting ? "正在登录..." : "登录"}
             </button>

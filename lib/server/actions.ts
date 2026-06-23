@@ -1,6 +1,8 @@
 import { monthlyActiveUsers, activeOrders } from "../analytics";
 import { draftProjectBrief } from "../brief-agent";
 import { recommendCreators } from "../matching";
+import { cleanPublicCreators, cleanPublicProjects } from "../public-marketplace";
+import { buyerVerificationFieldsChanged, creatorVerificationFieldsChanged } from "../review-status";
 import {
   ActivityEvent,
   AbuseReport,
@@ -58,6 +60,146 @@ function addActivity(
     createdAt: new Date().toISOString(),
     ...input
   });
+}
+
+function adminActorLabel(input: Record<string, unknown>) {
+  const actorName = String(input.actorName || input.operatorName || "").trim();
+  const actorId = String(input.actorId || input.operatorId || "").trim();
+  if (actorName) return `运营 ${actorName}`;
+  if (actorId) return `运营(${actorId})`;
+  return "平台运营";
+}
+
+function adminActionNote(input: Record<string, unknown>, detail: string) {
+  return `${adminActorLabel(input)}：${detail}`;
+}
+
+function buyerDraft(profile: BuyerProfile): Record<string, unknown> {
+  const { reviewDraft: _draft, reviewDraftSubmittedAt: _submittedAt, reviewDraftRejectedReason: _draftRejected, ...draft } = profile;
+  return draft;
+}
+
+function creatorDraft(profile: CreatorProfile): Record<string, unknown> {
+  const { reviewDraft: _draft, reviewDraftSubmittedAt: _submittedAt, reviewDraftRejectedReason: _draftRejected, ...draft } = profile;
+  return draft;
+}
+
+function keepPublishedBuyerWithDraft(existing: BuyerProfile, next: BuyerProfile): BuyerProfile {
+  return {
+    ...existing,
+    displayName: next.displayName,
+    avatarUrl: next.avatarUrl,
+    profileSlogan: next.profileSlogan,
+    industry: next.industry,
+    location: next.location,
+    companyIntro: next.companyIntro,
+    contactEmail: next.contactEmail,
+    contactPhone: next.contactPhone,
+    websiteUrl: next.websiteUrl,
+    socialUrl: next.socialUrl,
+    serviceArea: next.serviceArea,
+    cover: next.cover,
+    verified: true,
+    rejectedReason: undefined,
+    reviewDraft: buyerDraft(next),
+    reviewDraftSubmittedAt: undefined,
+    reviewDraftRejectedReason: undefined
+  };
+}
+
+function keepPublishedCreatorWithDraft(existing: CreatorProfile, next: CreatorProfile): CreatorProfile {
+  return {
+    ...existing,
+    title: next.title,
+    location: next.location,
+    bio: next.bio,
+    resume: next.resume,
+    skills: next.skills,
+    categories: next.categories,
+    portfolio: next.portfolio,
+    portfolioItems: next.portfolioItems,
+    servicePackages: next.servicePackages,
+    priceMin: next.priceMin,
+    priceMax: next.priceMax,
+    responseTime: next.responseTime,
+    avatarUrl: next.avatarUrl,
+    displayName: next.displayName,
+    profileSlogan: next.profileSlogan,
+    websiteUrl: next.websiteUrl,
+    socialUrl: next.socialUrl,
+    serviceArea: next.serviceArea,
+    contactEmail: next.contactEmail,
+    contactPhone: next.contactPhone,
+    trainingProfile: next.trainingProfile,
+    cover: next.cover,
+    verified: true,
+    rejectedReason: undefined,
+    reviewDraft: creatorDraft(next),
+    reviewDraftSubmittedAt: undefined,
+    reviewDraftRejectedReason: undefined
+  };
+}
+
+function resolveBuyerReview(profile: BuyerProfile, verified: boolean, rejectedReason?: string): BuyerProfile {
+  if (profile.reviewDraft && verified) {
+    return {
+      ...profile,
+      ...profile.reviewDraft,
+      verified: true,
+      rejectedReason: undefined,
+      reviewDraft: undefined,
+      reviewDraftSubmittedAt: undefined,
+      reviewDraftRejectedReason: undefined
+    } as BuyerProfile;
+  }
+
+  if (profile.reviewDraft && profile.verified && !verified) {
+    return {
+      ...profile,
+      reviewDraftSubmittedAt: undefined,
+      reviewDraftRejectedReason: rejectedReason
+    };
+  }
+
+  return {
+    ...profile,
+    verified,
+    rejectedReason,
+    reviewDraft: verified ? undefined : profile.reviewDraft,
+    reviewDraftSubmittedAt: verified ? undefined : profile.reviewDraftSubmittedAt,
+    reviewDraftRejectedReason: verified ? undefined : profile.reviewDraftRejectedReason
+  };
+}
+
+function resolveCreatorReview(profile: CreatorProfile, verified: boolean, rejectedReason?: string): CreatorProfile {
+  if (profile.reviewDraft && verified) {
+    return {
+      ...profile,
+      ...profile.reviewDraft,
+      verified: true,
+      rejectedReason: undefined,
+      reviewDraft: undefined,
+      reviewDraftSubmittedAt: undefined,
+      reviewDraftRejectedReason: undefined
+    } as CreatorProfile;
+  }
+
+  if (profile.reviewDraft && profile.verified && !verified) {
+    return {
+      ...profile,
+      reviewDraftSubmittedAt: undefined,
+      reviewDraftRejectedReason: rejectedReason
+    };
+  }
+
+  return {
+    ...profile,
+    verified,
+    rejectedReason,
+    reviewDraft: verified ? undefined : profile.reviewDraft,
+    reviewDraftSubmittedAt: verified ? undefined : profile.reviewDraftSubmittedAt,
+    reviewDraftRejectedReason: verified ? undefined : profile.reviewDraftRejectedReason
+  };
 }
 
 export function publicUser<T extends { password?: string }>(user: T) {
@@ -124,10 +266,10 @@ export function scopeMarketplaceData(data: MarketplaceData, actor: ServerAuthUse
   };
 }
 
-export function getPublicMarketplace(data: MarketplaceData) {
+export function getPublicMarketplace(data: MarketplaceData, includeTestData = false) {
   return {
-    projects: data.projects.filter((project) => isPublicProject(project)),
-    creators: data.creators.filter((creator) => creator.verified),
+    projects: cleanPublicProjects(data.projects.filter((project) => isPublicProject(project)), includeTestData),
+    creators: cleanPublicCreators(data.creators.filter((creator) => creator.verified), includeTestData),
     metrics: getAdminMetrics(data)
   };
 }
@@ -458,8 +600,9 @@ export function pagedCreators(data: MarketplaceData, searchParams: URLSearchPara
 export function upsertCreator(data: MarketplaceData, input: Record<string, unknown>) {
   const profileId = String(input.id || id("c"));
   const userId = String(input.userId || "u-creator-self");
+  const existingUser = data.users.find((item) => item.id === userId);
   const existing = data.creators.find((item) => item.id === profileId || item.userId === userId);
-  const profile: CreatorProfile = {
+  const nextProfile: CreatorProfile = {
     id: profileId,
     userId,
     name: String(input.name || input.displayName || "新接单方"),
@@ -477,7 +620,7 @@ export function upsertCreator(data: MarketplaceData, input: Record<string, unkno
     completedProjects: asNumber(input.completedProjects, 0),
     rating: asNumber(input.rating, 4.6),
     responseTime: String(input.responseTime || "24小时"),
-    verified: existing?.verified ?? false,
+    verified: false,
     rejectedReason: existing?.rejectedReason,
     identityType: asVerificationType(input.identityType || input.verificationType),
     verificationType: asVerificationType(input.verificationType || input.identityType),
@@ -494,7 +637,42 @@ export function upsertCreator(data: MarketplaceData, input: Record<string, unkno
     trainingProfile: input.trainingProfile as CreatorProfile["trainingProfile"],
     cover: String(input.cover || "linear-gradient(135deg, #153f31, #2f7c5f 46%, #f0b35a)")
   };
+  const resetVerifiedReview = Boolean(existing?.verified) && creatorVerificationFieldsChanged(existing, nextProfile);
+  const profile: CreatorProfile = existing?.verified && resetVerifiedReview
+    ? keepPublishedCreatorWithDraft(existing, nextProfile)
+    : {
+        ...nextProfile,
+        verified: existing?.verified ?? false,
+        rejectedReason: existing?.rejectedReason,
+        reviewDraft: undefined,
+        reviewDraftSubmittedAt: undefined,
+        reviewDraftRejectedReason: undefined
+      };
 
+  data.users = existingUser
+    ? data.users.map((user) => (
+        user.id === userId
+          ? {
+              ...user,
+              name: profile.displayName || profile.name,
+              email: profile.contactEmail || user.email,
+              phone: profile.contactPhone || user.phone
+            }
+          : user
+      ))
+    : [
+        {
+          id: userId,
+          name: profile.displayName || profile.name,
+          account: profile.contactEmail || undefined,
+          phone: profile.contactPhone,
+          email: profile.contactEmail || `${userId}@creator.aigclancer.local`,
+          role: "creator",
+          status: "active",
+          createdAt: today()
+        },
+        ...data.users
+      ];
   data.creators = [profile, ...data.creators.filter((item) => item.id !== profile.id && item.userId !== profile.userId)];
   addActivity(data, {
     userId: profile.userId,
@@ -509,8 +687,9 @@ export function upsertCreator(data: MarketplaceData, input: Record<string, unkno
 export function upsertBuyer(data: MarketplaceData, input: Record<string, unknown>) {
   const profileId = String(input.id || id("bp"));
   const userId = String(input.userId || "u-buyer-1");
+  const existingUser = data.users.find((item) => item.id === userId);
   const existing = (data.buyerProfiles ?? []).find((item) => item.id === profileId || item.userId === userId);
-  const profile: BuyerProfile = {
+  const nextProfile: BuyerProfile = {
     id: profileId,
     userId,
     companyName: String(input.companyName || input.displayName || input.name || "新派单方"),
@@ -528,11 +707,46 @@ export function upsertBuyer(data: MarketplaceData, input: Record<string, unknown
     serviceArea: input.serviceArea ? String(input.serviceArea) : undefined,
     businessLicenseFile: String(input.businessLicenseFile || input.credentialFile || ""),
     qualificationFiles: asStringArray(input.qualificationFiles),
-    verified: existing?.verified ?? false,
+    verified: false,
     rejectedReason: existing?.rejectedReason,
     cover: String(input.cover || "linear-gradient(135deg, #153f31, #2457c5)")
   };
+  const resetVerifiedReview = Boolean(existing?.verified) && buyerVerificationFieldsChanged(existing, nextProfile);
+  const profile: BuyerProfile = existing?.verified && resetVerifiedReview
+    ? keepPublishedBuyerWithDraft(existing, nextProfile)
+    : {
+        ...nextProfile,
+        verified: existing?.verified ?? false,
+        rejectedReason: existing?.rejectedReason,
+        reviewDraft: undefined,
+        reviewDraftSubmittedAt: undefined,
+        reviewDraftRejectedReason: undefined
+      };
 
+  data.users = existingUser
+    ? data.users.map((user) => (
+        user.id === userId
+          ? {
+              ...user,
+              name: profile.displayName || profile.companyName,
+              email: profile.contactEmail || user.email,
+              phone: profile.contactPhone || user.phone
+            }
+          : user
+      ))
+    : [
+        {
+          id: userId,
+          name: profile.displayName || profile.companyName,
+          account: profile.contactEmail || undefined,
+          phone: profile.contactPhone,
+          email: profile.contactEmail || `${userId}@buyer.aigclancer.local`,
+          role: "buyer",
+          status: "active",
+          createdAt: today()
+        },
+        ...data.users
+      ];
   data.buyerProfiles = [profile, ...(data.buyerProfiles ?? []).filter((item) => item.id !== profile.id && item.userId !== profile.userId)];
   addActivity(data, {
     userId: profile.userId,
@@ -645,7 +859,7 @@ export function resolveFeedback(data: MarketplaceData, input: Record<string, unk
       eventType: "resolve_feedback",
       targetType: "feedback",
       targetId: feedback.id,
-      note: resolution.slice(0, 200)
+      note: adminActionNote(input, `${status === "resolved" ? "已处理" : status === "dismissed" ? "暂不处理" : "处理中"}${resolution ? `：${resolution.slice(0, 200)}` : ""}`)
     });
   }
   return feedback ?? null;
@@ -668,7 +882,7 @@ export function resolveReport(data: MarketplaceData, input: Record<string, unkno
       eventType: "resolve_report",
       targetType: "report",
       targetId: report.id,
-      note: resolution || status
+      note: adminActionNote(input, `${status === "resolved" ? "已处理举报" : status === "dismissed" ? "驳回举报" : "举报处理中"}${resolution ? `：${resolution}` : ""}`)
     });
   }
   return report;
@@ -691,7 +905,7 @@ export function suspendUser(data: MarketplaceData, input: Record<string, unknown
       eventType: "suspend_user",
       targetType: "user",
       targetId: user.id,
-      note: suspended ? reason : "解除封禁"
+      note: adminActionNote(input, suspended ? `限制账号：${reason}` : "解除账号限制")
     });
   }
   return user;
@@ -784,7 +998,7 @@ export function verifySubject(data: MarketplaceData, input: Record<string, unkno
 
   if (subjectType === "buyer") {
     data.buyerProfiles = (data.buyerProfiles ?? []).map((profile) =>
-      profile.id === idValue || profile.userId === idValue ? { ...profile, verified, rejectedReason } : profile
+      profile.id === idValue || profile.userId === idValue ? resolveBuyerReview(profile, verified, rejectedReason) : profile
     );
     const profile = data.buyerProfiles.find((item) => item.id === idValue || item.userId === idValue);
     if (profile) {
@@ -794,14 +1008,14 @@ export function verifySubject(data: MarketplaceData, input: Record<string, unkno
         eventType: "review_subject",
         targetType: "buyer_profile",
         targetId: profile.id,
-        note: verified ? "审核通过" : rejectedReason
+        note: adminActionNote(input, verified ? "主体审核通过" : `主体审核驳回：${rejectedReason}`)
       });
     }
     return profile;
   }
 
   data.creators = data.creators.map((creator) =>
-    creator.id === idValue || creator.userId === idValue ? { ...creator, verified, rejectedReason } : creator
+    creator.id === idValue || creator.userId === idValue ? resolveCreatorReview(creator, verified, rejectedReason) : creator
   );
   const creator = data.creators.find((item) => item.id === idValue || item.userId === idValue);
   if (creator) {
@@ -811,7 +1025,7 @@ export function verifySubject(data: MarketplaceData, input: Record<string, unkno
       eventType: "review_subject",
       targetType: "creator",
       targetId: creator.id,
-      note: verified ? "审核通过" : rejectedReason
+      note: adminActionNote(input, verified ? "主体审核通过" : `主体审核驳回：${rejectedReason}`)
     });
   }
   return creator;
@@ -823,7 +1037,15 @@ export function submitSubjectReview(data: MarketplaceData, input: Record<string,
 
   if (subjectType === "buyer") {
     data.buyerProfiles = (data.buyerProfiles ?? []).map((profile) =>
-      profile.id === idValue || profile.userId === idValue ? { ...profile, verified: false, rejectedReason: undefined } : profile
+      profile.id === idValue || profile.userId === idValue
+        ? profile.verified && profile.reviewDraft
+          ? {
+              ...profile,
+              reviewDraftSubmittedAt: new Date().toISOString(),
+              reviewDraftRejectedReason: undefined
+            }
+          : { ...profile, verified: false, rejectedReason: undefined }
+        : profile
     );
     const profile = data.buyerProfiles.find((item) => item.id === idValue || item.userId === idValue);
     if (profile) {
@@ -833,14 +1055,22 @@ export function submitSubjectReview(data: MarketplaceData, input: Record<string,
         eventType: "submit_review",
         targetType: "buyer_profile",
         targetId: profile.id,
-        note: "用户提交认证审核"
+        note: profile.reviewDraft ? "用户提交认证变更审核" : "用户提交认证审核"
       });
     }
     return profile;
   }
 
   data.creators = data.creators.map((creator) =>
-    creator.id === idValue || creator.userId === idValue ? { ...creator, verified: false, rejectedReason: undefined } : creator
+    creator.id === idValue || creator.userId === idValue
+      ? creator.verified && creator.reviewDraft
+        ? {
+            ...creator,
+            reviewDraftSubmittedAt: new Date().toISOString(),
+            reviewDraftRejectedReason: undefined
+          }
+        : { ...creator, verified: false, rejectedReason: undefined }
+      : creator
   );
   const creator = data.creators.find((item) => item.id === idValue || item.userId === idValue);
   if (creator) {
@@ -850,7 +1080,7 @@ export function submitSubjectReview(data: MarketplaceData, input: Record<string,
       eventType: "submit_review",
       targetType: "creator",
       targetId: creator.id,
-      note: "用户提交认证审核"
+      note: creator.reviewDraft ? "用户提交认证变更审核" : "用户提交认证审核"
     });
   }
   return creator;
@@ -884,7 +1114,14 @@ export function reviewProject(data: MarketplaceData, input: Record<string, unkno
     eventType: status === "removed" ? "remove_project" : "review_project",
     targetType: "project",
     targetId: idValue,
-    note: status === "open" ? "审核通过" : rejectedReason
+    note: adminActionNote(
+      input,
+      status === "open"
+        ? "需求审核通过"
+        : status === "removed"
+          ? `需求下架：${rejectedReason}`
+          : `需求审核驳回：${rejectedReason}`
+    )
   });
   return data.projects.find((item) => item.id === idValue);
 }

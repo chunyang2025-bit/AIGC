@@ -57,6 +57,12 @@ if (health.ok && !healthFailures.length) {
   }
 }
 
+if (health.aiStoryProvider?.configured) {
+  pass(`ai story provider ready: ${health.aiStoryProvider.provider}/${health.aiStoryProvider.model}`);
+} else {
+  warn("ai story provider is not configured; confirm whether story generation is intentionally disabled for this pilot");
+}
+
 let marketplace;
 try {
   marketplace = await fetchJson("/api/marketplace");

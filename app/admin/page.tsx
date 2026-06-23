@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { activeOrders, monthlyActiveUsers } from "@/lib/analytics";
 import { activityEventLabel, categoryLabel, money, orderResultReasonLabel, orderStatusLabel, projectStatusLabel, roleLabel, targetTypeLabel, verificationTypeLabel } from "@/lib/format";
 import { deliverableTypeLabel, projectUseCaseLabel, urgencyLabel } from "@/lib/growth-taxonomy";
+import { buyerReviewDiff, creatorReviewDiff } from "@/lib/review-status";
 import { trainingFormatLabel } from "@/lib/training";
 import { loadMarketplaceData, resolveFeedback, resolveReport, reviewProject, suspendUser, verifySubject } from "@/lib/store";
 import { readAuthSession } from "@/lib/auth";
@@ -45,10 +46,52 @@ function feedbackStatusLabel(value: string) {
   return labels[value] ?? value;
 }
 
+function pendingReviewLabel(input: { verified: boolean; hasDraft: boolean; submitted: boolean; rejectedReason?: string }) {
+  if (input.rejectedReason) return input.hasDraft ? "变更需补充" : "资料需补充";
+  if (input.hasDraft && input.submitted) return "变更待审核";
+  if (input.hasDraft) return "变更待提交";
+  if (input.verified) return "已认证";
+  if (input.submitted) return "首次待审核";
+  return "资料待提交";
+}
+
+function pendingReviewClass(input: { verified: boolean; hasDraft: boolean; submitted: boolean; rejectedReason?: string }) {
+  if (input.verified && !input.hasDraft) return "tag green";
+  if (input.rejectedReason) return "tag gold";
+  if (input.hasDraft && !input.submitted) return "tag blue";
+  return "tag gold";
+}
+
+const reviewReasonTemplates = [
+  "资料不完整，请补充主体资质或联系方式后重新提交。",
+  "服务说明不清晰，请补充服务范围、案例或交付说明后重新提交。",
+  "培训信息不完整，请补充培训主题、案例或报价说明后重新提交。",
+  "内容与当前平台定位不匹配，请调整后重新提交。",
+  "主体资料存在风险，账号已被限制。"
+];
+
+const reportResolutionTemplates = [
+  "运营已开始核查。",
+  "已转交人工复核，请等待处理结果。",
+  "已处理并记录。",
+  "已完成核查并采取对应措施。",
+  "未发现违规或证据不足。",
+  "暂未核实到异常情况，已保留记录。"
+];
+
+const feedbackResolutionTemplates = [
+  "运营已记录并开始评估。",
+  "已纳入本轮试运营问题清单。",
+  "已处理或纳入产品迭代。",
+  "已确认采纳，将进入后续排期。",
+  "暂不处理，已保留记录。",
+  "当前阶段暂不调整，已保留建议备查。"
+];
+
 export default function AdminPage() {
   const router = useRouter();
-  const session = readAuthSession();
-  const data = loadMarketplaceData();
+  const [session] = useState(() => readAuthSession());
+  const [data, setData] = useState(() => loadMarketplaceData());
   const intentBudget = data.orders.reduce((sum, order) => sum + order.amount, 0);
   const reachedIntent = data.orders.filter((order) => order.status === "approved").length;
   const buyerMau = monthlyActiveUsers(data, "buyer");
@@ -61,6 +104,8 @@ export default function AdminPage() {
   const suspendedUsers = data.users.filter((user) => user.status === "suspended").length;
   const pendingBuyerProfiles = (data.buyerProfiles ?? []).filter((profile) => !profile.verified);
   const pendingCreators = data.creators.filter((creator) => !creator.verified);
+  const reviewQueueBuyers = (data.buyerProfiles ?? []).filter((profile) => !profile.verified || profile.reviewDraft);
+  const reviewQueueCreators = data.creators.filter((creator) => !creator.verified || creator.reviewDraft);
   const pendingProjectReviews = data.projects.filter((project) => project.status === "pending_review");
   const activeReports = data.reports.filter((report) => report.status === "open" || report.status === "reviewing");
   const activeFeedback = data.feedback.filter((feedback) => feedback.status === "open" || feedback.status === "reviewing");
@@ -69,7 +114,7 @@ export default function AdminPage() {
     ...(data.buyerProfiles ?? []).map((profile) => profile.userId),
     ...data.creators.map((creator) => creator.userId)
   ]);
-  const submittedReviews = (data.buyerProfiles?.length ?? 0) + data.creators.length;
+  const submittedReviews = reviewQueueBuyers.length + reviewQueueCreators.length;
   const publishedProjectUsers = new Set(data.projects.map((project) => project.buyerId));
   const communicatingUsers = new Set([
     ...data.orders.map((order) => order.buyerId),
@@ -86,6 +131,8 @@ export default function AdminPage() {
     { label: "产生沟通主体", value: communicatingUsers.size }
   ];
   const [reviewReason, setReviewReason] = useState("资料不完整，请补充主体资质或联系方式后重新提交。");
+  const [reportResolution, setReportResolution] = useState("运营已开始核查。");
+  const [feedbackResolution, setFeedbackResolution] = useState("运营已记录并开始评估。");
   const [projectQuery, setProjectQuery] = useState("");
   const [projectStatusFilter, setProjectStatusFilter] = useState("pending_review");
   const [projectEntryFilter, setProjectEntryFilter] = useState<"all" | "service" | "training">("all");
@@ -273,7 +320,7 @@ export default function AdminPage() {
       exportedAt: new Date().toISOString(),
       platform: {
         name: "AIGClancer",
-        positioning: "AIGC供需撮合与创作者入驻平台",
+        positioning: "AIGC服务与培训双边市场",
         launchStrategy: "免费开放入驻，派单方资质审核后发布真实需求，接单方基础入驻后通过新手任务完善资料。",
         liabilityBoundary: "平台只提供信息展示、智能匹配和沟通留痕，不托管资金，不承诺交易交付。"
       },
@@ -350,20 +397,77 @@ export default function AdminPage() {
         closeReasons: topCloseReasons
       },
       pendingReviews: {
-        buyers: (data.buyerProfiles ?? []).filter((profile) => !profile.verified).map((profile) => ({
+        buyers: reviewQueueBuyers.map((profile) => ({
           id: profile.id,
           name: profile.displayName ?? profile.companyName,
           type: profile.verificationType,
-          contact: profile.contactEmail || profile.contactPhone
+          contact: profile.contactEmail || profile.contactPhone,
+          hasDraft: Boolean(profile.reviewDraft),
+          rejectedReason: profile.rejectedReason || ""
         })),
-        creators: data.creators.filter((creator) => !creator.verified).map((creator) => ({
+        creators: reviewQueueCreators.map((creator) => ({
           id: creator.id,
           name: creator.displayName ?? creator.name,
           type: creator.verificationType ?? creator.identityType,
-          contact: creator.contactEmail || creator.contactPhone
+          contact: creator.contactEmail || creator.contactPhone,
+          hasDraft: Boolean(creator.reviewDraft),
+          rejectedReason: creator.rejectedReason || ""
         }))
       },
-      recentActivity: data.activityEvents.slice(-50)
+      moderationQueues: {
+        pendingProjects: pendingProjectReviews.map((project) => ({
+          id: project.id,
+          title: project.title,
+          category: project.category,
+          buyerId: project.buyerId,
+          status: project.status,
+          useCase: project.useCase,
+          urgency: project.urgency,
+          createdAt: project.createdAt,
+          note: project.rejectedReason || ""
+        })),
+        activeReports: activeReports.map((report) => ({
+          id: report.id,
+          targetType: report.targetType,
+          targetId: report.targetId,
+          status: report.status,
+          reason: report.reason,
+          resolution: report.resolution || "",
+          reporterId: report.reporterId,
+          createdAt: report.createdAt
+        })),
+        activeFeedback: activeFeedback.map((feedback) => ({
+          id: feedback.id,
+          page: feedback.page,
+          category: feedback.category,
+          rating: feedback.rating ?? null,
+          status: feedback.status,
+          content: feedback.content,
+          resolution: feedback.resolution || "",
+          userId: feedback.userId || "",
+          createdAt: feedback.createdAt
+        })),
+        suspendedAccounts: suspendedAccounts.map((user) => ({
+          id: user.id,
+          name: user.name,
+          role: user.role,
+          email: user.email || "",
+          phone: user.phone || "",
+          suspendedReason: user.suspendedReason || ""
+        }))
+      },
+      recentActivity: data.activityEvents.slice(-50).map((event) => ({
+        id: event.id,
+        eventType: event.eventType,
+        eventLabel: activityEventLabel(event.eventType),
+        targetType: event.targetType,
+        targetLabel: targetTypeLabel(event.targetType),
+        targetId: event.targetId,
+        userId: event.userId,
+        role: event.role,
+        note: event.note || "",
+        createdAt: event.createdAt
+      }))
     };
     const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -379,6 +483,28 @@ export default function AdminPage() {
       router.push("/login?role=admin");
     }
   }, [router, session]);
+
+  useEffect(() => {
+    if (!session?.accessToken || session.role !== "admin") return;
+
+    let active = true;
+    fetch("/api/state", {
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${session.accessToken}`
+      }
+    })
+      .then((response) => response.json().catch(() => null))
+      .then((payload) => {
+        if (!active || !payload?.ok || !payload.data) return;
+        setData(payload.data);
+      })
+      .catch(() => null);
+
+    return () => {
+      active = false;
+    };
+  }, [session?.accessToken, session?.role]);
 
   if (!session || session.role !== "admin") {
     return null;
@@ -402,8 +528,8 @@ export default function AdminPage() {
           className="btn primary"
           onClick={() => {
             if (!confirmAction("确定要将全部待审核主体标记为审核通过吗？")) return;
-            data.buyerProfiles?.filter((profile) => !profile.verified).forEach((profile) => verifySubject("buyer", profile.id));
-            data.creators.filter((creator) => !creator.verified).forEach((creator) => verifySubject("creator", creator.id));
+            reviewQueueBuyers.forEach((profile) => verifySubject("buyer", profile.id));
+            reviewQueueCreators.forEach((creator) => verifySubject("creator", creator.id));
             router.refresh();
           }}
         >
@@ -516,7 +642,7 @@ export default function AdminPage() {
           {recentReviewSubmissions.length ? recentReviewSubmissions.map((event) => (
             <div className="miniLead" key={event.id}>
               <span>{event.label} · {targetTypeLabel(event.targetType)}</span>
-              <em>{event.contact} · {new Date(event.createdAt).toLocaleString("zh-CN", { hour12: false })}</em>
+              <em>{event.note || "提交认证审核"} · {event.contact} · {new Date(event.createdAt).toLocaleString("zh-CN", { hour12: false })}</em>
             </div>
           )) : <div className="muted">还没有用户正式提交认证审核。</div>}
           <div className="notice">
@@ -1050,6 +1176,18 @@ export default function AdminPage() {
               <label htmlFor="review-reason">驳回原因模板</label>
               <input id="review-reason" value={reviewReason} onChange={(event) => setReviewReason(event.target.value)} />
             </div>
+            <div className="toolbarGroup" style={{ flexWrap: "wrap" }}>
+              {reviewReasonTemplates.map((template) => (
+                <button
+                  key={template}
+                  className={reviewReason === template ? "btn primary" : "btn"}
+                  onClick={() => setReviewReason(template)}
+                  type="button"
+                >
+                  {template}
+                </button>
+              ))}
+            </div>
           </div>
           <table className="table">
             <thead>
@@ -1063,9 +1201,24 @@ export default function AdminPage() {
               </tr>
             </thead>
             <tbody>
-              {(data.buyerProfiles ?? []).map((profile) => {
+              {reviewQueueBuyers.map((profile) => {
                   const user = data.users.find((item) => item.id === profile.userId);
                   const suspended = user?.status === "suspended";
+                  const diff = buyerReviewDiff(profile);
+                  const hasDraft = Boolean(profile.reviewDraft);
+                  const submitted = recentReviewSubmissions.some((event) => event.targetId === profile.id || event.userId === profile.userId);
+                  const statusText = pendingReviewLabel({
+                    verified: profile.verified,
+                    hasDraft,
+                    submitted,
+                    rejectedReason: profile.reviewDraftRejectedReason || profile.rejectedReason
+                  });
+                  const statusClass = pendingReviewClass({
+                    verified: profile.verified,
+                    hasDraft,
+                    submitted,
+                    rejectedReason: profile.reviewDraftRejectedReason || profile.rejectedReason
+                  });
                   return (
                     <tr key={profile.id}>
                       <td>{profile.displayName ?? profile.companyName}</td>
@@ -1074,16 +1227,17 @@ export default function AdminPage() {
                       <td>
                         <div className="muted">{profile.businessLicenseFile || "个人主体可无证件照片"}</div>
                         {profile.qualificationFiles.length ? <div className="muted">{profile.qualificationFiles.join("、")}</div> : null}
+                        {diff.length ? <div className="muted">待审核变更：{diff.map((item) => `${item.label}：${item.current} -> ${item.next}`).join("；")}</div> : null}
                       </td>
                       <td>
-                        <span className={profile.verified ? "tag green" : "tag gold"}>{profile.verified ? "已认证" : "待审核"}</span>
+                        <span className={statusClass}>{statusText}</span>
                         {suspended ? <span className="tag">账号受限</span> : null}
-                        {!profile.verified && profile.rejectedReason ? <div className="muted">{profile.rejectedReason}</div> : null}
+                        {hasDraft ? <div className="muted">线上已认证主页继续展示，当前审核的是变更草稿。</div> : null}
+                        {(profile.reviewDraftRejectedReason || profile.rejectedReason) ? <div className="muted">{profile.reviewDraftRejectedReason || profile.rejectedReason}</div> : null}
                       </td>
                       <td>
                         <button
                           className="btn"
-                          disabled={profile.verified}
                           onClick={() => {
                             if (!confirmAction(`确定审核通过「${profile.displayName ?? profile.companyName}」吗？`)) return;
                             verifySubject("buyer", profile.id);
@@ -1095,7 +1249,6 @@ export default function AdminPage() {
                         </button>
                         <button
                           className="btn"
-                          disabled={profile.verified}
                           onClick={() => {
                             if (!confirmAction(`确定驳回「${profile.displayName ?? profile.companyName}」吗？`)) return;
                             verifySubject("buyer", profile.id, false, reviewReason);
@@ -1144,9 +1297,24 @@ export default function AdminPage() {
               </tr>
             </thead>
             <tbody>
-              {data.creators.map((creator) => {
+              {reviewQueueCreators.map((creator) => {
                 const user = data.users.find((item) => item.id === creator.userId);
                 const suspended = user?.status === "suspended";
+                const diff = creatorReviewDiff(creator);
+                const hasDraft = Boolean(creator.reviewDraft);
+                const submitted = recentReviewSubmissions.some((event) => event.targetId === creator.id || event.userId === creator.userId);
+                const statusText = pendingReviewLabel({
+                  verified: creator.verified,
+                  hasDraft,
+                  submitted,
+                  rejectedReason: creator.reviewDraftRejectedReason || creator.rejectedReason
+                });
+                const statusClass = pendingReviewClass({
+                  verified: creator.verified,
+                  hasDraft,
+                  submitted,
+                  rejectedReason: creator.reviewDraftRejectedReason || creator.rejectedReason
+                });
                 return (
                   <tr key={creator.id}>
                     <td>{creator.name}</td>
@@ -1155,16 +1323,17 @@ export default function AdminPage() {
                     <td>
                       <div className="muted">{creator.credentialFile || "个人主体可无证件照片"}</div>
                       {creator.qualificationFiles?.length ? <div className="muted">{creator.qualificationFiles.join("、")}</div> : null}
+                      {diff.length ? <div className="muted">待审核变更：{diff.map((item) => `${item.label}：${item.current} -> ${item.next}`).join("；")}</div> : null}
                     </td>
                     <td>
-                      <span className={creator.verified ? "tag green" : "tag gold"}>{creator.verified ? "已认证" : "待审核"}</span>
+                      <span className={statusClass}>{statusText}</span>
                       {suspended ? <span className="tag">账号受限</span> : null}
-                      {!creator.verified && creator.rejectedReason ? <div className="muted">{creator.rejectedReason}</div> : null}
+                      {hasDraft ? <div className="muted">线上已认证主页继续展示，当前审核的是变更草稿。</div> : null}
+                      {(creator.reviewDraftRejectedReason || creator.rejectedReason) ? <div className="muted">{creator.reviewDraftRejectedReason || creator.rejectedReason}</div> : null}
                     </td>
                     <td>
                       <button
                         className="btn"
-                        disabled={creator.verified}
                         onClick={() => {
                           if (!confirmAction(`确定审核通过「${creator.name}」吗？`)) return;
                           verifySubject("creator", creator.id);
@@ -1176,7 +1345,6 @@ export default function AdminPage() {
                       </button>
                       <button
                         className="btn"
-                        disabled={creator.verified}
                         onClick={() => {
                           if (!confirmAction(`确定驳回「${creator.name}」吗？`)) return;
                           verifySubject("creator", creator.id, false, reviewReason);
@@ -1212,6 +1380,24 @@ export default function AdminPage() {
               <div className="muted">处理用户提交的违规、虚假信息、骚扰和侵权举报。</div>
             </div>
             <ShieldCheck size={18} />
+          </div>
+          <div className="cardBody">
+            <div className="field">
+              <label htmlFor="report-resolution">举报处理说明</label>
+              <input id="report-resolution" value={reportResolution} onChange={(event) => setReportResolution(event.target.value)} />
+            </div>
+            <div className="toolbarGroup" style={{ flexWrap: "wrap" }}>
+              {reportResolutionTemplates.map((template) => (
+                <button
+                  key={template}
+                  className={reportResolution === template ? "btn primary" : "btn"}
+                  onClick={() => setReportResolution(template)}
+                  type="button"
+                >
+                  {template}
+                </button>
+              ))}
+            </div>
           </div>
           <table className="table">
             <thead>
@@ -1250,7 +1436,7 @@ export default function AdminPage() {
                         disabled={report.status === "reviewing"}
                         onClick={() => {
                           if (!confirmAction("确定将该举报标记为处理中吗？")) return;
-                          resolveReport(report.id, "reviewing", "运营已开始核查。");
+                          resolveReport(report.id, "reviewing", reportResolution);
                           router.refresh();
                         }}
                         type="button"
@@ -1262,7 +1448,7 @@ export default function AdminPage() {
                         disabled={report.status === "resolved"}
                         onClick={() => {
                           if (!confirmAction("确定将该举报标记为已处理吗？")) return;
-                          resolveReport(report.id, "resolved", "已处理并记录。");
+                          resolveReport(report.id, "resolved", reportResolution);
                           router.refresh();
                         }}
                         type="button"
@@ -1274,7 +1460,7 @@ export default function AdminPage() {
                         disabled={report.status === "dismissed"}
                         onClick={() => {
                           if (!confirmAction("确定驳回该举报吗？")) return;
-                          resolveReport(report.id, "dismissed", "未发现违规或证据不足。");
+                          resolveReport(report.id, "dismissed", reportResolution);
                           router.refresh();
                         }}
                         type="button"
@@ -1303,6 +1489,24 @@ export default function AdminPage() {
               <div className="muted">收集用户在试用期间遇到的问题、看不懂的流程和想要的功能。</div>
             </div>
             <ShieldCheck size={18} />
+          </div>
+          <div className="cardBody">
+            <div className="field">
+              <label htmlFor="feedback-resolution">建议处理说明</label>
+              <input id="feedback-resolution" value={feedbackResolution} onChange={(event) => setFeedbackResolution(event.target.value)} />
+            </div>
+            <div className="toolbarGroup" style={{ flexWrap: "wrap" }}>
+              {feedbackResolutionTemplates.map((template) => (
+                <button
+                  key={template}
+                  className={feedbackResolution === template ? "btn primary" : "btn"}
+                  onClick={() => setFeedbackResolution(template)}
+                  type="button"
+                >
+                  {template}
+                </button>
+              ))}
+            </div>
           </div>
           <table className="table">
             <thead>
@@ -1336,7 +1540,7 @@ export default function AdminPage() {
                         disabled={feedback.status === "reviewing"}
                         onClick={() => {
                           if (!confirmAction("确定将该建议标记为处理中吗？")) return;
-                          resolveFeedback(feedback.id, "reviewing", "运营已记录并开始评估。");
+                          resolveFeedback(feedback.id, "reviewing", feedbackResolution);
                           router.refresh();
                         }}
                         type="button"
@@ -1348,7 +1552,7 @@ export default function AdminPage() {
                         disabled={feedback.status === "resolved"}
                         onClick={() => {
                           if (!confirmAction("确定将该建议标记为已处理吗？")) return;
-                          resolveFeedback(feedback.id, "resolved", "已处理或纳入产品迭代。");
+                          resolveFeedback(feedback.id, "resolved", feedbackResolution);
                           router.refresh();
                         }}
                         type="button"
@@ -1360,7 +1564,7 @@ export default function AdminPage() {
                         disabled={feedback.status === "dismissed"}
                         onClick={() => {
                           if (!confirmAction("确定暂不处理该建议吗？")) return;
-                          resolveFeedback(feedback.id, "dismissed", "暂不处理，已保留记录。");
+                          resolveFeedback(feedback.id, "dismissed", feedbackResolution);
                           router.refresh();
                         }}
                         type="button"

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { BriefcaseBusiness, GraduationCap, LogIn, Search, Sparkles, UsersRound } from "lucide-react";
+import { BriefcaseBusiness, GraduationCap, Search, Sparkles, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { AuthNavActions } from "@/components/AuthNavActions";
 import { FeedbackWidget } from "@/components/FeedbackWidget";
@@ -7,7 +7,11 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "AIGClancer",
-  description: "连接需求发布方与AIGC创作者的供需撮合平台。"
+  description: "连接需求发布方、接单服务方与培训服务方的供需撮合平台。"
+};
+
+const beianInfo = {
+  icp: "浙ICP备2025220309号-2"
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -49,9 +53,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Link href="/creators?type=trainer">
                 <UsersRound size={16} /> 培训名师
               </Link>
-              <Link href="/login?next=%2Faccount">
-                <LogIn size={16} /> 主体中心
-              </Link>
             </nav>
             <div className="navActions">
               <AuthNavActions />
@@ -65,6 +66,23 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Link href="/rules">入驻规则</Link>
               <Link href="/admin-entry">后台入口</Link>
               <Link href="/disclaimer">免责声明</Link>
+            </div>
+            <div
+              style={{
+                marginTop: 12,
+                display: "flex",
+                flexWrap: "wrap",
+                justifyContent: "center",
+                gap: 10,
+                color: "#66736c",
+                fontSize: 13,
+                lineHeight: 1.6,
+                textAlign: "center"
+              }}
+            >
+              <a href="http://beian.miit.gov.cn/" target="_blank" rel="noreferrer">
+                {beianInfo.icp}
+              </a>
             </div>
           </footer>
           <FeedbackWidget />

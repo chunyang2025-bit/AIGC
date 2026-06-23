@@ -38,9 +38,24 @@ NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 ADMIN_INVITE_CODE=
+DEEPSEEK_API_KEY=
 ```
 
 Generate a strong `ADMIN_INVITE_CODE`. Do not use the local demo invite code in production.
+
+AI story generation may also use one of these alternatives instead of `DEEPSEEK_API_KEY`:
+
+- `CODEX_API_KEY`
+- `OPENAI_API_KEY`
+
+If you use OpenAI/Codex, also set the matching model variable:
+
+- `CODEX_MODEL` or `OPENAI_MODEL`
+
+In Supabase Auth, also confirm:
+
+- Email provider is enabled.
+- Redirect URLs include `https://your-domain.example/reset-password`.
 
 ## 3. Free Pilot Mode
 
@@ -68,7 +83,7 @@ Then run the full local predeploy check:
 npm run check:predeploy
 ```
 
-`check:env` verifies required production variables, HTTPS app URL, and admin invite code strength. `check:predeploy` verifies required files, lint, TypeScript, and production build.
+`check:env` verifies required production variables, HTTPS app URL, admin invite code strength, and reminds operators to validate password-reset email settings in Supabase. `check:predeploy` verifies required files, lint, TypeScript, and production build.
 
 ## 5. Postdeploy Check
 
@@ -101,26 +116,27 @@ The response should include:
 }
 ```
 
-`check:prod` verifies environment, data access, storage, upload limits, and optional integrations. `check:pilot` verifies public supply and demand, including open project demands, training demands, approved service providers, approved training providers, and recommended matches.
+`check:prod` verifies environment, data access, storage, upload limits, optional integrations, and password-reset readiness reminders. `check:pilot` verifies public supply and demand, including open project demands, training demands, approved service providers, approved training providers, and recommended matches.
 
 ## 6. Manual Smoke Test
 
 1. Register a buyer.
-2. Complete the subject profile.
-3. Register an admin with `ADMIN_INVITE_CODE`.
-4. Approve the buyer profile in admin.
-5. Post a free project.
-6. Approve the project in admin.
-7. Register a creator.
-8. Complete creator profile.
-9. Approve creator profile in admin.
-10. Creator opens public projects and expresses interest.
-11. Buyer sees the lead in `/buyer`.
-12. Publish a training demand from a buyer account.
-13. Complete a training provider profile.
-14. Confirm the training provider appears in `/creators`.
-15. Submit a trial feedback item from the feedback widget.
-16. Admin sees activity, lead, feedback, and report metrics.
+2. Send a password reset email and complete the `/reset-password` flow.
+3. Complete the subject profile.
+4. Register an admin with `ADMIN_INVITE_CODE`.
+5. Approve the buyer profile in admin.
+6. Post a free project.
+7. Approve the project in admin.
+8. Register a creator.
+9. Complete creator profile.
+10. Approve creator profile in admin.
+11. Creator opens public projects and expresses interest.
+12. Buyer sees the lead in `/buyer`.
+13. Publish a training demand from a buyer account.
+14. Complete a training provider profile.
+15. Confirm the training provider appears in `/creators`.
+16. Submit a trial feedback item from the feedback widget.
+17. Admin sees activity, lead, feedback, and report metrics.
 
 ## 7. Rollback
 
@@ -135,7 +151,10 @@ If a deployment is bad:
 
 - Keep `SUPABASE_SERVICE_ROLE_KEY` server-side only.
 - Keep `ADMIN_INVITE_CODE` private and rotate it after staff changes.
+- Keep AI provider keys server-side only and verify one real `/api/agent/story` request after deployment.
 - Review new buyer profiles and projects before making them public.
 - Review creator profiles before allowing active outreach.
 - Handle reports from the admin report queue.
 - Keep legal pages aligned with the actual operating entity.
+- Enable a recurring database backup policy in Supabase before broad rollout.
+- Export or snapshot key operational data before any schema migration.

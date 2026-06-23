@@ -2,6 +2,7 @@ import { createReport, paginate } from "../../../lib/server/actions";
 import { getRequestUser, isSupabaseServerConfigured } from "../../../lib/server/auth";
 import { getMarketplaceData, saveMarketplaceData } from "../../../lib/server/data";
 import { rateLimit } from "../../../lib/server/rate-limit";
+import { logRouteFailure, logRouteSuccess } from "../../../lib/server/route-log";
 import { apiFail, apiOk, readJson } from "../../../lib/server/response";
 import { requiredFields } from "../../../lib/server/validation";
 
@@ -37,17 +38,32 @@ export async function POST(request: Request) {
     return apiFail(400, "缺少必要字段", { missing });
   }
 
-  const data = await getMarketplaceData();
-  const user = actor ? data.users.find((item) => item.id === actor.id) : null;
-  if (user?.status === "suspended") {
-    return apiFail(403, user.suspendedReason || "账号已被限制，暂不能提交举报");
-  }
+  try {
+    const data = await getMarketplaceData();
+    const user = actor ? data.users.find((item) => item.id === actor.id) : null;
+    if (user?.status === "suspended") {
+      return apiFail(403, user.suspendedReason || "账号已被限制，暂不能提交举报");
+    }
 
-  const report = createReport(data, actor ? { ...body, reporterId: actor.id } : body);
-  if (!report) {
-    return apiFail(400, "举报内容不完整");
-  }
+    const report = createReport(data, actor ? { ...body, reporterId: actor.id } : body);
+    if (!report) {
+      return apiFail(400, "举报内容不完整");
+    }
 
-  await saveMarketplaceData(data);
-  return apiOk(report);
+    await saveMarketplaceData(data);
+    logRouteSuccess("api/reports", {
+      actorId: actor?.id ?? null,
+      reportId: report.id,
+      targetType: body.targetType ?? null,
+      targetId: body.targetId ?? null
+    });
+    return apiOk(report);
+  } catch (error) {
+    logRouteFailure("api/reports", {
+      actorId: actor?.id ?? null,
+      targetType: body.targetType ?? null,
+      targetId: body.targetId ?? null
+    }, error);
+    return apiFail(500, "举报提交失败，请稍后重试。");
+  }
 }

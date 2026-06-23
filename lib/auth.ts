@@ -1,5 +1,6 @@
 "use client";
 
+import { hasActiveReviewSubmission } from "./review-status";
 import { UserRole } from "./types";
 import { userFacingErrorMessage } from "./error-message";
 
@@ -18,6 +19,13 @@ export type AuthSession = {
 };
 
 const AUTH_KEY = "linggong-zhichuang-auth-v1";
+export const AUTH_SESSION_EVENT = "aigclancer-auth-session";
+
+function notifyAuthSessionChanged() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(AUTH_SESSION_EVENT));
+  }
+}
 
 export function readAuthSession(): AuthSession | null {
   if (typeof window === "undefined") return null;
@@ -35,12 +43,14 @@ export function readAuthSession(): AuthSession | null {
 export function saveAuthSession(session: AuthSession) {
   if (typeof window !== "undefined") {
     window.localStorage.setItem(AUTH_KEY, JSON.stringify(session));
+    notifyAuthSessionChanged();
   }
 }
 
 export function clearAuthSession() {
   if (typeof window !== "undefined") {
     window.localStorage.removeItem(AUTH_KEY);
+    notifyAuthSessionChanged();
   }
 }
 
@@ -59,6 +69,25 @@ export function createAuthSession(input: { role: UserRole; phone: string; email:
   return session;
 }
 
+function hasSavedProfile(userId: string, role: UserRole) {
+  if (role === "admin" || typeof window === "undefined") return false;
+
+  const cached = window.localStorage.getItem("linggong-zhichuang-demo-v2");
+  if (!cached) return false;
+
+  try {
+    const state = JSON.parse(cached) as {
+      buyerProfiles?: Array<{ userId: string }>;
+      creators?: Array<{ userId: string }>;
+    };
+    return role === "buyer"
+      ? Boolean(state.buyerProfiles?.some((profile) => profile.userId === userId))
+      : Boolean(state.creators?.some((creator) => creator.userId === userId));
+  } catch {
+    return false;
+  }
+}
+
 function inferAccountStatus(userId: string, role: UserRole): AccountStatus {
   if (role === "admin") return "approved";
 
@@ -69,8 +98,9 @@ function inferAccountStatus(userId: string, role: UserRole): AccountStatus {
 
   try {
     const state = JSON.parse(cached) as {
-      buyerProfiles?: Array<{ userId: string; verified: boolean }>;
-      creators?: Array<{ userId: string; verified: boolean }>;
+      buyerProfiles?: Array<{ userId: string; verified: boolean; rejectedReason?: string }>;
+      creators?: Array<{ userId: string; verified: boolean; rejectedReason?: string }>;
+      activityEvents?: Array<{ userId: string; eventType?: string; targetType?: string }>;
     };
     const subject =
       role === "buyer"
@@ -78,7 +108,16 @@ function inferAccountStatus(userId: string, role: UserRole): AccountStatus {
         : state.creators?.find((creator) => creator.userId === userId);
 
     if (!subject) return "registered";
-    return subject.verified ? "approved" : "pending_review";
+    if (subject.verified) return "approved";
+    if (subject.rejectedReason) return "registered";
+
+    const submitted = hasActiveReviewSubmission(
+      state,
+      userId,
+      role === "buyer" ? "buyer_profile" : "creator"
+    );
+
+    return submitted ? "pending_review" : "registered";
   } catch {
     return "registered";
   }
@@ -145,6 +184,29 @@ async function requestAuthUser(path: string, input: {
   return parsed.data ?? null;
 }
 
+async function requestJson(path: string, body: Record<string, unknown>) {
+  const response = await fetch(path, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(body)
+  });
+
+  const parsed = await response.json().catch(() => null) as {
+    ok: boolean;
+    error?: string;
+    data?: Record<string, unknown>;
+  } | null;
+
+  if (!response.ok || !parsed?.ok) {
+    throw new Error(userFacingErrorMessage(parsed?.error, "请求失败，请稍后再试。"));
+  }
+
+  return parsed.data ?? null;
+}
+
 function saveUserSession(user: {
   id: string;
   name: string;
@@ -183,6 +245,12 @@ export async function registerAccount(input: { role: UserRole; account: string; 
   return user;
 }
 
+export async function requestPasswordReset(account: string) {
+  return requestJson("/api/auth/password-reset", {
+    account: normalizeAccount(account)
+  });
+}
+
 export async function loginAccount(input: {
   role: UserRole;
   account: string;
@@ -207,7 +275,7 @@ export function setAuthStatus(status: AccountStatus) {
   }
 }
 
-export function setAuthCapability(role: UserRole, status: AccountStatus = "pending_review") {
+export function setAuthCapability(role: UserRole, status: AccountStatus = "registered") {
   const session = readAuthSession();
   if (session) {
     saveAuthSession({ ...session, role: session.role === "admin" ? "admin" : role, status });
@@ -222,6 +290,17 @@ export function roleProfilePath(role: UserRole) {
   if (role === "buyer") return "/account/profile";
   if (role === "creator") return "/account/profile";
   return "/admin";
+}
+
+export function roleVerificationPath(role: UserRole, intent?: string) {
+  if (role === "admin") return "/admin";
+  return intent ? `/account/verification?intent=${encodeURIComponent(intent)}` : "/account/verification";
+}
+
+export function roleSetupPath(role: UserRole, intent?: string) {
+  const session = readAuthSession();
+  if (!session) return roleProfilePath(role);
+  return hasSavedProfile(session.userId, role) ? roleVerificationPath(role, intent) : roleProfilePath(role);
 }
 
 export function roleWorkbenchPath(role: UserRole) {
@@ -240,7 +319,7 @@ export function roleEntryPath(role: UserRole, approvedPath: string) {
   const session = readAuthSession();
   if (!session) return roleLoginPath(role);
   if (session.role === "admin") return role === "admin" ? approvedPath : roleLoginPath(role);
-  if (inferAccountStatus(session.userId, role) === "registered") return roleProfilePath(role);
+  if (inferAccountStatus(session.userId, role) === "registered") return roleSetupPath(role);
   return approvedPath;
 }
 

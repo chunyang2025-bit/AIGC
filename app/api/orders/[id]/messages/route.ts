@@ -2,6 +2,7 @@ import { createMessage } from "../../../../../lib/server/actions";
 import { getRequestUser, isSupabaseServerConfigured } from "../../../../../lib/server/auth";
 import { getMarketplaceData, saveMarketplaceData } from "../../../../../lib/server/data";
 import { rateLimit } from "../../../../../lib/server/rate-limit";
+import { logRouteFailure, logRouteSuccess } from "../../../../../lib/server/route-log";
 import { apiFail, apiOk, readJson } from "../../../../../lib/server/response";
 import { requiredFields } from "../../../../../lib/server/validation";
 
@@ -22,22 +23,35 @@ export async function POST(request: Request, { params }: { params: { id: string 
     return apiFail(400, "缺少必要字段", { missing });
   }
 
-  const data = await getMarketplaceData();
-  const order = data.orders.find((item) => item.id === params.id);
-  const user = actor ? data.users.find((item) => item.id === actor.id) : null;
-  if (user?.status === "suspended") {
-    return apiFail(403, user.suspendedReason || "账号已被限制，暂不能发送消息");
-  }
-  const creator = order ? data.creators.find((item) => item.id === order.creatorId) : null;
-  const allowed = actor && order ? order.buyerId === actor.id || creator?.userId === actor.id : true;
-  if (isSupabaseServerConfigured() && !allowed) {
-    return apiFail(403, "只能在自己的合作线索中发送消息");
-  }
-  const message = createMessage(data, params.id, actor ? { ...body, senderId: actor.id } : body);
-  if (!message) {
-    return apiFail(404, "未找到合作线索");
-  }
+  try {
+    const data = await getMarketplaceData();
+    const order = data.orders.find((item) => item.id === params.id);
+    const user = actor ? data.users.find((item) => item.id === actor.id) : null;
+    if (user?.status === "suspended") {
+      return apiFail(403, user.suspendedReason || "账号已被限制，暂不能发送消息");
+    }
+    const creator = order ? data.creators.find((item) => item.id === order.creatorId) : null;
+    const allowed = actor && order ? order.buyerId === actor.id || creator?.userId === actor.id : true;
+    if (isSupabaseServerConfigured() && !allowed) {
+      return apiFail(403, "只能在自己的合作线索中发送消息");
+    }
+    const message = createMessage(data, params.id, actor ? { ...body, senderId: actor.id } : body);
+    if (!message) {
+      return apiFail(404, "未找到合作线索");
+    }
 
-  await saveMarketplaceData(data);
-  return apiOk(message);
+    await saveMarketplaceData(data);
+    logRouteSuccess("api/orders/messages", {
+      actorId: actor?.id ?? null,
+      orderId: params.id,
+      messageId: message.id
+    });
+    return apiOk(message);
+  } catch (error) {
+    logRouteFailure("api/orders/messages", {
+      actorId: actor?.id ?? null,
+      orderId: params.id
+    }, error);
+    return apiFail(500, "消息发送失败，请稍后重试。");
+  }
 }

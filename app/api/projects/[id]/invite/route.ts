@@ -2,6 +2,7 @@ import { inviteCreator } from "../../../../../lib/server/actions";
 import { getRequestUser, isSupabaseServerConfigured } from "../../../../../lib/server/auth";
 import { getMarketplaceData, saveMarketplaceData } from "../../../../../lib/server/data";
 import { rateLimit } from "../../../../../lib/server/rate-limit";
+import { logRouteFailure, logRouteSuccess } from "../../../../../lib/server/route-log";
 import { apiFail, apiOk, readJson } from "../../../../../lib/server/response";
 import { requiredFields } from "../../../../../lib/server/validation";
 
@@ -22,23 +23,38 @@ export async function POST(request: Request, { params }: { params: { id: string 
     return apiFail(400, "缺少必要字段", { missing });
   }
 
-  const data = await getMarketplaceData();
-  const user = actor ? data.users.find((item) => item.id === actor.id) : null;
-  if (user?.status === "suspended") {
-    return apiFail(403, user.suspendedReason || "账号已被限制，暂不能邀请沟通");
-  }
-  const project = data.projects.find((item) => item.id === params.id);
-  if (isSupabaseServerConfigured() && actor && project?.buyerId !== actor.id) {
-    return apiFail(403, "只能邀请自己需求下的接单方");
-  }
-  if (project && !["pending_review", "open", "matching", "in_progress"].includes(project.status)) {
-    return apiFail(409, "当前需求状态暂不能邀请接单方，请先补充或重新提交需求");
-  }
-  const order = inviteCreator(data, params.id, body);
-  if (!order) {
-    return apiFail(404, "未找到需求或接单方");
-  }
+  try {
+    const data = await getMarketplaceData();
+    const user = actor ? data.users.find((item) => item.id === actor.id) : null;
+    if (user?.status === "suspended") {
+      return apiFail(403, user.suspendedReason || "账号已被限制，暂不能邀请沟通");
+    }
+    const project = data.projects.find((item) => item.id === params.id);
+    if (isSupabaseServerConfigured() && actor && project?.buyerId !== actor.id) {
+      return apiFail(403, "只能邀请自己需求下的接单方");
+    }
+    if (project && !["pending_review", "open", "matching", "in_progress"].includes(project.status)) {
+      return apiFail(409, "当前需求状态暂不能邀请接单方，请先补充或重新提交需求");
+    }
+    const order = inviteCreator(data, params.id, body);
+    if (!order) {
+      return apiFail(404, "未找到需求或接单方");
+    }
 
-  await saveMarketplaceData(data);
-  return apiOk(order);
+    await saveMarketplaceData(data);
+    logRouteSuccess("api/projects/invite", {
+      actorId: actor?.id ?? null,
+      projectId: params.id,
+      creatorId: body.creatorId ?? null,
+      orderId: order.id
+    });
+    return apiOk(order);
+  } catch (error) {
+    logRouteFailure("api/projects/invite", {
+      actorId: actor?.id ?? null,
+      projectId: params.id,
+      creatorId: body.creatorId ?? null
+    }, error);
+    return apiFail(500, "邀请沟通失败，请稍后重试。");
+  }
 }

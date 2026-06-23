@@ -1,31 +1,49 @@
-import { updateProject } from "../../../../lib/server/actions";
+import { isPublicProject, updateProject } from "../../../../lib/server/actions";
 import { getMarketplaceData, saveMarketplaceData } from "../../../../lib/server/data";
-import { apiFail, apiOk, readJson } from "../../../../lib/server/response";
 import { getRequestUser, isSupabaseServerConfigured } from "../../../../lib/server/auth";
+import { logRouteInfo } from "../../../../lib/server/route-log";
+import { apiFail, apiOk, readJson } from "../../../../lib/server/response";
 import { requiredFields } from "../../../../lib/server/validation";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
+  const actor = await getRequestUser(request);
   const data = await getMarketplaceData();
   const project = data.projects.find((item) => item.id === params.id);
 
   if (!project) {
-    return apiFail(404, "未找到需求");
-  }
-  if (project.status !== "open" && project.status !== "matching") {
-    const actor = await getRequestUser(request);
-    const canViewPrivateProject =
-      !isSupabaseServerConfigured() ||
-      actor?.role === "admin" ||
-      actor?.id === project.buyerId;
-    if (!canViewPrivateProject) {
-      return apiFail(404, "未找到需求");
-    }
+    return apiFail(404, "未找到该需求");
   }
 
-  const buyer = data.buyerProfiles?.find((item) => item.userId === project.buyerId);
-  return apiOk({ project, buyer });
+  const creator = actor ? data.creators.find((item) => item.userId === actor.id) : null;
+  const canView = isPublicProject(project) || project.status === "pending_review" || project.status === "in_progress";
+  if (!canView && actor?.role !== "admin" && project.buyerId !== actor?.id && creator?.id !== data.orders.find((order) => order.projectId === project.id)?.creatorId) {
+    return apiFail(404, "未找到该需求");
+  }
+
+  const buyerProfile = data.buyerProfiles?.find((profile) => profile.userId === project.buyerId) ?? null;
+  const sampleMatches = data.matches
+    .filter((match) => match.projectId === project.id)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3);
+  const sampleCreatorIds = new Set(sampleMatches.map((match) => match.creatorId));
+  const sampleCreators = data.creators.filter((creatorItem) => sampleCreatorIds.has(creatorItem.id));
+
+  logRouteInfo("api/projects/[id]", "ready", {
+    actorId: actor?.id ?? null,
+    projectId: project.id,
+    public: isPublicProject(project),
+    sampleMatches: sampleMatches.length
+  });
+
+  return apiOk({
+    project,
+    buyerProfile,
+    currentCreator: creator,
+    sampleMatches,
+    sampleCreators
+  });
 }
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {

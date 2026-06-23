@@ -90,6 +90,7 @@ function servicePackageLines(profile?: CreatorProfile) {
 function ProviderProfileContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const intent = searchParams.get("category") === "AIGC Training" ? "training_provider" : "service";
   const data = loadMarketplaceData();
   const session = readAuthSession();
   const currentProfile = data.creators.find((creator) => creator.userId === session?.userId);
@@ -117,6 +118,8 @@ function ProviderProfileContent() {
   const [packagePrice, setPackagePrice] = useState("");
   const [packageDeliveryDays, setPackageDeliveryDays] = useState("");
   const [packageRevisions, setPackageRevisions] = useState("1");
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState("");
   const [packageDeliverables, setPackageDeliverables] = useState("");
   const [packageDescription, setPackageDescription] = useState("");
   const [priceMin, setPriceMin] = useState(currentProfile ? String(currentProfile.priceMin) : startsAsTraining ? "6000" : "");
@@ -305,37 +308,45 @@ function ProviderProfileContent() {
     }
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    upsertCurrentCreatorProfile({
-      name,
-      title,
-      location,
-      bio,
-      resume,
-      skills: preview.skills,
-      categories: preview.categories.length ? preview.categories : ["AI Short Video"],
-      portfolio: preview.portfolio,
-      portfolioItems: preview.portfolioItems,
-      servicePackages: preview.servicePackages,
-      priceMin: preview.priceMin,
-      priceMax: preview.priceMax,
-      responseTime,
-      identityType,
-      avatarUrl,
-      displayName,
-      profileSlogan,
-      websiteUrl,
-      socialUrl,
-      serviceArea,
-      credentialFile,
-      qualificationFiles: splitList(qualificationFiles),
-      contactEmail,
-      contactPhone,
-      trainingProfile: preview.trainingProfile
-    });
-    setAuthCapability("creator", "pending_review");
-    router.push("/provider");
+    setSaveStatus("");
+    setIsSaving(true);
+    try {
+      await upsertCurrentCreatorProfile({
+        name,
+        title,
+        location,
+        bio,
+        resume,
+        skills: preview.skills,
+        categories: preview.categories.length ? preview.categories : ["AI Short Video"],
+        portfolio: preview.portfolio,
+        portfolioItems: preview.portfolioItems,
+        servicePackages: preview.servicePackages,
+        priceMin: preview.priceMin,
+        priceMax: preview.priceMax,
+        responseTime,
+        identityType,
+        avatarUrl,
+        displayName,
+        profileSlogan,
+        websiteUrl,
+        socialUrl,
+        serviceArea,
+        credentialFile,
+        qualificationFiles: splitList(qualificationFiles),
+        contactEmail,
+        contactPhone,
+        trainingProfile: preview.trainingProfile
+      });
+      setAuthCapability("creator", "registered");
+      router.push(`/account/verification?intent=${encodeURIComponent(intent)}&saved=1`);
+    } catch (error) {
+      setSaveStatus(error instanceof Error ? error.message : "服务主页保存失败，请稍后再试。");
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (
@@ -347,7 +358,7 @@ function ProviderProfileContent() {
           </span>
           <div>
             <h1>{wantsTraining ? "生成培训服务主页" : "生成服务主页"}</h1>
-            <p>主体资料会自动继承。先填展示名称、服务定位、方向标签、报价和联系方式，就能生成一张可发给客户看的主页。</p>
+            <p>主体资料会自动继承。先填展示名称、服务定位、方向标签、报价和联系方式，保存后进入认证中心提交审核。</p>
           </div>
           <div className="profileSteps">
             <span>
@@ -373,8 +384,13 @@ function ProviderProfileContent() {
             <Sparkles size={18} />
           </div>
           <div className="notice">
-            轻入驻建议：先完成展示名称、服务定位、可接方向、报价和联系方式；案例、服务包、课件材料和资质可以后续继续补充。
+            轻入驻建议：先完成展示名称、服务定位、可接方向、报价和联系方式；先保存主页，再在下一步提交认证审核。
           </div>
+          {currentProfile?.verified || subjectProfile?.verified ? (
+            <div className="notice">
+              已认证后仍可继续更新服务主页。案例、报价、介绍和服务包会直接生效；如果修改展示主体名称、认证类型或资质材料，系统会要求重新提交审核。
+            </div>
+          ) : null}
           {loadedCreatorRemix ? (
             <div className="notice">
               已参考「{loadedCreatorRemix}」的主页结构。请替换为你的真实服务能力、案例、报价和联系方式后再保存主页。
@@ -672,13 +688,14 @@ function ProviderProfileContent() {
             </details>
 
             <div className="toolbarGroup">
-              <button className="btn primary" type="submit">
-                <Save size={16} /> 保存并生成主页
+              <button className="btn primary" disabled={isSaving} type="submit">
+                <Save size={16} /> {isSaving ? "正在保存..." : "保存并进入认证审核"}
               </button>
               <Link className="btn" href="/creators">
                 查看创作者大厅 <ArrowRight size={16} />
               </Link>
             </div>
+            {saveStatus ? <div className="notice">{saveStatus}</div> : null}
           </form>
         </section>
 

@@ -23,6 +23,12 @@
 
 在 Authentication / Providers 中开启 Email provider。
 
+在 Authentication / URL Configuration 中确认 Redirect URLs 包含：
+
+```text
+https://你的域名/reset-password
+```
+
 当前版本使用账号密码登录。手机号账号会被转换为内部邮箱格式：
 
 ```text
@@ -68,6 +74,7 @@ NOTIFICATION_SMS_API_KEY=
 - 首页可以打开。
 - 可以注册新账号。
 - 可以用账号密码登录。
+- 可以从登录页发送找回密码邮件，并成功跳转 `/reset-password` 完成密码重置。
 - Supabase `app_users` 能看到新增注册用户。
 - Supabase `activity_events` 能记录登录、发布、沟通等活跃事件。
 - 新账号登录后先进入主体主页装修。
@@ -90,6 +97,7 @@ NOTIFICATION_SMS_API_KEY=
 - 不要在前端代码里使用 service role key。
 - `ADMIN_INVITE_CODE` 必须设置为强随机值，不要使用本地默认值。
 - `NEXT_PUBLIC_APP_URL` 必须是线上 HTTPS 域名。
+- 密码找回依赖 Supabase Email provider 和 `/reset-password` redirect URL，两项缺一都会导致用户无法完成重置。
 - 个人主体不强制上传身份证。
 - 资质材料不要在公开主页展示原始文件。
 - 头像、Logo、作品图走 `public-assets`，资质文件走 `private-verifications`。

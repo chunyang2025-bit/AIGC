@@ -20,7 +20,13 @@ import { createClient } from "@supabase/supabase-js";
 
 const globalStore = globalThis as typeof globalThis & {
   __aigcMarketplaceData?: MarketplaceData;
+  __aigcMarketplaceDataCache?: {
+    data: MarketplaceData;
+    expiresAt: number;
+  };
 };
+
+const MARKETPLACE_CACHE_TTL_MS = 5_000;
 
 function cloneData(data: MarketplaceData): MarketplaceData {
   return JSON.parse(JSON.stringify(data)) as MarketplaceData;
@@ -58,6 +64,31 @@ function normalizeData(data: MarketplaceData): MarketplaceData {
   };
 }
 
+function readMarketplaceCache() {
+  const cached = globalStore.__aigcMarketplaceDataCache;
+  if (!cached) return null;
+  if (cached.expiresAt <= Date.now()) {
+    globalStore.__aigcMarketplaceDataCache = undefined;
+    return null;
+  }
+  return normalizeData(cloneData(cached.data));
+}
+
+function writeMarketplaceCache(data: MarketplaceData) {
+  globalStore.__aigcMarketplaceDataCache = {
+    data: normalizeData(cloneData(data)),
+    expiresAt: Date.now() + MARKETPLACE_CACHE_TTL_MS
+  };
+}
+
+function clearMarketplaceCache() {
+  globalStore.__aigcMarketplaceDataCache = undefined;
+}
+
+export function invalidateMarketplaceCache() {
+  clearMarketplaceCache();
+}
+
 function getServerSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -67,6 +98,12 @@ function getServerSupabase() {
   }
 
   return createClient(url, serviceRoleKey, {
+    global: {
+      fetch: (input, init) => fetch(input, {
+        ...init,
+        cache: "no-store"
+      })
+    },
     auth: {
       persistSession: false,
       autoRefreshToken: false
@@ -75,7 +112,7 @@ function getServerSupabase() {
 }
 
 function requirePersistentStore() {
-  return process.env.NODE_ENV === "production" && !getServerSupabase();
+  return Boolean(getServerSupabase()) || process.env.NODE_ENV === "production";
 }
 
 function toDate(value: unknown) {
@@ -121,6 +158,9 @@ function mapBuyer(row: Record<string, unknown>): BuyerProfile {
     qualificationFiles: toArray<string>(row.qualification_files),
     verified: Boolean(row.verified),
     rejectedReason: row.rejected_reason ? String(row.rejected_reason) : undefined,
+    reviewDraft: row.review_draft && typeof row.review_draft === "object" ? row.review_draft as Record<string, unknown> : undefined,
+    reviewDraftSubmittedAt: row.review_draft_submitted_at ? String(row.review_draft_submitted_at) : undefined,
+    reviewDraftRejectedReason: row.review_draft_rejected_reason ? String(row.review_draft_rejected_reason) : undefined,
     cover: String(row.cover || "linear-gradient(135deg, #153f31, #2457c5)")
   };
 }
@@ -150,6 +190,9 @@ function mapCreator(row: Record<string, unknown>): CreatorProfile {
     verificationType: row.verification_type ? String(row.verification_type) as CreatorProfile["verificationType"] : undefined,
     credentialFile: row.credential_file ? String(row.credential_file) : undefined,
     qualificationFiles: toArray<string>(row.qualification_files),
+    reviewDraft: row.review_draft && typeof row.review_draft === "object" ? row.review_draft as Record<string, unknown> : undefined,
+    reviewDraftSubmittedAt: row.review_draft_submitted_at ? String(row.review_draft_submitted_at) : undefined,
+    reviewDraftRejectedReason: row.review_draft_rejected_reason ? String(row.review_draft_rejected_reason) : undefined,
     avatarUrl: row.avatar_url ? String(row.avatar_url) : undefined,
     displayName: row.display_name ? String(row.display_name) : undefined,
     profileSlogan: row.profile_slogan ? String(row.profile_slogan) : undefined,
@@ -290,6 +333,11 @@ async function readSupabaseState() {
   const supabase = getServerSupabase();
   if (!supabase) return null;
 
+  const cached = readMarketplaceCache();
+  if (cached) {
+    return cached;
+  }
+
   const [
     users,
     buyerProfiles,
@@ -334,7 +382,7 @@ async function readSupabaseState() {
     throw new Error(`Supabase read failed: ${firstError.message}`);
   }
 
-  return normalizeData({
+  const normalized = normalizeData({
     users: (users.data ?? []).map((row) => mapUser(row)),
     buyerProfiles: (buyerProfiles.data ?? []).map((row) => mapBuyer(row)),
     creators: (creators.data ?? []).map((row) => mapCreator(row)),
@@ -347,6 +395,8 @@ async function readSupabaseState() {
     feedback: (feedback.data ?? []).map((row) => mapFeedback(row)),
     activityEvents: (activityEvents.data ?? []).map((row) => mapActivity(row))
   });
+  writeMarketplaceCache(normalized);
+  return normalized;
 }
 
 async function writeSupabaseState(data: MarketplaceData) {
@@ -354,177 +404,279 @@ async function writeSupabaseState(data: MarketplaceData) {
   if (!supabase) return null;
 
   const normalized = normalizeData(cloneData(data));
-  const writeResults = await Promise.all([
-    supabase.from("app_users").upsert(normalized.users.map((user) => ({
-      id: user.id,
-      name: user.name,
-      account: user.account,
-      phone: user.phone,
-      email: user.email,
-      role: user.role,
-      status: user.status ?? "active",
-      suspended_reason: user.suspendedReason,
-      created_at: user.createdAt
-    }))),
-    supabase.from("buyer_profiles").upsert((normalized.buyerProfiles ?? []).map((profile) => ({
-      id: profile.id,
-      user_id: profile.userId,
-      company_name: profile.companyName,
-      display_name: profile.displayName,
-      avatar_url: profile.avatarUrl,
-      profile_slogan: profile.profileSlogan,
-      industry: profile.industry,
-      location: profile.location,
-      company_intro: profile.companyIntro,
-      verification_type: profile.verificationType,
-      contact_email: profile.contactEmail,
-      contact_phone: profile.contactPhone,
-      website_url: profile.websiteUrl,
-      social_url: profile.socialUrl,
-      service_area: profile.serviceArea,
-      business_license_file: profile.businessLicenseFile,
-      qualification_files: profile.qualificationFiles,
-      verified: profile.verified,
-      rejected_reason: profile.rejectedReason,
-      cover: profile.cover
-    }))),
-    supabase.from("creator_profiles").upsert(normalized.creators.map((creator) => ({
-      id: creator.id,
-      user_id: creator.userId,
-      name: creator.name,
-      title: creator.title,
-      location: creator.location,
-      bio: creator.bio,
-      resume: creator.resume,
-      skills: creator.skills,
-      categories: creator.categories,
-      portfolio: creator.portfolio,
-      portfolio_items: creator.portfolioItems,
-      service_packages: creator.servicePackages,
-      price_min: creator.priceMin,
-      price_max: creator.priceMax,
-      completed_projects: creator.completedProjects,
-      rating: creator.rating,
-      response_time: creator.responseTime,
-      verified: creator.verified,
-      rejected_reason: creator.rejectedReason,
-      identity_type: creator.identityType,
-      verification_type: creator.verificationType,
-      credential_file: creator.credentialFile,
-      qualification_files: creator.qualificationFiles,
-      avatar_url: creator.avatarUrl,
-      display_name: creator.displayName,
-      profile_slogan: creator.profileSlogan,
-      website_url: creator.websiteUrl,
-      social_url: creator.socialUrl,
-      service_area: creator.serviceArea,
-      contact_email: creator.contactEmail,
-      contact_phone: creator.contactPhone,
-      training_profile: creator.trainingProfile,
-      cover: creator.cover
-    }))),
-    supabase.from("projects").upsert(normalized.projects.map((project) => ({
-      id: project.id,
-      buyer_id: project.buyerId,
-      title: project.title,
-      description: project.description,
-      category: project.category,
-      tags: project.tags ?? [],
-      use_case: project.useCase,
-      deliverable_types: project.deliverableTypes ?? [],
-      urgency: project.urgency,
-      need_invoice: project.needInvoice,
-      long_term: project.longTerm,
-      accept_platform_recommend: project.acceptPlatformRecommend,
-      training_requirement: project.trainingRequirement,
-      budget: project.budget,
-      deadline: project.deadline,
-      status: project.status,
-      reference_file: project.referenceFile,
-      qualification_file: project.qualificationFile,
-      contact_email: project.contactEmail,
-      contact_phone: project.contactPhone,
-      agent_brief: project.agentBrief,
-      rejected_reason: project.rejectedReason,
-      created_at: project.createdAt
-    }))),
-    supabase.from("project_matches").upsert(normalized.matches.map((match) => ({
-      id: match.id,
-      project_id: match.projectId,
-      creator_id: match.creatorId,
-      score: match.score,
-      reason: match.reason,
-      risk: match.risk,
-      next_step: match.nextStep
-    }))),
-    supabase.from("orders").upsert(normalized.orders.map((order) => ({
-      id: order.id,
-      project_id: order.projectId,
-      buyer_id: order.buyerId,
-      creator_id: order.creatorId,
-      amount: order.amount,
-      status: order.status,
-      result_reason: order.resultReason,
-      result_note: order.resultNote,
-      result_updated_at: order.resultUpdatedAt,
-      deliverable_url: order.deliverableUrl,
-      created_at: order.createdAt
-    }))),
-    supabase.from("messages").upsert(normalized.messages.map((message) => ({
-      id: message.id,
-      order_id: message.orderId,
-      sender_id: message.senderId,
-      body: message.body,
-      attachment_url: message.attachmentUrl,
-      created_at: message.createdAt
-    }))),
-    supabase.from("reviews").upsert(normalized.reviews.map((review) => ({
-      id: review.id,
-      order_id: review.orderId,
-      buyer_id: review.buyerId,
-      creator_id: review.creatorId,
-      rating: review.rating,
-      comment: review.comment,
-      created_at: review.createdAt
-    }))),
-    supabase.from("abuse_reports").upsert(normalized.reports.map((report) => ({
-      id: report.id,
-      reporter_id: report.reporterId,
-      target_type: report.targetType,
-      target_id: report.targetId,
-      reason: report.reason,
-      status: report.status,
-      resolution: report.resolution,
-      created_at: report.createdAt
-    }))),
-    supabase.from("trial_feedback").upsert(normalized.feedback.map((feedback) => ({
-      id: feedback.id,
-      user_id: feedback.userId,
-      role: feedback.role,
-      page: feedback.page,
-      rating: feedback.rating,
-      category: feedback.category,
-      content: feedback.content,
-      status: feedback.status,
-      resolution: feedback.resolution,
-      created_at: feedback.createdAt
-    }))),
-    supabase.from("activity_events").upsert(normalized.activityEvents.map((event) => ({
-      id: event.id,
-      user_id: event.userId,
-      role: event.role,
-      event_type: event.eventType,
-      target_type: event.targetType,
-      target_id: event.targetId,
-      note: event.note,
-      created_at: event.createdAt
-    })))
-  ]);
+  const mapBuyerProfile = (profile: BuyerProfile, includeDraftFields: boolean) => ({
+    id: profile.id,
+    user_id: profile.userId,
+    company_name: profile.companyName,
+    display_name: profile.displayName,
+    avatar_url: profile.avatarUrl,
+    profile_slogan: profile.profileSlogan,
+    industry: profile.industry,
+    location: profile.location,
+    company_intro: profile.companyIntro,
+    verification_type: profile.verificationType,
+    contact_email: profile.contactEmail,
+    contact_phone: profile.contactPhone,
+    website_url: profile.websiteUrl,
+    social_url: profile.socialUrl,
+    service_area: profile.serviceArea,
+    business_license_file: profile.businessLicenseFile,
+    qualification_files: profile.qualificationFiles ?? [],
+    verified: profile.verified,
+    rejected_reason: profile.rejectedReason,
+    ...(includeDraftFields
+      ? {
+          review_draft: profile.reviewDraft,
+          review_draft_submitted_at: profile.reviewDraftSubmittedAt,
+          review_draft_rejected_reason: profile.reviewDraftRejectedReason
+        }
+      : {}),
+    cover: profile.cover
+  });
+  const mapCreatorProfile = (creator: CreatorProfile, includeDraftFields: boolean) => ({
+    id: creator.id,
+    user_id: creator.userId,
+    name: creator.name,
+    title: creator.title,
+    location: creator.location,
+    bio: creator.bio,
+    resume: creator.resume,
+    skills: creator.skills,
+    categories: creator.categories,
+    portfolio: creator.portfolio,
+    portfolio_items: creator.portfolioItems ?? [],
+    service_packages: creator.servicePackages ?? [],
+    price_min: creator.priceMin,
+    price_max: creator.priceMax,
+    completed_projects: creator.completedProjects,
+    rating: creator.rating,
+    response_time: creator.responseTime,
+    verified: creator.verified,
+    rejected_reason: creator.rejectedReason,
+    identity_type: creator.identityType,
+    verification_type: creator.verificationType,
+    credential_file: creator.credentialFile,
+    qualification_files: creator.qualificationFiles ?? [],
+    ...(includeDraftFields
+      ? {
+          review_draft: creator.reviewDraft,
+          review_draft_submitted_at: creator.reviewDraftSubmittedAt,
+          review_draft_rejected_reason: creator.reviewDraftRejectedReason
+        }
+      : {}),
+    avatar_url: creator.avatarUrl,
+    display_name: creator.displayName,
+    profile_slogan: creator.profileSlogan,
+    website_url: creator.websiteUrl,
+    social_url: creator.socialUrl,
+    service_area: creator.serviceArea,
+    contact_email: creator.contactEmail,
+    contact_phone: creator.contactPhone,
+    training_profile: creator.trainingProfile,
+    cover: creator.cover
+  });
+  const isMissingDraftColumnError = (message: string) =>
+    message.includes("review_draft") && message.includes("column");
+  const writeSteps = [
+    {
+      label: "app_users",
+      run: () => supabase.from("app_users").upsert(normalized.users.map((user) => ({
+        id: user.id,
+        name: user.name,
+        account: user.account,
+        phone: user.phone,
+        email: user.email,
+        role: user.role,
+        status: user.status ?? "active",
+        suspended_reason: user.suspendedReason,
+        created_at: user.createdAt
+      })))
+    },
+    {
+      label: "buyer_profiles",
+      run: () => supabase.from("buyer_profiles").upsert((normalized.buyerProfiles ?? []).map((profile) => (
+        mapBuyerProfile(profile, true)
+      ))),
+      fallback: () => supabase.from("buyer_profiles").upsert((normalized.buyerProfiles ?? []).map((profile) => (
+        mapBuyerProfile(profile, false)
+      )))
+    },
+    {
+      label: "creator_profiles",
+      run: () => supabase.from("creator_profiles").upsert(normalized.creators.map((creator) => (
+        mapCreatorProfile(creator, true)
+      ))),
+      fallback: () => supabase.from("creator_profiles").upsert(normalized.creators.map((creator) => (
+        mapCreatorProfile(creator, false)
+      )))
+    },
+    {
+      label: "projects",
+      run: () => supabase.from("projects").upsert(normalized.projects.map((project) => ({
+        id: project.id,
+        buyer_id: project.buyerId,
+        title: project.title,
+        description: project.description,
+        category: project.category,
+        tags: project.tags ?? [],
+        use_case: project.useCase,
+        deliverable_types: project.deliverableTypes ?? [],
+        urgency: project.urgency,
+        need_invoice: project.needInvoice,
+        long_term: project.longTerm,
+        accept_platform_recommend: project.acceptPlatformRecommend,
+        training_requirement: project.trainingRequirement,
+        budget: project.budget,
+        deadline: project.deadline,
+        status: project.status,
+        reference_file: project.referenceFile,
+        qualification_file: project.qualificationFile,
+        contact_email: project.contactEmail,
+        contact_phone: project.contactPhone,
+        agent_brief: project.agentBrief,
+        rejected_reason: project.rejectedReason,
+        created_at: project.createdAt
+      })))
+    },
+    {
+      label: "project_matches",
+      run: () => supabase.from("project_matches").upsert(normalized.matches.map((match) => ({
+        id: match.id,
+        project_id: match.projectId,
+        creator_id: match.creatorId,
+        score: match.score,
+        reason: match.reason,
+        risk: match.risk,
+        next_step: match.nextStep
+      })))
+    },
+    {
+      label: "orders",
+      run: () => supabase.from("orders").upsert(normalized.orders.map((order) => ({
+        id: order.id,
+        project_id: order.projectId,
+        buyer_id: order.buyerId,
+        creator_id: order.creatorId,
+        amount: order.amount,
+        status: order.status,
+        result_reason: order.resultReason,
+        result_note: order.resultNote,
+        result_updated_at: order.resultUpdatedAt,
+        deliverable_url: order.deliverableUrl,
+        created_at: order.createdAt
+      })))
+    },
+    {
+      label: "messages",
+      run: () => supabase.from("messages").upsert(normalized.messages.map((message) => ({
+        id: message.id,
+        order_id: message.orderId,
+        sender_id: message.senderId,
+        body: message.body,
+        attachment_url: message.attachmentUrl,
+        created_at: message.createdAt
+      })))
+    },
+    {
+      label: "reviews",
+      run: () => supabase.from("reviews").upsert(normalized.reviews.map((review) => ({
+        id: review.id,
+        order_id: review.orderId,
+        buyer_id: review.buyerId,
+        creator_id: review.creatorId,
+        rating: review.rating,
+        comment: review.comment,
+        created_at: review.createdAt
+      })))
+    },
+    {
+      label: "abuse_reports",
+      run: () => supabase.from("abuse_reports").upsert(normalized.reports.map((report) => ({
+        id: report.id,
+        reporter_id: report.reporterId,
+        target_type: report.targetType,
+        target_id: report.targetId,
+        reason: report.reason,
+        status: report.status,
+        resolution: report.resolution,
+        created_at: report.createdAt
+      })))
+    },
+    {
+      label: "trial_feedback",
+      run: () => supabase.from("trial_feedback").upsert(normalized.feedback.map((feedback) => ({
+        id: feedback.id,
+        user_id: feedback.userId,
+        role: feedback.role,
+        page: feedback.page,
+        rating: feedback.rating,
+        category: feedback.category,
+        content: feedback.content,
+        status: feedback.status,
+        resolution: feedback.resolution,
+        created_at: feedback.createdAt
+      })))
+    },
+    {
+      label: "activity_events",
+      run: () => supabase.from("activity_events").upsert(normalized.activityEvents.map((event) => ({
+        id: event.id,
+        user_id: event.userId,
+        role: event.role,
+        event_type: event.eventType,
+        target_type: event.targetType,
+        target_id: event.targetId,
+        note: event.note,
+        created_at: event.createdAt
+      })))
+    }
+  ];
 
-  const firstError = writeResults.find((result) => result.error)?.error;
-  if (firstError) throw new Error(`Supabase write failed: ${firstError.message}`);
+  for (const step of writeSteps) {
+    const result = await step.run();
+    if (result.error) {
+      if (step.fallback && isMissingDraftColumnError(result.error.message)) {
+        console.warn(`[supabase] ${step.label} is missing review draft columns; retrying without draft fields`);
+        const fallback = await step.fallback();
+        if (!fallback.error) {
+          continue;
+        }
+      }
+      throw new Error(`Supabase write failed at ${step.label}: ${result.error.message}`);
+    }
+  }
 
+  writeMarketplaceCache(normalized);
   return normalized;
+}
+
+async function clearSupabaseState() {
+  const supabase = getServerSupabase();
+  if (!supabase) return null;
+
+  const deleteSteps = [
+    () => supabase.from("project_matches").delete().neq("id", ""),
+    () => supabase.from("messages").delete().neq("id", ""),
+    () => supabase.from("reviews").delete().neq("id", ""),
+    () => supabase.from("orders").delete().neq("id", ""),
+    () => supabase.from("abuse_reports").delete().neq("id", ""),
+    () => supabase.from("trial_feedback").delete().neq("id", ""),
+    () => supabase.from("activity_events").delete().neq("id", ""),
+    () => supabase.from("projects").delete().neq("id", ""),
+    () => supabase.from("creator_profiles").delete().neq("id", ""),
+    () => supabase.from("buyer_profiles").delete().neq("id", ""),
+    () => supabase.from("app_users").delete().neq("id", "")
+  ];
+
+  for (const run of deleteSteps) {
+    const result = await run();
+    if (result.error) {
+      throw new Error(`Supabase reset failed: ${result.error.message}`);
+    }
+  }
+
+  clearMarketplaceCache();
+  return true;
 }
 
 export async function getMarketplaceData(): Promise<MarketplaceData> {
@@ -555,6 +707,7 @@ export async function saveMarketplaceData(data: MarketplaceData): Promise<Market
   }
 
   globalStore.__aigcMarketplaceData = normalizeData(cloneData(data));
+  writeMarketplaceCache(globalStore.__aigcMarketplaceData);
   return getMarketplaceData();
 }
 
@@ -568,5 +721,8 @@ export async function updateMarketplaceData<T>(
 }
 
 export async function resetMarketplaceData() {
+  if (getServerSupabase()) {
+    await clearSupabaseState();
+  }
   return saveMarketplaceData(cloneData(demoData));
 }

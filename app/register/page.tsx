@@ -111,7 +111,7 @@ function RegisterContent() {
         <aside className="dispatchLoginPanel modernAuthPanel registerPanel">
           <div className="authPanelHeader">
             <h1>{role === "admin" ? "注册平台运营账号" : "注册 AIGClancer"}</h1>
-            <p>{role === "admin" ? "仅平台内部人员使用。注册需要管理员邀请码，账号创建后可进入审核与风控后台。" : "先创建主体账号。登录后会按你选择的入口继续，不需要一次理解所有业务。"}</p>
+            <p>{role === "admin" ? "仅平台内部人员使用。注册需要管理员邀请码，账号创建后可进入审核与风控后台。" : "先创建主体账号。登录后会直接进入你刚才选择的业务路径，不需要一次理解所有业务。"}</p>
           </div>
 
           <div className="selectedRole compact authSelectedRole">

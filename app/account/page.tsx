@@ -1,31 +1,56 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BriefcaseBusiness, CheckCircle2, Clock, FileBadge2, GraduationCap, MessageSquare, ShieldCheck, UserRound, UsersRound } from "lucide-react";
+import { hasActiveReviewSubmission } from "@/lib/review-status";
 import { compactDate, money, orderStatusLabel, projectStatusLabel } from "@/lib/format";
 import { loadMarketplaceData } from "@/lib/store";
 import { readAuthSession } from "@/lib/auth";
 import { notificationsForUser, onboardingCompleteness } from "@/lib/growth";
 import { FirstActionPanel } from "@/components/FirstActionPanel";
+import { BuyerProfile, CreatorProfile, Order, Project } from "@/lib/types";
 
-function statusText(hasProfile: boolean, verified?: boolean) {
-  if (!hasProfile) return "未开通";
-  return verified ? "已通过审核" : "未认证/可试用";
+type ReviewStage = "empty" | "saved" | "submitted" | "approved" | "rejected";
+
+function getStage(input: { hasProfile: boolean; hasDraft?: boolean; submitted: boolean; verified: boolean; rejectedReason?: string }) {
+  if (!input.hasProfile) return "empty" as const;
+  if (input.rejectedReason) return "rejected" as const;
+  if (input.hasDraft && input.submitted) return "submitted" as const;
+  if (input.hasDraft) return "saved" as const;
+  if (input.verified) return "approved" as const;
+  if (input.submitted) return "submitted" as const;
+  return "saved" as const;
 }
 
-function statusClass(hasProfile: boolean, verified?: boolean) {
-  if (!hasProfile) return "tag";
-  return verified ? "tag green" : "tag gold";
+function statusText(stage: ReviewStage) {
+  if (stage === "approved") return "已认证";
+  if (stage === "submitted") return "待运营审核";
+  if (stage === "saved") return "资料已保存";
+  if (stage === "rejected") return "需补充资料";
+  return "未开通";
+}
+
+function statusClass(stage: ReviewStage) {
+  if (stage === "approved") return "tag green";
+  if (stage === "saved") return "tag blue";
+  if (stage === "submitted" || stage === "rejected") return "tag gold";
+  return "tag";
 }
 
 export default function AccountPage() {
   const router = useRouter();
-  const session = readAuthSession();
-  const data = loadMarketplaceData();
-  const buyerProfile = data.buyerProfiles?.find((profile) => profile.userId === session?.userId);
-  const creatorProfile = data.creators.find((creator) => creator.userId === session?.userId);
+  const [session] = useState(() => readAuthSession());
+  const [data, setData] = useState(() => loadMarketplaceData());
+  const [buyerProfile, setBuyerProfile] = useState<BuyerProfile | null>(() => data.buyerProfiles?.find((profile) => profile.userId === session?.userId) ?? null);
+  const [creatorProfile, setCreatorProfile] = useState<CreatorProfile | null>(() => data.creators.find((creator) => creator.userId === session?.userId) ?? null);
+  const [myProjects, setMyProjects] = useState<Project[]>(() => data.projects.filter((project) => project.buyerId === session?.userId));
+  const [myBuyerLeads, setMyBuyerLeads] = useState<Order[]>(() => data.orders.filter((order) => order.buyerId === session?.userId));
+  const [myCreatorLeads, setMyCreatorLeads] = useState<Order[]>(() => {
+    const currentCreator = data.creators.find((creator) => creator.userId === session?.userId);
+    return currentCreator ? data.orders.filter((order) => order.creatorId === currentCreator.id) : [];
+  });
   const hasTrainingCapability = Boolean(creatorProfile?.categories.includes("AIGC Training"));
 
   useEffect(() => {
@@ -34,20 +59,80 @@ export default function AccountPage() {
     }
   }, [router, session]);
 
+  useEffect(() => {
+    if (!session?.accessToken) return;
+
+    let active = true;
+
+    fetch("/api/account/state", {
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${session.accessToken}`
+      }
+    })
+      .then((response) => response.json().catch(() => null))
+      .then((payload) => {
+        if (!active || !payload?.ok || !payload.data) return;
+        const next = payload.data as {
+          buyerProfile: BuyerProfile | null;
+          creatorProfile: CreatorProfile | null;
+          projects: Project[];
+          buyerOrders: Order[];
+          creatorOrders: Order[];
+          notificationsData: ReturnType<typeof loadMarketplaceData>;
+        };
+        setBuyerProfile(next.buyerProfile);
+        setCreatorProfile(next.creatorProfile);
+        setMyProjects(next.projects);
+        setMyBuyerLeads(next.buyerOrders);
+        setMyCreatorLeads(next.creatorOrders);
+        setData(next.notificationsData);
+      })
+      .catch(() => null);
+
+    return () => {
+      active = false;
+    };
+  }, [session?.accessToken]);
+
   if (!session) return null;
 
   const subjectName = buyerProfile?.displayName ?? creatorProfile?.displayName ?? session.name ?? session.email;
   const hasSubjectProfile = Boolean(buyerProfile || creatorProfile);
   const subjectVerified = Boolean(buyerProfile?.verified || creatorProfile?.verified);
-  const pendingReview = hasSubjectProfile && !subjectVerified;
-  const myProjects = data.projects.filter((project) => project.buyerId === session.userId);
-  const myBuyerLeads = data.orders.filter((order) => order.buyerId === session.userId);
-  const myCreatorLeads = creatorProfile ? data.orders.filter((order) => order.creatorId === creatorProfile.id) : [];
+  const buyerSubmitted = hasActiveReviewSubmission(data, session.userId, "buyer_profile");
+  const creatorSubmitted = hasActiveReviewSubmission(data, session.userId, "creator");
+  const subjectSubmitted = buyerSubmitted || creatorSubmitted;
+  const buyerHasDraft = Boolean(buyerProfile?.reviewDraft);
+  const creatorHasDraft = Boolean(creatorProfile?.reviewDraft);
+  const subjectHasDraft = buyerHasDraft || creatorHasDraft;
+  const subjectRejectedReason = buyerProfile?.reviewDraftRejectedReason || creatorProfile?.reviewDraftRejectedReason || buyerProfile?.rejectedReason || creatorProfile?.rejectedReason;
+  const subjectStage = getStage({
+    hasProfile: hasSubjectProfile,
+    hasDraft: subjectHasDraft,
+    submitted: subjectSubmitted,
+    verified: subjectVerified,
+    rejectedReason: subjectRejectedReason
+  });
+  const buyerStage = getStage({
+    hasProfile: Boolean(buyerProfile),
+    hasDraft: buyerHasDraft,
+    submitted: buyerSubmitted,
+    verified: Boolean(buyerProfile?.verified),
+    rejectedReason: buyerProfile?.reviewDraftRejectedReason || buyerProfile?.rejectedReason
+  });
+  const creatorStage = getStage({
+    hasProfile: Boolean(creatorProfile),
+    hasDraft: creatorHasDraft,
+    submitted: creatorSubmitted,
+    verified: Boolean(creatorProfile?.verified),
+    rejectedReason: creatorProfile?.reviewDraftRejectedReason || creatorProfile?.rejectedReason
+  });
   const projectDemands = myProjects.filter((project) => project.category !== "AIGC Training");
   const trainingDemands = myProjects.filter((project) => project.category === "AIGC Training");
   const activation = onboardingCompleteness({
     hasProfile: hasSubjectProfile,
-    submittedReview: hasSubjectProfile,
+    submittedReview: subjectSubmitted || subjectVerified,
     verified: subjectVerified,
     hasCapability: Boolean(buyerProfile || creatorProfile),
     hasLead: myBuyerLeads.length + myCreatorLeads.length > 0
@@ -62,20 +147,28 @@ export default function AccountPage() {
   const hasAnyLead = myBuyerLeads.length + myCreatorLeads.length > 0;
   const firstAction = !hasSubjectProfile
     ? {
-        title: "先完成主体主页，进入审核队列",
+        title: "先完成主体主页，再进入认证中心",
         primaryLabel: "创建主体主页",
         primaryHref: "/account/profile",
         secondaryLabel: "先看公开市场",
         secondaryHref: "/projects"
       }
-    : !subjectVerified
+    : subjectStage === "saved" || subjectStage === "rejected"
       ? {
-          title: "未认证也可以先试用完整流程",
-          primaryLabel: buyerProfile ? "进入需求方后台" : "进入服务方后台",
-          primaryHref: buyerProfile ? "/buyer" : "/provider",
-          secondaryLabel: "查看认证状态",
+          title: subjectHasDraft ? "认证变更已保存，下一步提交审核" : subjectStage === "rejected" ? "先补充资料，再重新提交认证审核" : "主页已保存，下一步提交认证审核",
+          primaryLabel: "进入认证中心",
+          primaryHref: "/account/verification",
+          secondaryLabel: subjectStage === "rejected" ? "补充主体资料" : "继续试用业务",
           secondaryHref: "/account/verification"
         }
+      : subjectStage === "submitted"
+        ? {
+            title: "资料已进入待审核，先继续试用业务流程",
+            primaryLabel: buyerProfile ? "进入需求方后台" : "进入服务方后台",
+            primaryHref: buyerProfile ? "/buyer" : "/provider",
+            secondaryLabel: "查看认证状态",
+            secondaryHref: "/account/verification"
+          }
       : buyerProfile && !hasAnyDemand
         ? {
             title: "发布第一个需求，让系统开始匹配",
@@ -156,7 +249,7 @@ export default function AccountPage() {
             <div>
               <h2 style={{ margin: 0 }}>入驻进度</h2>
             </div>
-            <span className={subjectVerified ? "tag green" : pendingReview ? "tag gold" : "tag"}>
+            <span className={statusClass(subjectStage)}>
               完整度 {activation.score}%
             </span>
           </div>
@@ -169,10 +262,16 @@ export default function AccountPage() {
               </Link>
             ))}
           </div>
-          {pendingReview ? (
+          {subjectStage === "submitted" ? (
             <section className="notice">
-              <Clock size={15} /> 资料已提交平台审核。预计1-2个工作日内完成；认证标准、缺项和补充入口可在认证中心查看。
+              <Clock size={15} /> 认证资料已提交，正在等待运营人工核验。预计1-2个工作日内完成；认证标准、缺项和补充入口可在认证中心查看。
               <Link className="btn" href="/account/verification">查看认证中心</Link>
+            </section>
+          ) : null}
+          {subjectStage === "saved" || subjectStage === "rejected" ? (
+            <section className="notice">
+              <FileBadge2 size={15} /> 主页资料已经保存，但还没有进入审核队列。下一步请到认证中心点击“提交认证审核”。
+              <Link className="btn" href="/account/verification">进入认证中心</Link>
             </section>
           ) : null}
           {!hasSubjectProfile ? (
@@ -197,7 +296,7 @@ export default function AccountPage() {
           </Link>
           <Link className="miniLead" href="/account/verification">
             <span>认证教程：提交方式、审核入口和通过标准</span>
-            <em>保存主页即进入待审核；补齐联系方式、主体类型和资质材料后由运营后台人工通过。</em>
+            <em>保存主页后进入认证中心；点击提交认证审核后，资料才会进入运营后台待审核队列。</em>
           </Link>
           {notifications.length ? notifications.map((item) => (
             <Link className="miniLead" href={item.href} key={item.id}>
@@ -212,8 +311,8 @@ export default function AccountPage() {
         <div className="cardBody stack">
           <div className="spaceBetween">
             <ShieldCheck size={22} />
-            <span className={statusClass(hasSubjectProfile, subjectVerified)}>
-              {statusText(hasSubjectProfile, subjectVerified)}
+            <span className={statusClass(subjectStage)}>
+              {statusText(subjectStage)}
             </span>
           </div>
           <div>
@@ -238,8 +337,8 @@ export default function AccountPage() {
           <div className="cardBody stack">
             <div className="spaceBetween">
               <BriefcaseBusiness size={22} />
-              <span className={statusClass(Boolean(buyerProfile), buyerProfile?.verified)}>
-                {statusText(Boolean(buyerProfile), buyerProfile?.verified)}
+              <span className={statusClass(buyerStage)}>
+                {statusText(buyerStage)}
               </span>
             </div>
             <div>
@@ -273,8 +372,8 @@ export default function AccountPage() {
           <div className="cardBody stack">
             <div className="spaceBetween">
               <UserRound size={22} />
-              <span className={statusClass(Boolean(creatorProfile), creatorProfile?.verified)}>
-                {statusText(Boolean(creatorProfile), creatorProfile?.verified)}
+              <span className={statusClass(creatorStage)}>
+                {statusText(creatorStage)}
               </span>
             </div>
             <div>
@@ -372,7 +471,7 @@ export default function AccountPage() {
             {creatorProfile ? (
               <Link className="miniLead" href={`/creators/${creatorProfile.id}`}>
                 <span>{creatorProfile.displayName ?? creatorProfile.name}</span>
-                <em>{creatorProfile.verified ? "已认证展示页" : "展示页待审核"}</em>
+                <em>{creatorStage === "approved" ? "已认证展示页" : creatorStage === "submitted" ? "展示页待审核" : "展示页资料已保存"}</em>
               </Link>
             ) : (
               <div className="muted">启用服务方身份后，这里会显示你的展示页和沟通线索。</div>
@@ -390,7 +489,7 @@ export default function AccountPage() {
       </div>
 
       <section className="notice">
-        <Clock size={15} /> 试运营期间不强制审核。资料填好后可先试用发布、匹配和沟通；未审核、未认证会保留风险提示，正式合作前建议完成认证。
+        <Clock size={15} /> 试运营期间不强制审核。资料保存后可先试用发布、匹配和沟通；正式合作前建议提交认证审核并等待通过。
       </section>
     </main>
   );

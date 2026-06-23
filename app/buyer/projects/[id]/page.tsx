@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { notFound, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Bot, CheckCircle2, FileBadge2, FileText, Search, Sparkles, UsersRound } from "lucide-react";
@@ -11,21 +11,29 @@ import { readAuthSession } from "@/lib/auth";
 import { isCandidateCreator, readCandidateCreatorIds, toggleCandidateCreator } from "@/lib/candidates";
 import { buyerProjectNextStep, creatorInviteChecklist, projectTrainingConversion } from "@/lib/opportunities";
 import { trainingFormatLabel } from "@/lib/training";
+import { BuyerProfile, CreatorProfile, Order, Project, ProjectMatch } from "@/lib/types";
 
 export default function BuyerProjectDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const session = readAuthSession();
-  const data = loadMarketplaceData();
-  const project = data.projects.find((item) => item.id === params.id);
+  const [session] = useState(() => readAuthSession());
+  const [data, setData] = useState(() => loadMarketplaceData());
+  const [project, setProject] = useState<Project | null>(() => data.projects.find((item) => item.id === params.id) ?? null);
 
   if (!project) {
     notFound();
   }
 
-  const matches = getProjectMatches(data, project.id);
+  const [matches, setMatches] = useState<ProjectMatch[]>(() => getProjectMatches(data, project.id));
   const [candidateIds, setCandidateIds] = useState(readCandidateCreatorIds(project.id));
-  const leads = data.orders.filter((order) => order.projectId === project.id);
-  const buyerProfile = data.buyerProfiles?.find((profile) => profile.userId === session?.userId);
+  const [leads, setLeads] = useState<Order[]>(() => data.orders.filter((order) => order.projectId === project.id));
+  const [buyerProfile, setBuyerProfile] = useState<BuyerProfile | null>(() => data.buyerProfiles?.find((profile) => profile.userId === session?.userId) ?? null);
+  const [creators, setCreators] = useState<CreatorProfile[]>(() => {
+    const creatorIds = new Set([
+      ...matches.map((item) => item.creatorId),
+      ...data.orders.filter((order) => order.projectId === project.id).map((order) => order.creatorId)
+    ]);
+    return data.creators.filter((creator) => creatorIds.has(creator.id));
+  });
   const verified = Boolean(buyerProfile?.verified);
   const canTrialInvite = Boolean(buyerProfile) && ["pending_review", "open", "matching", "in_progress"].includes(project.status);
   const isTrainingProject = project.category === "AIGC Training";
@@ -38,12 +46,47 @@ export default function BuyerProjectDetailPage({ params }: { params: { id: strin
   const nextStep = buyerProjectNextStep(project, data, Boolean(buyerProfile));
   const conversion = projectTrainingConversion(project);
   const candidateRows = candidateIds.flatMap((id) => {
-    const creator = data.creators.find((item) => item.id === id);
+    const creator = creators.find((item) => item.id === id) ?? data.creators.find((item) => item.id === id);
     if (!creator) return [];
     const match = matches.find((item) => item.creatorId === creator.id);
     const invited = leads.some((order) => order.creatorId === creator.id);
     return [{ creator, match, invited, checklist: creatorInviteChecklist(creator, project, invited) }];
   });
+
+  useEffect(() => {
+    if (!session?.accessToken) return;
+
+    let active = true;
+
+    fetch(`/api/buyer/projects/${params.id}`, {
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${session.accessToken}`
+      }
+    })
+      .then((response) => response.json().catch(() => null))
+      .then((payload) => {
+        if (!active || !payload?.ok || !payload.data) return;
+        const next = payload.data as {
+          project: Project;
+          buyerProfile: BuyerProfile | null;
+          matches: ProjectMatch[];
+          creators: CreatorProfile[];
+          leads: Order[];
+        };
+        setProject(next.project);
+        setBuyerProfile(next.buyerProfile);
+        setMatches(next.matches);
+        setCreators(next.creators);
+        setLeads(next.leads);
+        setData(loadMarketplaceData());
+      })
+      .catch(() => null);
+
+    return () => {
+      active = false;
+    };
+  }, [params.id, session?.accessToken]);
 
   return (
     <main className="main">
@@ -242,7 +285,7 @@ export default function BuyerProjectDetailPage({ params }: { params: { id: strin
             </div>
             <div className="grid">
               {matches.map((match) => {
-                const creator = data.creators.find((item) => item.id === match.creatorId);
+                const creator = creators.find((item) => item.id === match.creatorId) ?? data.creators.find((item) => item.id === match.creatorId);
                 if (!creator) return null;
                 const invited = leads.some((order) => order.creatorId === creator.id);
 

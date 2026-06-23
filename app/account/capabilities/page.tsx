@@ -1,33 +1,73 @@
 "use client";
 
-import { Suspense, useEffect, useMemo } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, BriefcaseBusiness, CheckCircle2, GraduationCap, MessageSquare, ShieldCheck, UserRound, UsersRound } from "lucide-react";
+import { hasActiveReviewSubmission } from "@/lib/review-status";
 import { loadMarketplaceData, upsertCurrentBuyerProfile } from "@/lib/store";
 import { readAuthSession, setAuthCapability } from "@/lib/auth";
 
 type BusinessIntent = "dispatch" | "service" | "training_demand" | "training_provider";
+type ReviewStage = "empty" | "saved" | "submitted" | "approved" | "rejected";
 
 function normalizeIntent(value: string | null): BusinessIntent {
   if (value === "service" || value === "training_demand" || value === "training_provider") return value;
   return "dispatch";
 }
 
-function statusText(enabled: boolean, verified?: boolean) {
-  if (!enabled) return "未启用";
-  return verified ? "已通过审核" : "未认证/可试用";
+function getStage(input: { hasProfile: boolean; hasDraft?: boolean; submitted: boolean; verified: boolean; rejectedReason?: string }): ReviewStage {
+  if (!input.hasProfile) return "empty";
+  if (input.rejectedReason) return "rejected";
+  if (input.hasDraft && input.submitted) return "submitted";
+  if (input.hasDraft) return "saved";
+  if (input.verified) return "approved";
+  if (input.submitted) return "submitted";
+  return "saved";
+}
+
+function statusText(stage: ReviewStage) {
+  if (stage === "approved") return "已认证";
+  if (stage === "submitted") return "待运营审核";
+  if (stage === "saved") return "资料已保存";
+  if (stage === "rejected") return "需补充资料";
+  return "未启用";
+}
+
+function statusClass(stage: ReviewStage) {
+  if (stage === "approved") return "tag green";
+  if (stage === "saved") return "tag blue";
+  if (stage === "submitted" || stage === "rejected") return "tag gold";
+  return "tag";
 }
 
 function AccountCapabilitiesContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const intent = normalizeIntent(searchParams.get("intent"));
-  const session = useMemo(() => readAuthSession(), []);
-  const data = useMemo(() => loadMarketplaceData(), []);
+  const [session] = useState(() => readAuthSession());
+  const [data] = useState(() => loadMarketplaceData());
   const subject = data.buyerProfiles?.find((profile) => profile.userId === session?.userId);
   const creator = data.creators.find((profile) => profile.userId === session?.userId);
   const hasTrainingService = Boolean(creator?.categories.includes("AIGC Training"));
+  const buyerSubmitted = session ? hasActiveReviewSubmission(data, session.userId, "buyer_profile") : false;
+  const creatorSubmitted = session ? hasActiveReviewSubmission(data, session.userId, "creator") : false;
+  const buyerHasDraft = Boolean(subject?.reviewDraft);
+  const creatorHasDraft = Boolean(creator?.reviewDraft);
+  const subjectStage = getStage({
+    hasProfile: Boolean(subject),
+    hasDraft: buyerHasDraft,
+    submitted: buyerSubmitted,
+    verified: Boolean(subject?.verified),
+    rejectedReason: subject?.reviewDraftRejectedReason || subject?.rejectedReason
+  });
+  const creatorStage = getStage({
+    hasProfile: Boolean(creator),
+    hasDraft: creatorHasDraft,
+    submitted: creatorSubmitted,
+    verified: Boolean(creator?.verified),
+    rejectedReason: creator?.reviewDraftRejectedReason || creator?.rejectedReason
+  });
 
   useEffect(() => {
     if (!session) {
@@ -60,7 +100,7 @@ function AccountCapabilitiesContent() {
       businessLicenseFile: subject.businessLicenseFile,
       qualificationFiles: subject.qualificationFiles
     });
-    setAuthCapability("buyer", subject.verified ? "approved" : "pending_review");
+    setAuthCapability("buyer", subject.verified ? "approved" : "registered");
     router.push("/buyer");
   }
 
@@ -70,8 +110,8 @@ function AccountCapabilitiesContent() {
       icon: BriefcaseBusiness,
       title: "发布AIGC项目需求",
       description: "把图片、短视频、数字人、文案、PPT或工作流需求发布出来，获得推荐服务方和候选对比。",
-      status: statusText(Boolean(subject), subject.verified),
-      statusClass: subject.verified ? "tag green" : "tag gold",
+      status: statusText(subjectStage),
+      statusClass: statusClass(subjectStage),
       primaryLabel: subject.verified ? "发布项目需求" : "试用发布项目需求",
       primaryHref: "/post-project",
       primaryAction: undefined,
@@ -90,8 +130,8 @@ function AccountCapabilitiesContent() {
       icon: GraduationCap,
       title: "发布企业AI培训需求",
       description: "说明培训对象、人数、主题、形式和目标，向讲师或培训机构索要课程方案、报价和可沟通时间。",
-      status: statusText(Boolean(subject), subject.verified),
-      statusClass: subject.verified ? "tag green" : "tag gold",
+      status: statusText(subjectStage),
+      statusClass: statusClass(subjectStage),
       primaryLabel: subject.verified ? "发布培训需求" : "试用发布培训需求",
       primaryHref: "/post-project?category=AIGC%20Training",
       primaryAction: undefined,
@@ -110,8 +150,8 @@ function AccountCapabilitiesContent() {
       icon: UserRound,
       title: "完善接单服务主页",
       description: "展示可交付方向、服务包报价、案例、简历和联系方式，让派单方能判断你是否适合承接项目。",
-      status: statusText(Boolean(creator), creator?.verified),
-      statusClass: creator?.verified ? "tag green" : creator ? "tag gold" : "tag",
+      status: statusText(creatorStage),
+      statusClass: statusClass(creatorStage),
       primaryLabel: creator ? "编辑服务主页" : "创建服务主页",
       primaryHref: "/provider/profile",
       primaryAction: undefined,
@@ -130,8 +170,8 @@ function AccountCapabilitiesContent() {
       icon: UsersRound,
       title: "完善培训方主页",
       description: "展示可讲主题、培训形式、企业案例、课件材料和报价说明，获得企业培训线索。",
-      status: statusText(hasTrainingService, creator?.verified),
-      statusClass: hasTrainingService && creator?.verified ? "tag green" : creator ? "tag gold" : "tag",
+      status: statusText(hasTrainingService ? creatorStage : "empty"),
+      statusClass: statusClass(hasTrainingService ? creatorStage : "empty"),
       primaryLabel: hasTrainingService ? "编辑培训主页" : "创建培训主页",
       primaryHref: "/provider/profile?category=AIGC%20Training",
       primaryAction: undefined,
@@ -191,7 +231,7 @@ function AccountCapabilitiesContent() {
             <span>当前状态</span>
           </div>
           <div className="metric">
-            <strong>{subject.verified ? "已认证" : "未认证"}</strong>
+            <strong>{statusText(subjectStage)}</strong>
             <span>主体主页</span>
           </div>
         </div>
@@ -215,9 +255,15 @@ function AccountCapabilitiesContent() {
               </div>
             ))}
           </div>
-          {!subject.verified ? (
+          {subjectStage !== "approved" ? (
             <div className="notice stack">
-              <span>试运营期间不强制审核。你可以先使用发布、匹配和沟通功能；认证中心会展示当前审核状态、通过标准和缺项。</span>
+              <span>
+                {subjectStage === "submitted"
+                  ? "主体资料已提交认证审核，正在等待运营人工核验。试运营期间你仍然可以继续使用发布、匹配和沟通功能。"
+                  : subjectStage === "rejected"
+                    ? "当前资料需要补充后重新提交认证审核。认证中心会显示审核意见和缺项。"
+                    : "主体主页已经保存，但还没有提交认证审核。先去认证中心点一下“提交认证审核”，再进入待审核队列。"}
+              </span>
               <div className="toolbarGroup">
                 <Link className="btn" href={`/account/verification?intent=${intent}`}>查看认证中心</Link>
                 <Link className="btn" href={`/account/profile?intent=${intent}`}>补充主体资料</Link>
@@ -233,8 +279,8 @@ function AccountCapabilitiesContent() {
             <div>
               <strong>主体主页共用</strong>
             </div>
-            <span className={subject.verified ? "tag green" : "tag gold"}>
-              {subject.verified ? "已通过审核" : "未认证/待审核"}
+            <span className={statusClass(subjectStage)}>
+              {statusText(subjectStage)}
             </span>
           </div>
           <div className="toolbarGroup">

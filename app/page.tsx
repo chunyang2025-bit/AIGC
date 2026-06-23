@@ -1,12 +1,12 @@
 import { ClientHome } from "@/components/ClientHome";
-import { BetaNotice } from "@/components/BetaNotice";
+import { HomeBetaNotice } from "@/components/HomeBetaNotice";
 
 export default function Page() {
   return (
     <>
       <ClientHome />
       <main className="main betaHomeNotice">
-        <BetaNotice />
+        <HomeBetaNotice />
       </main>
     </>
   );

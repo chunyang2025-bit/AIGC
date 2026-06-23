@@ -2,6 +2,8 @@
 
 import { demoData } from "./demo-data";
 import { recommendCreators } from "./matching";
+import { cleanPublicMarketplaceData } from "./public-marketplace";
+import { buyerVerificationFieldsChanged, creatorVerificationFieldsChanged } from "./review-status";
 import {
   AbuseReport,
   ActivityEvent,
@@ -28,6 +30,28 @@ import { readAuthSession, saveAuthSession } from "./auth";
 const STORAGE_KEY = "linggong-zhichuang-demo-v2";
 const USE_API_KEY = "linggong-zhichuang-use-api";
 const API_BASE = "";
+
+type RequestJsonOptions = {
+  throwOnError?: boolean;
+  fallbackErrorMessage?: string;
+};
+
+type AccountStatePayload = {
+  buyerProfile: BuyerProfile | null;
+  creatorProfile: CreatorProfile | null;
+  projects: Project[];
+  buyerOrders: Order[];
+  creatorOrders: Order[];
+  creatorProjects?: Project[];
+  relatedProjects?: Project[];
+  matches: ProjectMatch[];
+  notificationsData: MarketplaceData;
+};
+
+type PublicMarketplacePayload = {
+  projects: Project[];
+  creators: CreatorProfile[];
+};
 
 function cloneData(data: MarketplaceData): MarketplaceData {
   return JSON.parse(JSON.stringify(data)) as MarketplaceData;
@@ -91,6 +115,72 @@ function normalizeData(data: MarketplaceData): MarketplaceData {
   };
 }
 
+function buyerDraft(profile: BuyerProfile): Record<string, unknown> {
+  const { reviewDraft: _draft, reviewDraftSubmittedAt: _submittedAt, reviewDraftRejectedReason: _draftRejected, ...draft } = profile;
+  return draft;
+}
+
+function creatorDraft(profile: CreatorProfile): Record<string, unknown> {
+  const { reviewDraft: _draft, reviewDraftSubmittedAt: _submittedAt, reviewDraftRejectedReason: _draftRejected, ...draft } = profile;
+  return draft;
+}
+
+function keepPublishedBuyerWithDraft(existing: BuyerProfile, next: BuyerProfile): BuyerProfile {
+  return {
+    ...existing,
+    displayName: next.displayName,
+    avatarUrl: next.avatarUrl,
+    profileSlogan: next.profileSlogan,
+    industry: next.industry,
+    location: next.location,
+    companyIntro: next.companyIntro,
+    contactEmail: next.contactEmail,
+    contactPhone: next.contactPhone,
+    websiteUrl: next.websiteUrl,
+    socialUrl: next.socialUrl,
+    serviceArea: next.serviceArea,
+    cover: next.cover,
+    verified: true,
+    rejectedReason: undefined,
+    reviewDraft: buyerDraft(next),
+    reviewDraftSubmittedAt: undefined,
+    reviewDraftRejectedReason: undefined
+  };
+}
+
+function keepPublishedCreatorWithDraft(existing: CreatorProfile, next: CreatorProfile): CreatorProfile {
+  return {
+    ...existing,
+    title: next.title,
+    location: next.location,
+    bio: next.bio,
+    resume: next.resume,
+    skills: next.skills,
+    categories: next.categories,
+    portfolio: next.portfolio,
+    portfolioItems: next.portfolioItems,
+    servicePackages: next.servicePackages,
+    priceMin: next.priceMin,
+    priceMax: next.priceMax,
+    responseTime: next.responseTime,
+    avatarUrl: next.avatarUrl,
+    displayName: next.displayName,
+    profileSlogan: next.profileSlogan,
+    websiteUrl: next.websiteUrl,
+    socialUrl: next.socialUrl,
+    serviceArea: next.serviceArea,
+    contactEmail: next.contactEmail,
+    contactPhone: next.contactPhone,
+    trainingProfile: next.trainingProfile,
+    cover: next.cover,
+    verified: true,
+    rejectedReason: undefined,
+    reviewDraft: creatorDraft(next),
+    reviewDraftSubmittedAt: undefined,
+    reviewDraftRejectedReason: undefined
+  };
+}
+
 function shouldUseApi() {
   if (typeof window === "undefined") return false;
 
@@ -103,7 +193,7 @@ function shouldUseApi() {
   return current !== "false";
 }
 
-function requestJson<T>(path: string, init?: RequestInit): T | null {
+function requestJson<T>(path: string, init?: RequestInit, options?: RequestJsonOptions): T | null {
   if (typeof window === "undefined" || !shouldUseApi()) return null;
 
   const xhr = new XMLHttpRequest();
@@ -122,17 +212,98 @@ function requestJson<T>(path: string, init?: RequestInit): T | null {
   try {
     xhr.send(typeof body === "string" ? body : undefined);
   } catch {
+    if (options?.throwOnError) {
+      throw new Error(options.fallbackErrorMessage || "请求失败，请稍后再试。");
+    }
     return null;
   }
-
-  if (xhr.status < 200 || xhr.status >= 300) return null;
 
   try {
-    const parsed = JSON.parse(xhr.responseText) as { ok: boolean; data?: T };
-    return parsed.ok && parsed.data !== undefined ? parsed.data : null;
+    const parsed = JSON.parse(xhr.responseText) as { ok?: boolean; data?: T; error?: string };
+    if (xhr.status < 200 || xhr.status >= 300 || !parsed.ok || parsed.data === undefined) {
+      if (options?.throwOnError) {
+        throw new Error(parsed.error || options.fallbackErrorMessage || "请求失败，请稍后再试。");
+      }
+      return null;
+    }
+
+    return parsed.data;
   } catch {
+    if (options?.throwOnError) {
+      throw new Error(options.fallbackErrorMessage || "请求失败，请稍后再试。");
+    }
     return null;
   }
+}
+
+async function requestJsonAsync<T>(path: string, init?: RequestInit, options?: RequestJsonOptions): Promise<T | null> {
+  if (typeof window === "undefined" || !shouldUseApi()) return null;
+
+  const headers = new Headers(init?.headers);
+  headers.set("Accept", "application/json");
+  const session = readAuthSession();
+  if (session?.accessToken) {
+    headers.set("Authorization", `Bearer ${session.accessToken}`);
+  }
+  if (init?.body) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}${path}`, {
+      ...init,
+      headers
+    });
+  } catch {
+    if (options?.throwOnError) {
+      throw new Error(options.fallbackErrorMessage || "请求失败，请稍后再试。");
+    }
+    return null;
+  }
+
+  const parsed = await response.json().catch(() => null) as { ok?: boolean; data?: T; error?: string } | null;
+  if (!response.ok || !parsed?.ok || parsed.data === undefined) {
+    if (options?.throwOnError) {
+      throw new Error(parsed?.error || options.fallbackErrorMessage || "请求失败，请稍后再试。");
+    }
+    return null;
+  }
+
+  return parsed.data;
+}
+
+function loadLocalMarketplaceData(): MarketplaceData {
+  if (typeof window === "undefined") {
+    return normalizeData(cloneData(demoData));
+  }
+
+  const cached = window.localStorage.getItem(STORAGE_KEY);
+  if (!cached) {
+    const localData = cloneData(demoData);
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(localData));
+    return normalizeData(localData);
+  }
+
+  try {
+    return normalizeData(JSON.parse(cached) as MarketplaceData);
+  } catch {
+    window.localStorage.removeItem(STORAGE_KEY);
+    const localData = cloneData(demoData);
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(localData));
+    return normalizeData(localData);
+  }
+}
+
+function hasSessionScopedData(data: MarketplaceData, session: ReturnType<typeof readAuthSession>) {
+  if (!session) return true;
+  if (session.role === "admin") {
+    return data.users.some((user) => user.id === session.userId);
+  }
+  if (session.role === "creator") {
+    return data.creators.some((creator) => creator.userId === session.userId);
+  }
+  return Boolean(data.buyerProfiles?.some((profile) => profile.userId === session.userId));
 }
 
 export function loadMarketplaceData(): MarketplaceData {
@@ -140,20 +311,36 @@ export function loadMarketplaceData(): MarketplaceData {
     return normalizeData(cloneData(demoData));
   }
 
-  const cached = window.localStorage.getItem(STORAGE_KEY);
-  if (!cached) {
-    const initial = cloneData(demoData);
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(initial));
-    return normalizeData(initial);
+  const session = readAuthSession();
+  const normalizedLocal = loadLocalMarketplaceData();
+  // Avoid blocking every navigation with a synchronous full-state refresh.
+  // If the current user has no local scoped data yet, fetch once from the API.
+  if (session?.accessToken && !hasSessionScopedData(normalizedLocal, session)) {
+    const synced = syncFromApi();
+    if (synced) {
+      return synced;
+    }
   }
 
-  try {
-    const parsed = JSON.parse(cached) as MarketplaceData;
-    return normalizeData(parsed);
-  } catch {
-    window.localStorage.removeItem(STORAGE_KEY);
-    return normalizeData(cloneData(demoData));
+  return normalizedLocal;
+}
+
+export function loadPublicMarketplaceData(): MarketplaceData {
+  if (typeof window === "undefined") {
+    return cleanPublicMarketplaceData(normalizeData(cloneData(demoData)));
   }
+
+  const local = loadLocalMarketplaceData();
+  const remote = requestJson<PublicMarketplacePayload>("/api/marketplace");
+  if (!remote) {
+    return cleanPublicMarketplaceData(local);
+  }
+
+  return cleanPublicMarketplaceData(normalizeData({
+    ...local,
+    projects: remote.projects,
+    creators: remote.creators
+  }));
 }
 
 export function saveMarketplaceData(data: MarketplaceData) {
@@ -163,7 +350,7 @@ export function saveMarketplaceData(data: MarketplaceData) {
 }
 
 export function cacheBuyerProfile(profile: BuyerProfile) {
-  const data = loadMarketplaceData();
+  const data = loadLocalMarketplaceData();
   saveMarketplaceData({
     ...data,
     buyerProfiles: [profile, ...(data.buyerProfiles ?? []).filter((item) => item.id !== profile.id && item.userId !== profile.userId)],
@@ -176,7 +363,7 @@ export function cacheBuyerProfile(profile: BuyerProfile) {
 }
 
 export function cacheCreatorProfile(profile: CreatorProfile) {
-  const data = loadMarketplaceData();
+  const data = loadLocalMarketplaceData();
   saveMarketplaceData({
     ...data,
     creators: [profile, ...data.creators.filter((item) => item.id !== profile.id && item.userId !== profile.userId)],
@@ -189,10 +376,73 @@ export function cacheCreatorProfile(profile: CreatorProfile) {
 }
 
 function syncFromApi() {
+  const session = readAuthSession();
+  if (session?.accessToken) {
+    const accountState = requestJson<AccountStatePayload>("/api/account/state");
+    if (accountState) {
+      const local = loadLocalMarketplaceData();
+      const relatedProjects = accountState.relatedProjects ?? [];
+      const projectsById = new Map([
+        ...local.projects.map((project) => [project.id, project] as const),
+        ...relatedProjects.map((project) => [project.id, project] as const),
+        ...accountState.projects.map((project) => [project.id, project] as const),
+        ...(accountState.creatorProjects ?? []).map((project) => [project.id, project] as const)
+      ]);
+      const ordersById = new Map([
+        ...local.orders.map((order) => [order.id, order] as const),
+        ...accountState.buyerOrders.map((order) => [order.id, order] as const),
+        ...accountState.creatorOrders.map((order) => [order.id, order] as const)
+      ]);
+      const matchesById = new Map([
+        ...local.matches.map((match) => [match.id, match] as const),
+        ...accountState.matches.map((match) => [match.id, match] as const)
+      ]);
+      const notificationData = accountState.notificationsData;
+      const next = normalizeData({
+        ...local,
+        users: [
+          ...notificationData.users,
+          ...local.users.filter((user) => !notificationData.users.some((item) => item.id === user.id))
+        ],
+        buyerProfiles: [
+          ...(accountState.buyerProfile ? [accountState.buyerProfile] : []),
+          ...(notificationData.buyerProfiles ?? []),
+          ...(local.buyerProfiles ?? [])
+        ],
+        creators: [
+          ...(accountState.creatorProfile ? [accountState.creatorProfile] : []),
+          ...notificationData.creators,
+          ...local.creators
+        ],
+        projects: Array.from(projectsById.values()),
+        matches: Array.from(matchesById.values()),
+        orders: Array.from(ordersById.values()),
+        feedback: [
+          ...notificationData.feedback,
+          ...local.feedback.filter((item) => !notificationData.feedback.some((remote) => remote.id === item.id))
+        ],
+        activityEvents: [
+          ...notificationData.activityEvents,
+          ...local.activityEvents.filter((item) => !notificationData.activityEvents.some((remote) => remote.id === item.id))
+        ]
+      });
+
+      if (hasSessionScopedData(next, session)) {
+        saveMarketplaceData(next);
+        return next;
+      }
+    }
+  }
+
   const remote = requestJson<MarketplaceData>("/api/state");
   if (!remote) return null;
 
   const normalized = normalizeData(remote);
+
+  if (!hasSessionScopedData(normalized, session)) {
+    return null;
+  }
+
   saveMarketplaceData(normalized);
   return normalized;
 }
@@ -583,7 +833,7 @@ export function approveCurrentAccount(role: "buyer" | "creator") {
   saveMarketplaceData(next);
 }
 
-export function upsertCurrentBuyerProfile(input: {
+export async function upsertCurrentBuyerProfile(input: {
   companyName: string;
   displayName: string;
   avatarUrl: string;
@@ -603,24 +853,28 @@ export function upsertCurrentBuyerProfile(input: {
   const session = readAuthSession();
   const userId = session?.userId ?? "u-buyer-1";
   const profileId = `bp-${userId}`;
-  const remote = requestJson<BuyerProfile>("/api/buyers", {
+  const remote = await requestJsonAsync<BuyerProfile>("/api/buyers", {
     method: "POST",
     body: JSON.stringify({
       id: profileId,
       userId,
       ...input
     })
-  });
+  }, session?.accessToken ? {
+    throwOnError: true,
+    fallbackErrorMessage: "主体资料保存失败，请重新登录后再试。"
+  } : undefined);
 
   if (remote) {
-    if (session) saveAuthSession({ ...session, status: "pending_review" });
+    if (session) saveAuthSession({ ...session, status: remote.verified ? "approved" : "registered" });
     cacheBuyerProfile(remote);
     return remote;
   }
 
   const data = loadMarketplaceData();
   const now = new Date().toISOString();
-  const profile: BuyerProfile = {
+  const existing = (data.buyerProfiles ?? []).find((item) => item.id === profileId || item.userId === userId);
+  const draftProfile: BuyerProfile = {
     id: profileId,
     userId,
     companyName: input.companyName,
@@ -639,8 +893,20 @@ export function upsertCurrentBuyerProfile(input: {
     businessLicenseFile: input.businessLicenseFile,
     qualificationFiles: input.qualificationFiles,
     verified: false,
+    rejectedReason: existing?.rejectedReason,
     cover: "linear-gradient(135deg, #153f31, #2457c5)"
   };
+  const resetVerifiedReview = Boolean(existing?.verified) && buyerVerificationFieldsChanged(existing, draftProfile);
+  const profile: BuyerProfile = existing?.verified && resetVerifiedReview
+    ? keepPublishedBuyerWithDraft(existing, draftProfile)
+    : {
+        ...draftProfile,
+        verified: existing?.verified ?? false,
+        rejectedReason: existing?.rejectedReason,
+        reviewDraft: undefined,
+        reviewDraftSubmittedAt: undefined,
+        reviewDraftRejectedReason: undefined
+      };
   const users = data.users.map((user) => (user.id === userId ? { ...user, name: input.companyName, email: input.contactEmail } : user));
   const buyerProfiles = [profile, ...(data.buyerProfiles ?? []).filter((item) => item.id !== profileId && item.userId !== userId)];
   const activityEvent: ActivityEvent = {
@@ -659,11 +925,11 @@ export function upsertCurrentBuyerProfile(input: {
     activityEvents: [activityEvent, ...data.activityEvents]
   };
   saveMarketplaceData(next);
-  if (session) saveAuthSession({ ...session, status: "pending_review" });
+  if (session) saveAuthSession({ ...session, status: profile.verified ? "approved" : "registered" });
   return profile;
 }
 
-export function upsertUnifiedSubjectProfile(input: {
+export async function upsertUnifiedSubjectProfile(input: {
   companyName: string;
   displayName: string;
   avatarUrl: string;
@@ -680,9 +946,9 @@ export function upsertUnifiedSubjectProfile(input: {
   businessLicenseFile: string;
   qualificationFiles: string[];
 }) {
-  const buyerProfile = upsertCurrentBuyerProfile(input);
+  const buyerProfile = await upsertCurrentBuyerProfile(input);
   const session = readAuthSession();
-  const data = loadMarketplaceData();
+  const data = loadLocalMarketplaceData();
   const creator = data.creators.find((item) => item.userId === session?.userId);
 
   if (!creator || !session) {
@@ -708,10 +974,13 @@ export function upsertUnifiedSubjectProfile(input: {
     serviceArea: input.serviceArea
   };
 
-  const remote = requestJson<CreatorProfile>("/api/creators", {
+  const remote = await requestJsonAsync<CreatorProfile>("/api/creators", {
     method: "POST",
     body: JSON.stringify(mergedCreator)
-  });
+  }, session?.accessToken ? {
+    throwOnError: true,
+    fallbackErrorMessage: "主体资料同步失败，请稍后再试。"
+  } : undefined);
 
   if (remote) {
     return buyerProfile;
@@ -725,7 +994,7 @@ export function upsertUnifiedSubjectProfile(input: {
   return buyerProfile;
 }
 
-export function upsertCurrentCreatorProfile(input: {
+export async function upsertCurrentCreatorProfile(input: {
   name: string;
   title: string;
   location: string;
@@ -755,7 +1024,7 @@ export function upsertCurrentCreatorProfile(input: {
   const session = readAuthSession();
   const userId = session?.userId ?? "u-creator-self";
   const profileId = `c-${userId}`;
-  const remote = requestJson<CreatorProfile>("/api/creators", {
+  const remote = await requestJsonAsync<CreatorProfile>("/api/creators", {
     method: "POST",
     body: JSON.stringify({
       id: profileId,
@@ -763,17 +1032,21 @@ export function upsertCurrentCreatorProfile(input: {
       verificationType: input.identityType,
       ...input
     })
-  });
+  }, session?.accessToken ? {
+    throwOnError: true,
+    fallbackErrorMessage: "服务主页保存失败，请重新登录后再试。"
+  } : undefined);
 
   if (remote) {
-    if (session) saveAuthSession({ ...session, status: "pending_review" });
+    if (session) saveAuthSession({ ...session, status: remote.verified ? "approved" : "registered" });
     cacheCreatorProfile(remote);
     return remote;
   }
 
-  const data = loadMarketplaceData();
+  const data = loadLocalMarketplaceData();
   const now = new Date().toISOString();
-  const profile = {
+  const existing = data.creators.find((item) => item.id === profileId || item.userId === userId);
+  const draftProfile: CreatorProfile = {
     id: profileId,
     userId,
     name: input.name,
@@ -807,6 +1080,17 @@ export function upsertCurrentCreatorProfile(input: {
     trainingProfile: input.trainingProfile,
     cover: "linear-gradient(135deg, #153f31, #2f7c5f 46%, #f0b35a)"
   };
+  const resetVerifiedReview = Boolean(existing?.verified) && creatorVerificationFieldsChanged(existing, draftProfile);
+  const profile: CreatorProfile = existing?.verified && resetVerifiedReview
+    ? keepPublishedCreatorWithDraft(existing, draftProfile)
+    : {
+        ...draftProfile,
+        verified: existing?.verified ?? false,
+        rejectedReason: existing?.rejectedReason,
+        reviewDraft: undefined,
+        reviewDraftSubmittedAt: undefined,
+        reviewDraftRejectedReason: undefined
+      };
 
   const existingUser = data.users.some((user) => user.id === userId);
   const users = existingUser
@@ -838,7 +1122,7 @@ export function upsertCurrentCreatorProfile(input: {
     activityEvents: [activityEvent, ...data.activityEvents]
   };
   saveMarketplaceData(next);
-  if (session) saveAuthSession({ ...session, status: "pending_review" });
+  if (session) saveAuthSession({ ...session, status: profile.verified ? "approved" : "registered" });
   return profile;
 }
 
@@ -858,20 +1142,19 @@ export function verifySubject(subjectType: "buyer" | "creator", id: string, veri
   return false;
 }
 
-export function submitReview(subjectType: "buyer" | "creator", id: string) {
-  const remote = requestJson<BuyerProfile | CreatorProfile>("/api/review-submission", {
+export async function submitReview(subjectType: "buyer" | "creator", id: string) {
+  const remote = await requestJsonAsync<BuyerProfile | CreatorProfile>("/api/review-submission", {
     method: "POST",
     body: JSON.stringify({ subjectType, id })
   });
 
   if (remote) {
-    syncFromApi();
     const session = readAuthSession();
     if (session) saveAuthSession({ ...session, status: "pending_review" });
     return remote;
   }
 
-  const data = loadMarketplaceData();
+  const data = loadLocalMarketplaceData();
   const now = new Date().toISOString();
   const next: MarketplaceData =
     subjectType === "buyer"
@@ -884,14 +1167,22 @@ export function submitReview(subjectType: "buyer" | "creator", id: string) {
             eventType: "submit_review",
             targetType: "buyer_profile",
             targetId: profile?.id ?? id,
-            note: "用户提交认证审核",
+            note: profile?.reviewDraft ? "用户提交认证变更审核" : "用户提交认证审核",
             createdAt: now
           };
 
           return {
             ...data,
             buyerProfiles: (data.buyerProfiles ?? []).map((item) =>
-              item.id === id || item.userId === id ? { ...item, verified: false, rejectedReason: undefined } : item
+              item.id === id || item.userId === id
+                ? item.verified && item.reviewDraft
+                  ? {
+                      ...item,
+                      reviewDraftSubmittedAt: now,
+                      reviewDraftRejectedReason: undefined
+                    }
+                  : { ...item, verified: false, rejectedReason: undefined }
+                : item
             ),
             activityEvents: [activityEvent, ...data.activityEvents]
           };
@@ -905,14 +1196,22 @@ export function submitReview(subjectType: "buyer" | "creator", id: string) {
             eventType: "submit_review",
             targetType: "creator",
             targetId: creator?.id ?? id,
-            note: "用户提交认证审核",
+            note: creator?.reviewDraft ? "用户提交认证变更审核" : "用户提交认证审核",
             createdAt: now
           };
 
           return {
             ...data,
             creators: data.creators.map((item) =>
-              item.id === id || item.userId === id ? { ...item, verified: false, rejectedReason: undefined } : item
+              item.id === id || item.userId === id
+                ? item.verified && item.reviewDraft
+                  ? {
+                      ...item,
+                      reviewDraftSubmittedAt: now,
+                      reviewDraftRejectedReason: undefined
+                    }
+                  : { ...item, verified: false, rejectedReason: undefined }
+                : item
             ),
             activityEvents: [activityEvent, ...data.activityEvents]
           };
