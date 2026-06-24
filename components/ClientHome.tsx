@@ -689,7 +689,7 @@ export function ClientHome() {
         <section className="section">
           <div className="emptyState">
             <strong>当前没有真实公开内容</strong>
-            <span>这里不会再用演示样本代替。等后台有真实需求或真实服务方入驻后，首页会自动出现对应内容。</span>
+            <span>你可以先发布第一个需求，或者等服务方和培训方陆续入驻后再回来看看。</span>
             <div className="toolbarGroup">
               <Link className="btn primary" href={buyerEntry}>
                 <BriefcaseBusiness size={16} /> 发布第一个需求

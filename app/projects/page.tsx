@@ -111,7 +111,7 @@ function ProjectsContent() {
       {!hasPublicProjects ? (
         <section className="emptyState">
           <strong>{isTrainingList ? "暂时还没有公开培训需求" : "暂时还没有公开派单需求"}</strong>
-          <span>当前公开大厅只展示真实后端数据。若这里为空，说明还没有真实发布或 Supabase 还未同步成功。</span>
+          <span>这里目前还没有可展示的需求。你可以先发布第一个需求，或者稍后再来看看。</span>
           <div className="toolbarGroup">
             <Link className="btn primary" href={isTrainingList ? trainingEntry : buyerEntry}>
               <Plus size={16} /> {isTrainingList ? "发布培训需求" : "发布派单需求"}
