@@ -37,8 +37,6 @@ export function ClientHome() {
   const serviceCreators = data.creators.filter((creator) => !creator.categories.includes("AIGC Training"));
   const serviceProjects = data.projects.filter((project) => project.category !== "AIGC Training");
   const featured = [...trainingCreators, ...data.creators.filter((creator) => !creator.categories.includes("AIGC Training"))].slice(0, 3);
-  const sampleDispatchProject = serviceProjects[0] ?? data.projects[0];
-  const sampleTrainingProject = trainingProjects[0] ?? data.projects.find((project) => project.category === "AIGC Training");
   const trainingDemanders = Array.from(new Set(trainingProjects.map((project) => project.buyerId)))
     .map((buyerId) => {
       const profile = (data.buyerProfiles ?? []).find((item) => item.userId === buyerId);
@@ -56,17 +54,6 @@ export function ClientHome() {
       };
     })
     .slice(0, 3);
-  const sampleMatches = sampleDispatchProject
-    ? data.matches
-        .filter((match) => match.projectId === sampleDispatchProject.id)
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 3)
-        .map((match) => ({
-          ...match,
-          creator: data.creators.find((creator) => creator.id === match.creatorId)
-        }))
-        .filter((match) => match.creator)
-    : [];
   const trainingEntry = loginNextPath("buyer", "/account/capabilities?intent=training_demand");
   const buyerEntry = loginNextPath("buyer", "/account/capabilities?intent=dispatch");
   const creatorEntry = loginNextPath("creator", "/account/capabilities?intent=service");
@@ -486,7 +473,7 @@ export function ClientHome() {
           <div className="sectionHeader">
             <div>
               <h2>{isLoggedIn ? "继续看你能直接行动的内容" : "注册前先看平台能给什么"}</h2>
-              <p>{isLoggedIn ? "你已登录，可以直接发布、完善主页、查看待办和跟进线索。公开市场依然可看，但提示会更偏向下一步动作。" : "游客可以先查看公开需求、服务方主页、培训需求样例、匹配结果和 Brief Agent 生成效果。"}</p>
+              <p>{isLoggedIn ? "你已登录，可以直接发布、完善主页、查看待办和跟进线索。公开市场依然可看，但提示会更偏向下一步动作。" : "游客可以先查看公开需求、服务方主页和 Brief Agent 生成效果；没有真实公开数据时，这里会保持空态。"}</p>
             </div>
           </div>
           <div className="grid">
@@ -498,17 +485,17 @@ export function ClientHome() {
               <strong>创作者/讲师大厅</strong>
               <p>查看服务主页、培训主页、案例、服务包报价和可接方向。</p>
             </Link>
-            <Link className="toolMiniCard" href={sampleDispatchProject ? `/projects/${sampleDispatchProject.id}` : "/projects"}>
-              <strong>示例派单需求</strong>
-              <p>{sampleDispatchProject?.title ?? "查看项目交付需求如何被结构化展示。"}</p>
+            <Link className="toolMiniCard" href="/projects">
+              <strong>真实派单需求</strong>
+              <p>只看后端真实发布的项目交付需求与培训需求。</p>
             </Link>
-            <Link className="toolMiniCard" href={sampleTrainingProject ? `/projects/${sampleTrainingProject.id}` : "/projects?type=training"}>
-              <strong>示例培训需求</strong>
-              <p>{sampleTrainingProject?.title ?? "查看企业AI培训需求如何被结构化展示。"}</p>
+            <Link className="toolMiniCard" href="/creators">
+              <strong>真实服务方信息</strong>
+              <p>只看后端真实入驻的服务主页、讲师主页和服务包。</p>
             </Link>
-            <Link className="toolMiniCard" href={sampleDispatchProject ? `/projects/${sampleDispatchProject.id}` : "/projects"}>
-              <strong>示例匹配结果</strong>
-              <p>{sampleMatches.length ? sampleMatches.map((match) => match.creator!.name).join("、") : "查看系统如何推荐候选服务方。"}</p>
+            <Link className="toolMiniCard" href="/projects">
+              <strong>真实匹配结果</strong>
+              <p>登录后会根据真实项目和真实服务方生成推荐。</p>
             </Link>
             <Link className="toolMiniCard" href="#growth-tool">
               <strong>Brief Agent 生成效果</strong>
@@ -697,6 +684,23 @@ export function ClientHome() {
         </div>
       </section>
       )}
+
+      {!isLoggedIn && !data.projects.length && !data.creators.length ? (
+        <section className="section">
+          <div className="emptyState">
+            <strong>当前没有真实公开内容</strong>
+            <span>这里不会再用演示样本代替。等后台有真实需求或真实服务方入驻后，首页会自动出现对应内容。</span>
+            <div className="toolbarGroup">
+              <Link className="btn primary" href={buyerEntry}>
+                <BriefcaseBusiness size={16} /> 发布第一个需求
+              </Link>
+              <Link className="btn" href={creatorEntry}>
+                <Handshake size={16} /> 入驻成为服务方
+              </Link>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
     </main>
   );
