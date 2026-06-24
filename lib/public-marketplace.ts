@@ -78,3 +78,19 @@ export function cleanPublicMarketplaceData(data: MarketplaceData, includeTestDat
     activityEvents: []
   };
 }
+
+export function createEmptyMarketplaceData(): MarketplaceData {
+  return {
+    users: [],
+    buyerProfiles: [],
+    creators: [],
+    projects: [],
+    matches: [],
+    orders: [],
+    messages: [],
+    reviews: [],
+    reports: [],
+    feedback: [],
+    activityEvents: []
+  };
+}

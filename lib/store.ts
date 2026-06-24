@@ -2,7 +2,7 @@
 
 import { demoData } from "./demo-data";
 import { recommendCreators } from "./matching";
-import { cleanPublicMarketplaceData } from "./public-marketplace";
+import { cleanPublicMarketplaceData, createEmptyMarketplaceData } from "./public-marketplace";
 import { buyerVerificationFieldsChanged, creatorVerificationFieldsChanged } from "./review-status";
 import {
   AbuseReport,
@@ -327,42 +327,16 @@ export function loadMarketplaceData(): MarketplaceData {
 
 export function loadPublicMarketplaceData(): MarketplaceData {
   if (typeof window === "undefined") {
-    return cleanPublicMarketplaceData(normalizeData({
-      users: [],
-      buyerProfiles: [],
-      creators: [],
-      projects: [],
-      matches: [],
-      orders: [],
-      messages: [],
-      reviews: [],
-      reports: [],
-      feedback: [],
-      activityEvents: []
-    }));
+    return createEmptyMarketplaceData();
   }
 
-  const local = loadLocalMarketplaceData();
   const remote = requestJson<PublicMarketplacePayload>("/api/marketplace");
   if (!remote) {
-    return cleanPublicMarketplaceData({
-      ...local,
-      users: [],
-      buyerProfiles: [],
-      creators: [],
-      projects: [],
-      matches: [],
-      orders: [],
-      messages: [],
-      reviews: [],
-      reports: [],
-      feedback: [],
-      activityEvents: []
-    });
+    return createEmptyMarketplaceData();
   }
 
   return cleanPublicMarketplaceData(normalizeData({
-    ...local,
+    ...createEmptyMarketplaceData(),
     projects: remote.projects,
     creators: remote.creators
   }));

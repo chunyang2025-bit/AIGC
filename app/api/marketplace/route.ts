@@ -1,11 +1,34 @@
 import { getPublicMarketplace } from "../../../lib/server/actions";
 import { getServerSupabase } from "../../../lib/server/auth";
-import { getMarketplaceData } from "../../../lib/server/data";
 import { cleanPublicCreators, cleanPublicProjects } from "../../../lib/public-marketplace";
 import { apiOk } from "../../../lib/server/response";
 import { CreatorProfile, Project } from "../../../lib/types";
 
 export const dynamic = "force-dynamic";
+
+function emptyMarketplacePayload() {
+  return apiOk({
+    projects: [],
+    creators: [],
+    metrics: {
+      users: 0,
+      buyers: 0,
+      creators: 0,
+      verifiedCreators: 0,
+      projects: 0,
+      openProjects: 0,
+      leads: 0,
+      activeLeads: 0,
+      intentionBudget: 0,
+      completedIntentionBudget: 0,
+      monthlyActiveUsers: 0,
+      monthlyActiveBuyers: 0,
+      monthlyActiveCreators: 0,
+      pendingBuyerReviews: 0,
+      pendingCreatorReviews: 0
+    }
+  });
+}
 
 function toDate(value: unknown) {
   return typeof value === "string" ? value.slice(0, 10) : new Date().toISOString().slice(0, 10);
@@ -178,6 +201,21 @@ export async function GET(request: Request) {
     }
   }
 
-  const data = await getMarketplaceData();
-  return apiOk(getPublicMarketplace(data, includeTestData));
+  if (includeTestData) {
+    return apiOk(getPublicMarketplace({
+      users: [],
+      buyerProfiles: [],
+      creators: [],
+      projects: [],
+      matches: [],
+      orders: [],
+      messages: [],
+      reviews: [],
+      reports: [],
+      feedback: [],
+      activityEvents: []
+    }, true));
+  }
+
+  return emptyMarketplacePayload();
 }
