@@ -367,34 +367,6 @@ function AccountVerificationContent() {
         </section>
       </div>
 
-      <section className="card">
-        <div className="cardBody stack">
-          <div className="spaceBetween">
-            <div>
-              <h2 style={{ margin: 0 }}>谁来审核</h2>
-              <div className="muted">普通用户不需要自己找后台入口，提交认证审核后会自动出现在运营后台的待审核队列。</div>
-            </div>
-            <ShieldCheck size={20} />
-          </div>
-          <div className="grid three">
-            <div className="metric">
-              <strong>用户</strong>
-              <span>保存资料并提交认证审核</span>
-            </div>
-            <div className="metric">
-              <strong>运营</strong>
-              <span>进入后台审核主体</span>
-            </div>
-            <div className="metric">
-              <strong>系统</strong>
-              <span>更新已认证或需补充状态</span>
-            </div>
-          </div>
-          <div className="notice">
-            运营后台入口：登录平台运营账号后进入“主体审核”。如被驳回，原因会显示在本页；修改资料后可重新提交认证审核。
-          </div>
-        </div>
-      </section>
     </main>
   );
 }
