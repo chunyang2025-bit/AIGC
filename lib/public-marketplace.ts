@@ -1,5 +1,20 @@
 import { CreatorProfile, MarketplaceData, Project } from "./types";
 
+const demoIdPatterns = [
+  /^u-(?:buyer|creator)-\d+$/,
+  /^bp-\d+$/,
+  /^c-\d+$/,
+  /^p-\d+$/,
+  /^m-\d+$/,
+  /^o-\d+$/,
+  /^r-\d+$/
+];
+
+function isDemoSeedId(value: unknown) {
+  const text = String(value || "").trim();
+  return Boolean(text && demoIdPatterns.some((pattern) => pattern.test(text)));
+}
+
 const artifactNamePatterns = [
   /^验收/,
   /^Smoke\b/i,
@@ -32,6 +47,22 @@ function accountMatchesArtifact(value: unknown) {
   ));
 }
 
+function isDemoProject(project: Pick<Project, "id" | "buyerId" | "title" | "contactEmail">) {
+  return isDemoSeedId(project.id) || isDemoSeedId(project.buyerId) || textMatchesArtifact(project.title) || accountMatchesArtifact(project.contactEmail);
+}
+
+function isDemoCreator(creator: Pick<CreatorProfile, "id" | "userId" | "name" | "title" | "displayName" | "profileSlogan" | "contactEmail">) {
+  return (
+    isDemoSeedId(creator.id) ||
+    isDemoSeedId(creator.userId) ||
+    textMatchesArtifact(creator.name) ||
+    textMatchesArtifact(creator.displayName) ||
+    textMatchesArtifact(creator.title) ||
+    textMatchesArtifact(creator.profileSlogan) ||
+    accountMatchesArtifact(creator.contactEmail)
+  );
+}
+
 export function isPublicProjectArtifact(project: Pick<Project, "title" | "contactEmail">) {
   return textMatchesArtifact(project.title) || accountMatchesArtifact(project.contactEmail);
 }
@@ -49,11 +80,11 @@ export function isPublicCreatorArtifact(
 }
 
 export function cleanPublicProjects(projects: Project[], includeTestData = false) {
-  return includeTestData ? projects : projects.filter((project) => !isPublicProjectArtifact(project));
+  return includeTestData ? projects : projects.filter((project) => !isDemoProject(project) && !isPublicProjectArtifact(project));
 }
 
 export function cleanPublicCreators(creators: CreatorProfile[], includeTestData = false) {
-  return includeTestData ? creators : creators.filter((creator) => !isPublicCreatorArtifact(creator));
+  return includeTestData ? creators : creators.filter((creator) => !isDemoCreator(creator) && !isPublicCreatorArtifact(creator));
 }
 
 export function cleanPublicMarketplaceData(data: MarketplaceData, includeTestData = false): MarketplaceData {
@@ -62,17 +93,21 @@ export function cleanPublicMarketplaceData(data: MarketplaceData, includeTestDat
   const visibleProjectIds = new Set(projects.map((project) => project.id));
   const visibleCreatorIds = new Set(creators.map((creator) => creator.id));
   const visibleBuyerIds = new Set(projects.map((project) => project.buyerId));
+  const visibleUserIds = new Set([
+    ...Array.from(visibleBuyerIds),
+    ...creators.map((creator) => creator.userId)
+  ]);
 
   return {
     ...data,
-    users: data.users.filter((user) => visibleBuyerIds.has(user.id) || creators.some((creator) => creator.userId === user.id)),
-    buyerProfiles: (data.buyerProfiles ?? []).filter((profile) => visibleBuyerIds.has(profile.userId)),
+    users: data.users.filter((user) => visibleUserIds.has(user.id) && !isDemoSeedId(user.id)),
+    buyerProfiles: (data.buyerProfiles ?? []).filter((profile) => visibleBuyerIds.has(profile.userId) && !isDemoSeedId(profile.id)),
     creators,
     projects,
-    matches: data.matches.filter((match) => visibleProjectIds.has(match.projectId) && visibleCreatorIds.has(match.creatorId)),
-    orders: data.orders.filter((order) => visibleProjectIds.has(order.projectId) && visibleCreatorIds.has(order.creatorId)),
+    matches: data.matches.filter((match) => visibleProjectIds.has(match.projectId) && visibleCreatorIds.has(match.creatorId) && !isDemoSeedId(match.id)),
+    orders: data.orders.filter((order) => visibleProjectIds.has(order.projectId) && visibleCreatorIds.has(order.creatorId) && !isDemoSeedId(order.id)),
     messages: [],
-    reviews: data.reviews.filter((review) => visibleCreatorIds.has(review.creatorId)),
+    reviews: data.reviews.filter((review) => visibleCreatorIds.has(review.creatorId) && !isDemoSeedId(review.id)),
     reports: [],
     feedback: [],
     activityEvents: []
