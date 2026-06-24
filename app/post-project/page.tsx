@@ -78,6 +78,8 @@ function PostProjectContent() {
   const [needTrainingMaterials, setNeedTrainingMaterials] = useState(editProject?.trainingRequirement?.needMaterials ?? true);
   const [loadedToolDraft, setLoadedToolDraft] = useState(false);
   const [loadedRemixSource, setLoadedRemixSource] = useState("");
+  const [submitState, setSubmitState] = useState<"idle" | "submitting" | "success" | "error">("idle");
+  const [submitMessage, setSubmitMessage] = useState("");
   const [draft, setDraft] = useState<DraftBriefResult>(() =>
     editProject
       ? {
@@ -233,8 +235,21 @@ function PostProjectContent() {
     <main className="main">
       <div className="pageHeader">
         <div>
+          <span className="eyebrow">
+            <Bot size={15} /> 真实后端发布
+          </span>
           <h1>{startsAsTraining || editProject?.category === "AIGC Training" ? "培训需求发布 Agent" : "项目需求发布 Agent"}</h1>
           <p>{editMode ? "修改后重新提交。试运营期间可先查看匹配并邀请服务方，未认证状态会保留风险提示。" : startsAsTraining ? "免费提交培训需求，重点填写培训对象、人数、主题、形式、城市、时长和目标，再匹配培训服务方。" : "免费提交项目交付需求，用对话式输入生成结构化 Brief。你可以手动调整标题、意向预算、交付物和周期，再进入试运营匹配。"}</p>
+        </div>
+        <div className="publishHeaderMeta">
+          <div className="miniInfo">
+            <strong>后端写入</strong>
+            <span>点击提交后会调用 `/api/projects` 写入项目表并生成推荐。</span>
+          </div>
+          <div className="miniInfo">
+            <strong>可见反馈</strong>
+            <span>失败原因会直接显示，不再静默回落到本地假成功。</span>
+          </div>
         </div>
       </div>
 
@@ -505,6 +520,14 @@ function PostProjectContent() {
             <div className="notice">
               当前免费发布需求。意向预算仅用于匹配和沟通参考，平台不托管资金，不参与合同、交易、交付和售后纠纷。
             </div>
+            <div className="publishStatusBar">
+              <span className={submitState === "success" ? "tag green" : submitState === "error" ? "tag gold" : submitState === "submitting" ? "tag blue" : "tag"}>
+                {submitState === "success" ? "已提交" : submitState === "error" ? "提交失败" : submitState === "submitting" ? "正在提交" : "等待提交"}
+              </span>
+              <span className="muted">
+                {submitMessage || (canPublish ? "点击后会真正调用后端写入需求，若 Supabase / 账号 / 配置有问题，这里会直接提示原因。" : "先补全需求，满足完整度后再提交。")}
+              </span>
+            </div>
             <div className="briefBlock">
               <div className="spaceBetween">
                 <strong>需求完整度</strong>
@@ -540,8 +563,10 @@ function PostProjectContent() {
             </div>
             <button
               className="btn primary"
-              onClick={() => {
+              onClick={async () => {
                 if (!canPublish) return;
+                setSubmitState("submitting");
+                setSubmitMessage("正在写入后端并生成推荐结果...");
                 const payload = {
                   title: draft.title,
                   description: draft.description,
@@ -562,10 +587,20 @@ function PostProjectContent() {
                   contactPhone,
                   agentBrief: draft.agentBrief
                 };
-                const result = editProject ? resubmitProject(editProject.id, payload) : createProject(payload);
-                if (result) {
+                try {
+                  const result = editProject ? await resubmitProject(editProject.id, payload) : await createProject(payload);
+                  if (!result) {
+                    setSubmitState("error");
+                    setSubmitMessage("后端没有返回结果，请稍后重试。若你看到的是本地草稿，说明当前没有连到真实 API。");
+                    return;
+                  }
                   clearGrowthToolDraft();
+                  setSubmitState("success");
+                  setSubmitMessage(editMode ? "需求已重新提交，正在进入审核队列。" : "需求已提交，正在进入审核队列。");
                   router.push(`/buyer/projects/${result.project.id}`);
+                } catch (error) {
+                  setSubmitState("error");
+                  setSubmitMessage(error instanceof Error ? error.message : "需求提交失败，请稍后重试。");
                 }
               }}
               disabled={!canPublish}

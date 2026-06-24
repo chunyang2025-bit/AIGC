@@ -2,21 +2,24 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, BriefcaseBusiness, Building2, CheckCircle2, GraduationCap, Handshake, LogIn, Plus, Search, Sparkles, UsersRound } from "lucide-react";
+import { ArrowRight, BriefcaseBusiness, Building2, CheckCircle2, GraduationCap, Handshake, LogIn, Plus, Search, Sparkles, Star, UserRound, UsersRound } from "lucide-react";
 import { CreatorCard } from "./CreatorCard";
+import { FirstActionPanel } from "./FirstActionPanel";
 import { ProjectCard } from "./ProjectCard";
 import { draftProjectBrief } from "@/lib/brief-agent";
 import { categoryLabel, money } from "@/lib/format";
 import { isImageValue } from "@/lib/file-upload";
-import { loadPublicMarketplaceData } from "@/lib/store";
+import { loadMarketplaceData, loadPublicMarketplaceData } from "@/lib/store";
 import { loginNextPath, readAuthSession, AUTH_SESSION_EVENT } from "@/lib/auth";
 import { saveGrowthToolDraft } from "@/lib/tool-draft";
+import { getLandingAction, getReviewStage } from "@/lib/growth";
+import { ShortcutGrid } from "./ShortcutGrid";
 
 type ToolMode = "project" | "training" | "pricing" | "course";
 
 export function ClientHome() {
-  const data = loadPublicMarketplaceData();
   const [isLoggedIn, setIsLoggedIn] = useState(() => Boolean(readAuthSession()));
+  const data = isLoggedIn ? loadMarketplaceData() : loadPublicMarketplaceData();
   const [toolMode, setToolMode] = useState<ToolMode>("project");
   const [toolIdea, setToolIdea] = useState("我想做一组适合小红书和抖音的AIGC商品短视频，用来测试新品转化。");
   const [toolSaved, setToolSaved] = useState(false);
@@ -124,6 +127,49 @@ export function ClientHome() {
     return () => window.removeEventListener(AUTH_SESSION_EVENT, syncSession);
   }, []);
 
+  const currentSession = readAuthSession();
+  const currentBuyerProfile = data.buyerProfiles?.find((profile) => profile.userId === currentSession?.userId) ?? null;
+  const currentCreatorProfile = data.creators.find((creator) => creator.userId === currentSession?.userId) ?? null;
+  const hasSubjectProfile = Boolean(currentBuyerProfile || currentCreatorProfile);
+  const subjectVerified = Boolean(currentBuyerProfile?.verified || currentCreatorProfile?.verified);
+  const subjectSubmitted = Boolean(
+    currentBuyerProfile?.reviewDraftSubmittedAt ||
+      currentCreatorProfile?.reviewDraftSubmittedAt ||
+      data.activityEvents.some(
+        (event) =>
+          event.userId === currentSession?.userId &&
+          event.eventType === "submit_review"
+      )
+  );
+  const subjectStage = getReviewStage({
+    hasProfile: hasSubjectProfile,
+    hasDraft: Boolean(currentBuyerProfile?.reviewDraft || currentCreatorProfile?.reviewDraft),
+    submitted: subjectSubmitted,
+    verified: subjectVerified,
+    rejectedReason:
+      currentBuyerProfile?.reviewDraftRejectedReason ||
+      currentCreatorProfile?.reviewDraftRejectedReason ||
+      currentBuyerProfile?.rejectedReason ||
+      currentCreatorProfile?.rejectedReason
+  });
+  const hasAnyDemand = data.projects.some((project) => project.buyerId === currentSession?.userId);
+  const hasAnyProviderPage = Boolean(
+    currentCreatorProfile?.bio &&
+    currentCreatorProfile?.title &&
+    ((currentCreatorProfile?.servicePackages?.length ?? 0) > 0 || (currentCreatorProfile?.portfolio?.length ?? 0) > 0)
+  );
+  const hasAnyLead = data.orders.some(
+    (order) => order.buyerId === currentSession?.userId || order.creatorId === currentCreatorProfile?.id
+  );
+  const homeFirstAction = getLandingAction({
+    hasProfile: hasSubjectProfile,
+    stage: subjectStage,
+    isBuyer: Boolean(currentBuyerProfile),
+    hasAnyDemand,
+    hasAnyProviderPage,
+    hasAnyLead
+  });
+
   function saveCurrentToolDraft() {
     saveGrowthToolDraft({
       mode: toolMode,
@@ -177,6 +223,27 @@ export function ClientHome() {
     }
   ];
 
+  const loggedInQuickLinks = currentBuyerProfile
+    ? [
+        { title: "我的派单", href: "/buyer", text: "查看需求、匹配和沟通线索。", icon: BriefcaseBusiness },
+        { title: "发布新需求", href: "/post-project", text: "继续补充新的项目或培训需求。", icon: Plus },
+        { title: "需求方后台", href: "/buyer", text: "处理待办、候选和反馈。", icon: UsersRound },
+        { title: "查看公开市场", href: "/projects", text: "先看当前有哪些需求和服务方。", icon: Search }
+      ]
+    : currentCreatorProfile
+      ? [
+          { title: "我的接单", href: "/provider", text: "查看推荐机会、线索和待办。", icon: Handshake },
+          { title: "完善服务主页", href: "/provider/profile", text: "补服务包、代表作和培训能力。", icon: Star },
+          { title: "接单方后台", href: "/provider", text: "处理机会、线索和分享入口。", icon: UsersRound },
+          { title: "查看公开需求", href: "/projects", text: "继续看可接需求和培训需求。", icon: Search }
+        ]
+      : [
+          { title: "主体总控台", href: "/account", text: "查看注册后的所有下一步。", icon: UsersRound },
+          { title: "发布需求", href: "/post-project", text: "继续把想法整理成需求。", icon: BriefcaseBusiness },
+          { title: "完善主页", href: "/account/profile", text: "先把身份和资料补完整。", icon: UserRound },
+          { title: "查看市场", href: "/projects", text: "回到公开需求和服务方大厅。", icon: Search }
+        ];
+
   return (
     <main className="main">
       <section className="hero productHero">
@@ -185,25 +252,59 @@ export function ClientHome() {
             <Sparkles size={15} /> AIGC服务与培训双边市场
           </span>
           <div>
-            <h1>AIGClancer</h1>
-            <p>同时连接AIGC项目接派单、企业培训需求和可授课服务方。你可以找人交付项目，也可以找人培训团队；能交付和能授课的人都可以入驻。</p>
+            <h1>{isLoggedIn ? "你的今日待办" : "AIGClancer"}</h1>
+            <p>{isLoggedIn ? "你已经登录，首页直接展示下一步行动、待办和公开市场，少看提示，多做动作。" : "同时连接AIGC项目接派单、企业培训需求和可授课服务方。你可以找人交付项目，也可以找人培训团队；能交付和能授课的人都可以入驻。"}</p>
           </div>
+          {isLoggedIn ? (
+            <div className="heroActionStrip">
+              <div className="miniInfo">
+                <strong>工作台入口</strong>
+                <span>首页先给你入口，再给你待办，最后再看市场。</span>
+              </div>
+              <div className="miniInfo">
+                <strong>真实后端</strong>
+                <span>发布需求、认证、反馈和线索都走 API，不是静态演示页。</span>
+              </div>
+            </div>
+          ) : null}
           <div className="notice">
-            试运营期免费发布、免费入驻。首批资料完整的服务方和培训服务方会优先进入首页与大厅推荐。
+            {isLoggedIn
+              ? subjectStage === "submitted"
+                ? "你的主页资料已进入待审核，首页会直接把你带到当前最该处理的一步。"
+                : "首页会直接把你带到下一步。先把最重要的一步做完，再往下看。"
+              : "试运营期免费发布、免费入驻。首批资料完整的服务方和培训服务方会优先进入首页与大厅推荐。"}
           </div>
           <div className="toolbarGroup">
-            <Link className="btn primary" href={buyerEntry}>
-              <BriefcaseBusiness size={16} /> 我要派单
-            </Link>
-            <Link className="btn" href={creatorEntry}>
-              <Handshake size={16} /> 我要接单
-            </Link>
-            <Link className="btn" href={trainingEntry}>
-              <GraduationCap size={16} /> 我要找培训
-            </Link>
-            <Link className="btn" href={trainingCreatorEntry}>
-              <UsersRound size={16} /> 我能提供培训
-            </Link>
+            {isLoggedIn ? (
+              <>
+                <Link className="btn primary" href={homeFirstAction.primaryHref}>
+                  <BriefcaseBusiness size={16} /> {homeFirstAction.primaryLabel}
+                </Link>
+                {homeFirstAction.secondaryHref && homeFirstAction.secondaryLabel ? (
+                  <Link className="btn" href={homeFirstAction.secondaryHref}>
+                    <Handshake size={16} /> {homeFirstAction.secondaryLabel}
+                  </Link>
+                ) : null}
+                <Link className="btn" href={currentBuyerProfile ? "/buyer" : "/provider"}>
+                  <UsersRound size={16} /> 进入我的后台
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link className="btn primary" href={buyerEntry}>
+                  <BriefcaseBusiness size={16} /> 我要派单
+                </Link>
+                <Link className="btn" href={creatorEntry}>
+                  <Handshake size={16} /> 我要接单
+                </Link>
+                <Link className="btn" href={trainingEntry}>
+                  <GraduationCap size={16} /> 我要找培训
+                </Link>
+                <Link className="btn" href={trainingCreatorEntry}>
+                  <UsersRound size={16} /> 我能提供培训
+                </Link>
+              </>
+            )}
           </div>
           <div className="heroKpis">
             <div>
@@ -220,52 +321,80 @@ export function ClientHome() {
             </div>
           </div>
         </div>
-        <aside className="opsBoard">
-          <div className="opsHeader">
-            <div>
-              <span className="tag green">
-                <CheckCircle2 size={13} /> 入驻开放
-              </span>
-              <h2>双市场概览</h2>
-            </div>
-            <Sparkles size={22} />
-          </div>
-          <div className="opsGrid">
-            <div className="opsCell">
-              <GraduationCap size={18} />
-              <strong>{trainingCreators.length}</strong>
-              <span>培训服务方</span>
-            </div>
-            <div className="opsCell">
-              <BriefcaseBusiness size={18} />
-              <strong>{data.projects.length}</strong>
-              <span>项目/培训需求</span>
-            </div>
-            <div className="opsCell">
-              <BriefcaseBusiness size={18} />
-              <strong>{data.orders.length}</strong>
-              <span>沟通线索</span>
-            </div>
-          </div>
-          <div className="matchBoard">
-            <div className="spaceBetween">
-              <strong>推荐服务方</strong>
-              <span className="tag blue">接单 + 培训</span>
-            </div>
-            {featured.map((creator, index) => (
-              <div className="matchRow" key={creator.id}>
-                <span className="avatar">
-                  {isImageValue(creator.avatarUrl) ? <img alt={creator.name} src={creator.avatarUrl} /> : (creator.avatarUrl || creator.name).slice(0, 1)}
+        {isLoggedIn ? (
+          <aside className="opsBoard">
+            <FirstActionPanel
+              eyebrow="下一步只做这件事"
+              title={homeFirstAction.title}
+              description={subjectStage === "submitted" ? "认证资料已进入待审核，先把这一步跑完，再继续发布或沟通。" : undefined}
+              primaryLabel={homeFirstAction.primaryLabel}
+              primaryHref={homeFirstAction.primaryHref}
+              secondaryLabel={homeFirstAction.secondaryLabel}
+              secondaryHref={homeFirstAction.secondaryHref}
+              steps={[
+                { label: "主体资料", done: hasSubjectProfile },
+                { label: "平台审核", done: subjectVerified },
+                { label: "需求/主页", done: hasAnyDemand || hasAnyProviderPage },
+                { label: "首条线索", done: hasAnyLead }
+              ]}
+            />
+          </aside>
+        ) : (
+          <aside className="opsBoard">
+            <div className="opsHeader">
+              <div>
+                <span className="tag green">
+                  <CheckCircle2 size={13} /> 入驻开放
                 </span>
-                <div>
-                  <strong>{creator.name}</strong>
-                  <span>{creator.title}</span>
-                </div>
-                <b>{96 - index * 4}%</b>
+                <h2>双市场概览</h2>
               </div>
-            ))}
-          </div>
-        </aside>
+              <Sparkles size={22} />
+            </div>
+            {data.projects.length || data.creators.length ? (
+              <>
+                <div className="opsGrid">
+                  <div className="opsCell">
+                    <GraduationCap size={18} />
+                    <strong>{trainingCreators.length}</strong>
+                    <span>培训服务方</span>
+                  </div>
+                  <div className="opsCell">
+                    <BriefcaseBusiness size={18} />
+                    <strong>{data.projects.length}</strong>
+                    <span>项目/培训需求</span>
+                  </div>
+                  <div className="opsCell">
+                    <BriefcaseBusiness size={18} />
+                    <strong>{data.orders.length}</strong>
+                    <span>沟通线索</span>
+                  </div>
+                </div>
+                <div className="matchBoard">
+                  <div className="spaceBetween">
+                    <strong>推荐服务方</strong>
+                    <span className="tag blue">接单 + 培训</span>
+                  </div>
+                  {featured.map((creator, index) => (
+                    <div className="matchRow" key={creator.id}>
+                      <span className="avatar">
+                        {isImageValue(creator.avatarUrl) ? <img alt={creator.name} src={creator.avatarUrl} /> : (creator.avatarUrl || creator.name).slice(0, 1)}
+                      </span>
+                      <div>
+                        <strong>{creator.name}</strong>
+                        <span>{creator.title}</span>
+                      </div>
+                      <b>{96 - index * 4}%</b>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="notice">
+                暂时还没有真实公开数据。这里会只显示后端已有的真实需求和服务方，不再用演示样本代替。
+              </div>
+            )}
+          </aside>
+        )}
       </section>
 
       <section className="section">
@@ -389,10 +518,19 @@ export function ClientHome() {
         </div>
       </section>
 
+      {isLoggedIn ? (
+        <ShortcutGrid
+          title="你的常用入口"
+          description="先把最容易做完的动作放前面，减少来回找入口的成本。"
+          items={loggedInQuickLinks}
+        />
+      ) : null}
+
       <section className="section">
         <div className="sectionHeader">
           <div>
-            <h2>选择你的入口</h2>
+            <h2>{isLoggedIn ? "继续浏览公开市场" : "选择你的入口"}</h2>
+            <p>{isLoggedIn ? "市场还在，但现在主要是给你补充信息和推进机会。" : "先从最适合你的入口开始。"} </p>
           </div>
         </div>
         <div className="grid four">
@@ -447,6 +585,7 @@ export function ClientHome() {
         <div className="sectionHeader">
           <div>
             <h2>{isLoggedIn ? "你可以直接进入的公开需求" : "项目需求大厅"}</h2>
+            <p>{isLoggedIn ? "公开需求放在这里，但你现在更适合先处理自己的待办。" : "先看真实开放中的项目交付需求和企业培训需求。"}</p>
           </div>
           <Link className="btn" href="/projects">
             查看全部项目需求 <ArrowRight size={16} />
@@ -468,6 +607,7 @@ export function ClientHome() {
         <div className="sectionHeader">
           <div>
             <h2>{isLoggedIn ? "你可以直接联系的服务方" : "接单服务方信息"}</h2>
+            <p>{isLoggedIn ? "这些服务方可以继续对比和邀请，但优先级低于你的首要任务。" : "查看服务主页、培训主页、案例、服务包报价和可接方向。"}</p>
           </div>
           <Link className="btn" href="/creators">
             查看全部服务方 <ArrowRight size={16} />
@@ -484,6 +624,7 @@ export function ClientHome() {
         <div className="sectionHeader">
           <div>
             <h2>{isLoggedIn ? "你可以继续跟进的培训需求" : "培训需求大厅"}</h2>
+            <p>{isLoggedIn ? "培训需求也保留在首页，但主要是补充浏览，不是默认第一动作。" : "先看看企业培训需求如何被结构化展示。"}</p>
           </div>
           <Link className="btn" href="/projects">
             查看全部培训需求 <ArrowRight size={16} />
@@ -505,6 +646,7 @@ export function ClientHome() {
         <div className="sectionHeader">
           <div>
             <h2>{isLoggedIn ? "你可以直接联系的培训方" : "培训方信息"}</h2>
+            <p>{isLoggedIn ? "如果你当前在找培训，这里可以直接继续看；否则先处理自己的待办。" : "查看讲师主页、培训案例和课程材料。"}</p>
           </div>
           <Link className="btn" href="/creators">
             查看全部培训方 <ArrowRight size={16} />

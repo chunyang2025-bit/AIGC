@@ -5,24 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BriefcaseBusiness, CheckCircle2, Clock, FileBadge2, GraduationCap, MessageSquare, ShieldCheck, UserRound, UsersRound } from "lucide-react";
 import { hasActiveReviewSubmission } from "@/lib/review-status";
-import { compactDate, money, orderStatusLabel, projectStatusLabel } from "@/lib/format";
 import { loadMarketplaceData } from "@/lib/store";
 import { readAuthSession } from "@/lib/auth";
-import { notificationsForUser, onboardingCompleteness } from "@/lib/growth";
+import { getLandingAction, getReviewStage, notificationsForUser, onboardingCompleteness, type ReviewStage } from "@/lib/growth";
 import { FirstActionPanel } from "@/components/FirstActionPanel";
+import { ShortcutGrid } from "@/components/ShortcutGrid";
 import { BuyerProfile, CreatorProfile, Order, Project } from "@/lib/types";
-
-type ReviewStage = "empty" | "saved" | "submitted" | "approved" | "rejected";
-
-function getStage(input: { hasProfile: boolean; hasDraft?: boolean; submitted: boolean; verified: boolean; rejectedReason?: string }) {
-  if (!input.hasProfile) return "empty" as const;
-  if (input.rejectedReason) return "rejected" as const;
-  if (input.hasDraft && input.submitted) return "submitted" as const;
-  if (input.hasDraft) return "saved" as const;
-  if (input.verified) return "approved" as const;
-  if (input.submitted) return "submitted" as const;
-  return "saved" as const;
-}
 
 function statusText(stage: ReviewStage) {
   if (stage === "approved") return "已认证";
@@ -107,21 +95,21 @@ export default function AccountPage() {
   const creatorHasDraft = Boolean(creatorProfile?.reviewDraft);
   const subjectHasDraft = buyerHasDraft || creatorHasDraft;
   const subjectRejectedReason = buyerProfile?.reviewDraftRejectedReason || creatorProfile?.reviewDraftRejectedReason || buyerProfile?.rejectedReason || creatorProfile?.rejectedReason;
-  const subjectStage = getStage({
+  const subjectStage = getReviewStage({
     hasProfile: hasSubjectProfile,
     hasDraft: subjectHasDraft,
     submitted: subjectSubmitted,
     verified: subjectVerified,
     rejectedReason: subjectRejectedReason
   });
-  const buyerStage = getStage({
+  const buyerStage = getReviewStage({
     hasProfile: Boolean(buyerProfile),
     hasDraft: buyerHasDraft,
     submitted: buyerSubmitted,
     verified: Boolean(buyerProfile?.verified),
     rejectedReason: buyerProfile?.reviewDraftRejectedReason || buyerProfile?.rejectedReason
   });
-  const creatorStage = getStage({
+  const creatorStage = getReviewStage({
     hasProfile: Boolean(creatorProfile),
     hasDraft: creatorHasDraft,
     submitted: creatorSubmitted,
@@ -145,61 +133,14 @@ export default function AccountPage() {
   const hasAnyDemand = myProjects.length > 0;
   const hasAnyProviderPage = Boolean(creatorProfile?.bio && creatorProfile?.title && (creatorProfile?.servicePackages?.length || creatorProfile?.portfolio.length));
   const hasAnyLead = myBuyerLeads.length + myCreatorLeads.length > 0;
-  const firstAction = !hasSubjectProfile
-    ? {
-        title: "先完成主体主页，再进入认证中心",
-        primaryLabel: "创建主体主页",
-        primaryHref: "/account/profile",
-        secondaryLabel: "先看公开市场",
-        secondaryHref: "/projects"
-      }
-    : subjectStage === "saved" || subjectStage === "rejected"
-      ? {
-          title: subjectHasDraft ? "认证变更已保存，下一步提交审核" : subjectStage === "rejected" ? "先补充资料，再重新提交认证审核" : "主页已保存，下一步提交认证审核",
-          primaryLabel: "进入认证中心",
-          primaryHref: "/account/verification",
-          secondaryLabel: subjectStage === "rejected" ? "补充主体资料" : "继续试用业务",
-          secondaryHref: "/account/verification"
-        }
-      : subjectStage === "submitted"
-        ? {
-            title: "资料已进入待审核，先继续试用业务流程",
-            primaryLabel: buyerProfile ? "进入需求方后台" : "进入服务方后台",
-            primaryHref: buyerProfile ? "/buyer" : "/provider",
-            secondaryLabel: "查看认证状态",
-            secondaryHref: "/account/verification"
-          }
-      : buyerProfile && !hasAnyDemand
-        ? {
-            title: "发布第一个需求，让系统开始匹配",
-            primaryLabel: "发布项目需求",
-            primaryHref: "/post-project",
-            secondaryLabel: "发布培训需求",
-            secondaryHref: "/post-project?category=AIGC%20Training"
-          }
-        : creatorProfile && !hasAnyProviderPage
-          ? {
-              title: "生成服务主页，获得展示和匹配入口",
-              primaryLabel: "生成服务主页",
-              primaryHref: "/provider/profile",
-              secondaryLabel: "生成培训主页",
-              secondaryHref: "/provider/profile?category=AIGC%20Training"
-            }
-          : !hasAnyLead
-            ? {
-                title: "推进第一条沟通线索",
-                primaryLabel: buyerProfile ? "进入需求方后台" : "进入服务方后台",
-                primaryHref: buyerProfile ? "/buyer" : "/provider",
-                secondaryLabel: buyerProfile ? "查看服务方大厅" : "查看公开需求",
-                secondaryHref: buyerProfile ? "/creators" : "/projects"
-              }
-            : {
-                title: "跟进已有线索，沉淀试运营反馈",
-                primaryLabel: buyerProfile ? "查看我的派单" : "查看我的接单",
-                primaryHref: buyerProfile ? "/buyer" : "/provider",
-                secondaryLabel: "提交试用建议",
-                secondaryHref: "/account"
-              };
+  const firstAction = getLandingAction({
+    hasProfile: hasSubjectProfile,
+    stage: subjectStage,
+    isBuyer: Boolean(buyerProfile),
+    hasAnyDemand,
+    hasAnyProviderPage,
+    hasAnyLead
+  });
 
   return (
     <main className="main">
@@ -404,89 +345,36 @@ export default function AccountPage() {
         </section>
       </div>
 
-      <div className="grid two">
-        <section className="card">
-          <div className="panelTop">
-            <div>
-              <strong>我的派单</strong>
-            </div>
-            <BriefcaseBusiness size={18} />
-          </div>
-          <div className="cardBody stack">
-            <div className="grid two compactGrid">
-              <div className="metric">
-                <strong>{myProjects.length}</strong>
-                <span>已发布需求</span>
-              </div>
-              <div className="metric">
-                <strong>{myBuyerLeads.length}</strong>
-                <span>沟通线索</span>
-              </div>
-            </div>
-            {myProjects.slice(0, 3).map((project) => (
-              <Link className="miniLead" href={`/buyer/projects/${project.id}`} key={project.id}>
-                <span>{project.title}</span>
-                <em>{projectStatusLabel(project.status)} · {money(project.budget)} · {compactDate(project.createdAt)}</em>
-              </Link>
-            ))}
-            {myProjects.length === 0 ? <div className="muted">试运营期间资料填好后即可发布第一个需求。</div> : null}
-            <div className="toolbarGroup">
-              <Link className="btn primary" href={buyerProfile ? "/buyer" : "/account/capabilities?intent=dispatch"}>
-                进入我的派单
-              </Link>
-              <Link className="btn" href={buyerProfile ? "/post-project" : "/account/profile"}>
-                {buyerProfile ? "发布需求" : "完善派单认证"}
-              </Link>
-            </div>
-          </div>
-        </section>
-
-        <section className="card">
-          <div className="panelTop">
-            <div>
-              <strong>我的接单</strong>
-            </div>
-            <MessageSquare size={18} />
-          </div>
-          <div className="cardBody stack">
-            <div className="grid two compactGrid">
-              <div className="metric">
-                <strong>{creatorProfile ? 1 : 0}</strong>
-                <span>展示页</span>
-              </div>
-              <div className="metric">
-                <strong>{myCreatorLeads.length}</strong>
-                <span>沟通线索</span>
-              </div>
-            </div>
-            {myCreatorLeads.slice(0, 3).map((lead) => {
-              const project = data.projects.find((item) => item.id === lead.projectId);
-              return (
-                <Link className="miniLead" href={`/orders/${lead.id}`} key={lead.id}>
-                  <span>{project?.title ?? "需求沟通"}</span>
-                  <em>{orderStatusLabel(lead.status)} · {money(lead.amount)} · {compactDate(lead.createdAt)}</em>
-                </Link>
-              );
-            })}
-            {creatorProfile ? (
-              <Link className="miniLead" href={`/creators/${creatorProfile.id}`}>
-                <span>{creatorProfile.displayName ?? creatorProfile.name}</span>
-                <em>{creatorStage === "approved" ? "已认证展示页" : creatorStage === "submitted" ? "展示页待审核" : "展示页资料已保存"}</em>
-              </Link>
-            ) : (
-              <div className="muted">启用服务方身份后，这里会显示你的展示页和沟通线索。</div>
-            )}
-            <div className="toolbarGroup">
-              <Link className="btn primary" href={creatorProfile ? "/provider" : "/account/capabilities?intent=service"}>
-                进入我的接单
-              </Link>
-              <Link className="btn" href="/projects">
-                浏览需求
-              </Link>
-            </div>
-          </div>
-        </section>
-      </div>
+      <ShortcutGrid
+        title="我的常用入口"
+        description="把你最常用的动作放前面，减少在后台之间来回跳的成本。"
+        items={[
+          {
+            title: "我的派单",
+            href: "/buyer",
+            text: `${myProjects.length} 个需求 · ${myBuyerLeads.length} 条沟通线索`,
+            icon: BriefcaseBusiness
+          },
+          {
+            title: "发布需求",
+            href: buyerProfile ? "/post-project" : "/account/profile",
+            text: buyerProfile ? "继续发布项目或培训需求。" : "先完善派单认证。",
+            icon: UserRound
+          },
+          {
+            title: "我的接单",
+            href: "/provider",
+            text: `${creatorProfile ? 1 : 0} 个展示页 · ${myCreatorLeads.length} 条沟通线索`,
+            icon: MessageSquare
+          },
+          {
+            title: "浏览需求",
+            href: "/projects",
+            text: "回到公开市场继续筛选机会。",
+            icon: Clock
+          }
+        ]}
+      />
 
       <section className="notice">
         <Clock size={15} /> 试运营期间不强制审核。资料保存后可先试用发布、匹配和沟通；正式合作前建议提交认证审核并等待通过。

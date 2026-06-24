@@ -327,13 +327,38 @@ export function loadMarketplaceData(): MarketplaceData {
 
 export function loadPublicMarketplaceData(): MarketplaceData {
   if (typeof window === "undefined") {
-    return cleanPublicMarketplaceData(normalizeData(cloneData(demoData)));
+    return cleanPublicMarketplaceData(normalizeData({
+      users: [],
+      buyerProfiles: [],
+      creators: [],
+      projects: [],
+      matches: [],
+      orders: [],
+      messages: [],
+      reviews: [],
+      reports: [],
+      feedback: [],
+      activityEvents: []
+    }));
   }
 
   const local = loadLocalMarketplaceData();
   const remote = requestJson<PublicMarketplacePayload>("/api/marketplace");
   if (!remote) {
-    return cleanPublicMarketplaceData(local);
+    return cleanPublicMarketplaceData({
+      ...local,
+      users: [],
+      buyerProfiles: [],
+      creators: [],
+      projects: [],
+      matches: [],
+      orders: [],
+      messages: [],
+      reviews: [],
+      reports: [],
+      feedback: [],
+      activityEvents: []
+    });
   }
 
   return cleanPublicMarketplaceData(normalizeData({
@@ -447,7 +472,7 @@ function syncFromApi() {
   return normalized;
 }
 
-export function createProject(input: {
+export async function createProject(input: {
   title: string;
   description: string;
   category: ProjectCategory;
@@ -469,16 +494,21 @@ export function createProject(input: {
 }) {
   const session = readAuthSession();
   const buyerId = session?.userId ?? "u-buyer-1";
-  const remote = requestJson<{ project: Project; matches: ProjectMatch[] }>("/api/projects", {
-    method: "POST",
-    body: JSON.stringify({
-      buyerId,
-      ...input
-    })
-  });
+  if (shouldUseApi()) {
+    const remote = await requestJsonAsync<{ project: Project; matches: ProjectMatch[] }>("/api/projects", {
+      method: "POST",
+      body: JSON.stringify({
+        buyerId,
+        ...input
+      })
+    }, {
+      throwOnError: true,
+      fallbackErrorMessage: "需求保存失败，请稍后重试。"
+    });
 
-  if (remote) {
-    return remote;
+    if (remote) {
+      return remote;
+    }
   }
 
   const data = loadMarketplaceData();
@@ -526,7 +556,7 @@ export function createProject(input: {
   return { project, matches };
 }
 
-export function resubmitProject(projectId: string, input: {
+export async function resubmitProject(projectId: string, input: {
   title: string;
   description: string;
   category: ProjectCategory;
@@ -546,13 +576,18 @@ export function resubmitProject(projectId: string, input: {
   contactPhone?: string;
   agentBrief?: Project["agentBrief"];
 }) {
-  const remote = requestJson<{ project: Project; matches: ProjectMatch[] }>(`/api/projects/${projectId}`, {
-    method: "PATCH",
-    body: JSON.stringify(input)
-  });
+  if (shouldUseApi()) {
+    const remote = await requestJsonAsync<{ project: Project; matches: ProjectMatch[] }>(`/api/projects/${projectId}`, {
+      method: "PATCH",
+      body: JSON.stringify(input)
+    }, {
+      throwOnError: true,
+      fallbackErrorMessage: "需求重新提交失败，请稍后重试。"
+    });
 
-  if (remote) {
-    return remote;
+    if (remote) {
+      return remote;
+    }
   }
 
   const data = loadMarketplaceData();

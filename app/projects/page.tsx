@@ -45,6 +45,7 @@ function ProjectsContent() {
   }, [currentCreator, data, mode, query]);
   const pagedProjects = visibleProjects.slice(0, previewLimit);
   const isTrainingList = mode === "training";
+  const hasPublicProjects = pagedProjects.length > 0;
 
   return (
     <main className="main">
@@ -107,10 +108,10 @@ function ProjectsContent() {
           />
         ))}
       </div>
-      {!visibleProjects.length ? (
+      {!hasPublicProjects ? (
         <section className="emptyState">
           <strong>{isTrainingList ? "暂时还没有公开培训需求" : "暂时还没有公开派单需求"}</strong>
-          <span>试运营刚启动，未审核需求会先在需求方后台试用匹配，不会直接进入公开大厅。你可以先发布需求，或创建服务主页等待邀约。</span>
+          <span>当前公开大厅只展示真实后端数据。若这里为空，说明还没有真实发布或 Supabase 还未同步成功。</span>
           <div className="toolbarGroup">
             <Link className="btn primary" href={isTrainingList ? trainingEntry : buyerEntry}>
               <Plus size={16} /> {isTrainingList ? "发布培训需求" : "发布派单需求"}

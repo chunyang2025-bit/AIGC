@@ -15,6 +15,17 @@ export type NotificationItem = {
   level: "info" | "warning" | "success";
 };
 
+export type ReviewStage = "empty" | "saved" | "submitted" | "approved" | "rejected";
+
+export type LandingAction = {
+  title: string;
+  description?: string;
+  primaryLabel: string;
+  primaryHref: string;
+  secondaryLabel?: string;
+  secondaryHref?: string;
+};
+
 export function scoreChecklist(items: ChecklistItem[]) {
   const total = items.reduce((sum, item) => sum + item.weight, 0);
   const done = items.filter((item) => item.done).reduce((sum, item) => sum + item.weight, 0);
@@ -70,6 +81,99 @@ export function onboardingCompleteness(input: {
   return {
     score: scoreChecklist(items),
     items
+  };
+}
+
+export function getReviewStage(input: {
+  hasProfile: boolean;
+  hasDraft?: boolean;
+  submitted: boolean;
+  verified: boolean;
+  rejectedReason?: string;
+}): ReviewStage {
+  if (!input.hasProfile) return "empty";
+  if (input.rejectedReason) return "rejected";
+  if (input.hasDraft && input.submitted) return "submitted";
+  if (input.hasDraft) return "saved";
+  if (input.verified) return "approved";
+  if (input.submitted) return "submitted";
+  return "saved";
+}
+
+export function getLandingAction(input: {
+  hasProfile: boolean;
+  stage: ReviewStage;
+  isBuyer: boolean;
+  hasAnyDemand: boolean;
+  hasAnyProviderPage: boolean;
+  hasAnyLead: boolean;
+}): LandingAction {
+  if (!input.hasProfile) {
+    return {
+      title: "先创建主体主页，再进入试运营工作台",
+      primaryLabel: "创建主体主页",
+      primaryHref: "/account/profile",
+      secondaryLabel: "先看公开市场",
+      secondaryHref: "/projects"
+    };
+  }
+
+  if (input.stage === "saved" || input.stage === "rejected") {
+    return {
+      title: input.stage === "rejected" ? "先补充资料，再重新提交认证审核" : "主页已保存，下一步提交认证审核",
+      primaryLabel: "进入认证中心",
+      primaryHref: "/account/verification",
+      secondaryLabel: input.stage === "rejected" ? "补充主体资料" : "继续试用业务",
+      secondaryHref: "/account/verification"
+    };
+  }
+
+  if (input.stage === "submitted") {
+    return {
+      title: "资料已进入待审核，先继续试用业务流程",
+      primaryLabel: input.isBuyer ? "进入需求方后台" : "进入服务方后台",
+      primaryHref: input.isBuyer ? "/buyer" : "/provider",
+      secondaryLabel: "查看认证状态",
+      secondaryHref: "/account/verification"
+    };
+  }
+
+  if (input.isBuyer && !input.hasAnyDemand) {
+    return {
+      title: "发布第一个需求，让系统开始匹配",
+      primaryLabel: "发布项目需求",
+      primaryHref: "/post-project",
+      secondaryLabel: "发布培训需求",
+      secondaryHref: "/post-project?category=AIGC%20Training"
+    };
+  }
+
+  if (!input.isBuyer && !input.hasAnyProviderPage) {
+    return {
+      title: "生成服务主页，获得展示和匹配入口",
+      primaryLabel: "生成服务主页",
+      primaryHref: "/provider/profile",
+      secondaryLabel: "生成培训主页",
+      secondaryHref: "/provider/profile?category=AIGC%20Training"
+    };
+  }
+
+  if (!input.hasAnyLead) {
+    return {
+      title: "推进第一条沟通线索",
+      primaryLabel: input.isBuyer ? "进入需求方后台" : "进入服务方后台",
+      primaryHref: input.isBuyer ? "/buyer" : "/provider",
+      secondaryLabel: input.isBuyer ? "查看服务方大厅" : "查看公开需求",
+      secondaryHref: input.isBuyer ? "/creators" : "/projects"
+    };
+  }
+
+  return {
+    title: "跟进已有线索，沉淀试运营反馈",
+    primaryLabel: input.isBuyer ? "查看我的派单" : "查看我的接单",
+    primaryHref: input.isBuyer ? "/buyer" : "/provider",
+    secondaryLabel: "提交试用建议",
+    secondaryHref: "/account"
   };
 }
 
