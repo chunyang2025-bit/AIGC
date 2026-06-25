@@ -1185,17 +1185,6 @@ button {
 }
 
 .authSecondaryAction,
-.authGhostButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: 54px;
-  border-radius: 8px;
-  font-size: 15px;
-  font-weight: 850;
-}
-
 .authSecondaryAction {
   border: 1px solid #c9d7ea;
   color: #0f5eb2;
@@ -1208,11 +1197,6 @@ button {
   background: #f5f6f8;
 }
 
-.authGhostButton {
-  border: 1px solid #dfe5e2;
-  color: #1f2d2a;
-  background: #fff;
-}
 
 .authStatus {
   padding: 12px 14px;

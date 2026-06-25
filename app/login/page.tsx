@@ -11,7 +11,6 @@ import {
   HelpCircle,
   LockKeyhole,
   Phone,
-  QrCode,
   ShieldCheck,
   Sparkles,
   UserCog
@@ -185,16 +184,6 @@ function LoginContent() {
     }
   }
 
-  function handleWechatLogin() {
-    const url = process.env.NEXT_PUBLIC_WECHAT_LOGIN_URL;
-    if (url) {
-      window.location.assign(url);
-      return;
-    }
-    setStatusText("微信扫码登录正在接入中，先用手机验证码登录更快。");
-    setShowRegisterPrompt(false);
-  }
-
   return (
     <main className="dispatchLoginShell">
       <header className="dispatchLoginTop">
@@ -308,10 +297,6 @@ function LoginContent() {
                 </label>
                 <button className="authPrimary" onClick={loginByCode} disabled={isSubmitting} type="button">
                   {isSubmitting ? "正在登录..." : "验证码登录"}
-                </button>
-                <button className="authGhostButton" onClick={handleWechatLogin} type="button">
-                  <QrCode size={18} />
-                  微信扫码登录
                 </button>
               </>
             )}
