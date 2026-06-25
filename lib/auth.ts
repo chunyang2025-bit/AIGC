@@ -251,6 +251,15 @@ export async function requestPasswordReset(account: string) {
   });
 }
 
+export async function requestLoginCode(input: { role: UserRole; account: string; phone?: string }) {
+  return requestJson("/api/auth/login-code", {
+    role: input.role,
+    account: normalizeAccount(input.account),
+    phone: accountPhone(input.account, input.phone),
+    email: normalizeAccount(input.account).includes("@") ? normalizeAccount(input.account) : `${normalizeAccount(input.account)}@phone.aigclancer.local`
+  });
+}
+
 export async function loginAccount(input: {
   role: UserRole;
   account: string;

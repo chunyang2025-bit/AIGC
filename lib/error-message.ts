@@ -13,6 +13,10 @@ export function userFacingErrorMessage(error: unknown, fallback = "操作失败�
     return "账号或密码不正确。";
   }
 
+  if (lower.includes("otp") || lower.includes("verification code") || lower.includes("token has expired") || lower.includes("expired code")) {
+    return "验证码不正确或已过期。";
+  }
+
   if (lower.includes("email not confirmed") || lower.includes("phone not confirmed")) {
     return "账号尚未完成验证，请先完成验证后再登录。";
   }

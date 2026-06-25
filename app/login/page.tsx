@@ -11,11 +11,12 @@ import {
   HelpCircle,
   LockKeyhole,
   Phone,
+  QrCode,
   ShieldCheck,
   Sparkles,
   UserCog
 } from "lucide-react";
-import { AuthSession, loginAccount, readAuthSession, roleSetupPath, roleWorkbenchPath } from "@/lib/auth";
+import { AuthSession, loginAccount, readAuthSession, requestLoginCode, roleSetupPath, roleWorkbenchPath } from "@/lib/auth";
 import { userFacingErrorMessage } from "@/lib/error-message";
 import { UserRole } from "@/lib/types";
 
@@ -36,12 +37,16 @@ function LoginContent() {
   const resetStatus = searchParams.get("reset");
   const [account, setAccount] = useState(searchParams.get("account") ?? "");
   const [password, setPassword] = useState("");
+  const [smsCode, setSmsCode] = useState("");
   const [agreed, setAgreed] = useState(false);
   const [statusText, setStatusText] = useState("");
   const [showRegisterPrompt, setShowRegisterPrompt] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSendingCode, setIsSendingCode] = useState(false);
+  const [codeCountdown, setCodeCountdown] = useState(0);
   const activeRoleValue: UserRole = requestedRole === "admin" ? "admin" : requestedRole === "accept" ? "creator" : "buyer";
+  const [loginMode, setLoginMode] = useState<"password" | "code">(activeRoleValue === "admin" ? "password" : "code");
   const registerRoleQuery = requestedRole === "accept" ? "role=accept&" : "";
   const roleLabel = requestedRole === "admin" ? adminRole.title : requestedRole === "accept" ? "接单服务方" : "主体账号";
   const roleSubtitle = requestedRole === "admin" ? adminRole.subtitle : requestedRole === "accept" ? "登录后继续完善服务主页或发起沟通" : "登录后直接进入你上次选择的业务路径";
@@ -66,6 +71,22 @@ function LoginContent() {
       setShowRegisterPrompt(false);
     }
   }, [resetStatus]);
+
+  useEffect(() => {
+    if (activeRoleValue === "admin") {
+      setLoginMode("password");
+      return;
+    }
+    setLoginMode("code");
+  }, [activeRoleValue]);
+
+  useEffect(() => {
+    if (!codeCountdown) return;
+    const timer = window.setTimeout(() => {
+      setCodeCountdown((value) => Math.max(0, value - 1));
+    }, 1000);
+    return () => window.clearTimeout(timer);
+  }, [codeCountdown]);
 
   function requireAgreement() {
     if (agreed) return true;
@@ -105,6 +126,73 @@ function LoginContent() {
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  async function sendCode() {
+    if (!requireAgreement()) return;
+    if (!account.trim()) {
+      setStatusText("请输入手机号。");
+      setShowRegisterPrompt(false);
+      return;
+    }
+    try {
+      setIsSendingCode(true);
+      await requestLoginCode({
+        role: activeRoleValue,
+        account: account.trim()
+      });
+      setStatusText("验证码已发送，请留意短信。");
+      setShowRegisterPrompt(false);
+      setCodeCountdown(60);
+    } catch (error) {
+      setStatusText(userFacingErrorMessage(error, "验证码发送失败，请稍后再试。"));
+      setShowRegisterPrompt(false);
+    } finally {
+      setIsSendingCode(false);
+    }
+  }
+
+  async function loginByCode() {
+    if (!requireAgreement()) return;
+    if (!account.trim() || !smsCode.trim()) {
+      setStatusText("请输入手机号和验证码。");
+      setShowRegisterPrompt(false);
+      return;
+    }
+    try {
+      setIsSubmitting(true);
+      const session = await loginAccount({
+        role: activeRoleValue,
+        account: account.trim(),
+        code: smsCode.trim(),
+        authMethod: "code",
+        name: account.trim()
+      });
+      setStatusText("登录成功，正在进入主体中心。");
+      setShowRegisterPrompt(false);
+      router.push(nextPath(session));
+    } catch (error) {
+      const message = userFacingErrorMessage(error, "登录失败，请稍后再试。");
+      if (message.includes("未找到") || message.includes("先注册")) {
+        setStatusText("未找到账号，请先注册。");
+        setShowRegisterPrompt(true);
+      } else {
+        setStatusText(message);
+        setShowRegisterPrompt(false);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  function handleWechatLogin() {
+    const url = process.env.NEXT_PUBLIC_WECHAT_LOGIN_URL;
+    if (url) {
+      window.location.assign(url);
+      return;
+    }
+    setStatusText("微信扫码登录正在接入中，先用手机验证码登录更快。");
+    setShowRegisterPrompt(false);
   }
 
   return (
@@ -158,33 +246,75 @@ function LoginContent() {
             </div>
           </div>
 
+          {activeRoleValue !== "admin" ? (
+            <div className="authModeSwitch" role="tablist" aria-label="登录方式">
+              <button className={loginMode === "code" ? "active" : ""} onClick={() => setLoginMode("code")} type="button">
+                手机验证码登录
+              </button>
+              <button className={loginMode === "password" ? "active" : ""} onClick={() => setLoginMode("password")} type="button">
+                账号密码登录
+              </button>
+            </div>
+          ) : null}
+
           <div className="authForm">
             <label>
-              <span>账号</span>
+              <span>{loginMode === "code" && activeRoleValue !== "admin" ? "手机号" : "账号"}</span>
               <div className="authInput">
                 <Phone size={18} />
-                <input placeholder="手机号 / 邮箱" value={account} onChange={(event) => setAccount(event.target.value)} />
+                <input
+                  placeholder={loginMode === "code" && activeRoleValue !== "admin" ? "请输入手机号" : "手机号 / 邮箱"}
+                  value={account}
+                  onChange={(event) => setAccount(event.target.value)}
+                />
               </div>
             </label>
-            <label>
-              <span>密码</span>
-              <div className="authInput">
-                <LockKeyhole size={18} />
-                <input placeholder="请输入密码" type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} />
-                <button onClick={() => setShowPassword((value) => !value)} type="button" title={showPassword ? "隐藏密码" : "显示密码"}>
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+
+            {loginMode === "password" ? (
+              <>
+                <label>
+                  <span>密码</span>
+                  <div className="authInput">
+                    <LockKeyhole size={18} />
+                    <input placeholder="请输入密码" type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} />
+                    <button onClick={() => setShowPassword((value) => !value)} type="button" title={showPassword ? "隐藏密码" : "显示密码"}>
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                </label>
+                <div className="registerPrompt">
+                  <span>忘记密码？</span>
+                  <Link href={`/forgot-password?account=${encodeURIComponent(account.trim())}`}>
+                    通过邮箱找回
+                  </Link>
+                </div>
+                <button className="authPrimary" onClick={loginByPassword} disabled={isSubmitting} type="button">
+                  {isSubmitting ? "正在登录..." : "登录"}
                 </button>
-              </div>
-            </label>
-            <div className="registerPrompt">
-              <span>忘记密码？</span>
-              <Link href={`/forgot-password?account=${encodeURIComponent(account.trim())}`}>
-                通过邮箱找回
-              </Link>
-            </div>
-            <button className="authPrimary" onClick={loginByPassword} disabled={isSubmitting} type="button">
-              {isSubmitting ? "正在登录..." : "登录"}
-            </button>
+              </>
+            ) : (
+              <>
+                <label>
+                  <span>验证码</span>
+                  <div className="authCodeRow">
+                    <div className="authInput">
+                      <LockKeyhole size={18} />
+                      <input placeholder="请输入短信验证码" inputMode="numeric" value={smsCode} onChange={(event) => setSmsCode(event.target.value)} />
+                    </div>
+                    <button className="authSecondaryAction" disabled={isSendingCode || codeCountdown > 0} onClick={sendCode} type="button">
+                      {isSendingCode ? "发送中..." : codeCountdown > 0 ? `${codeCountdown}s 后重发` : "发送验证码"}
+                    </button>
+                  </div>
+                </label>
+                <button className="authPrimary" onClick={loginByCode} disabled={isSubmitting} type="button">
+                  {isSubmitting ? "正在登录..." : "验证码登录"}
+                </button>
+                <button className="authGhostButton" onClick={handleWechatLogin} type="button">
+                  <QrCode size={18} />
+                  微信扫码登录
+                </button>
+              </>
+            )}
           </div>
 
           {statusText ? <div className="authStatus">{statusText}</div> : null}
