@@ -180,6 +180,19 @@ function mapReview(row: Record<string, unknown>): Review {
   };
 }
 
+function mapReport(row: Record<string, unknown>) {
+  return {
+    id: String(row.id),
+    reporterId: String(row.reporter_id),
+    targetType: String(row.target_type || "project") as "project" | "creator" | "buyer_profile" | "order" | "message",
+    targetId: String(row.target_id || ""),
+    reason: String(row.reason || ""),
+    status: String(row.status || "open") as "open" | "reviewing" | "resolved" | "dismissed",
+    resolution: row.resolution ? String(row.resolution) : undefined,
+    createdAt: String(row.created_at || new Date().toISOString())
+  };
+}
+
 function mapFeedback(row: Record<string, unknown>): TrialFeedback {
   return {
     id: String(row.id),
@@ -208,9 +221,83 @@ function mapActivity(row: Record<string, unknown>): ActivityEvent {
   };
 }
 
+async function readSupabaseAdminState(supabase: NonNullable<ReturnType<typeof getServerSupabase>>): Promise<MarketplaceData> {
+  const [
+    users,
+    buyerProfiles,
+    creators,
+    projects,
+    matches,
+    orders,
+    messages,
+    reviews,
+    reports,
+    feedback,
+    activityEvents
+  ] = await Promise.all([
+    supabase.from("app_users").select("*").order("created_at", { ascending: false }),
+    supabase.from("buyer_profiles").select("*"),
+    supabase.from("creator_profiles").select("*"),
+    supabase.from("projects").select("*").order("created_at", { ascending: false }),
+    supabase.from("project_matches").select("*"),
+    supabase.from("orders").select("*").order("created_at", { ascending: false }),
+    supabase.from("messages").select("*").order("created_at", { ascending: false }),
+    supabase.from("reviews").select("*"),
+    supabase.from("abuse_reports").select("*").order("created_at", { ascending: false }),
+    supabase.from("trial_feedback").select("*").order("created_at", { ascending: false }),
+    supabase.from("activity_events").select("*").order("created_at", { ascending: false })
+  ]);
+
+  const firstError = [
+    users.error,
+    buyerProfiles.error,
+    creators.error,
+    projects.error,
+    matches.error,
+    orders.error,
+    messages.error,
+    reviews.error,
+    reports.error,
+    feedback.error,
+    activityEvents.error
+  ].find(Boolean);
+
+  if (firstError) {
+    throw new Error(`Supabase admin read failed: ${firstError.message}`);
+  }
+
+  return {
+    users: (users.data ?? []).map((row) => mapUser(row)),
+    buyerProfiles: (buyerProfiles.data ?? []).map((row) => mapBuyer(row)),
+    creators: (creators.data ?? []).map((row) => mapCreator(row)),
+    projects: (projects.data ?? []).map((row) => mapProject(row)),
+    matches: (matches.data ?? []).map((row) => mapMatch(row)),
+    orders: (orders.data ?? []).map((row) => mapOrder(row)),
+    messages: (messages.data ?? []).map((row) => mapMessage(row)),
+    reviews: (reviews.data ?? []).map((row) => mapReview(row)),
+    reports: (reports.data ?? []).map((row) => mapReport(row)),
+    feedback: (feedback.data ?? []).map((row) => mapFeedback(row)),
+    activityEvents: (activityEvents.data ?? []).map((row) => mapActivity(row))
+  };
+}
+
 export async function GET(request: Request) {
   const actor = await getRequestUser(request);
   const supabase = getServerSupabase();
+
+  if (supabase && actor?.role === "admin") {
+    const data = await readSupabaseAdminState(supabase);
+    logRouteInfo("api/state", "scope", {
+      actorId: actor.id,
+      actorRole: actor.role,
+      users: data.users.length,
+      buyerProfiles: data.buyerProfiles?.length ?? 0,
+      creators: data.creators.length,
+      projects: data.projects.length,
+      optimized: true
+    });
+    return apiOk(data);
+  }
 
   if (supabase && actor && actor.role !== "admin") {
     const [buyerProfileResult, creatorProfileResult, publicProjectsResult, ownProjectsResult, feedbackResult, activityResult, reportsResult] = await Promise.all([
