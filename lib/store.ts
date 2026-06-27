@@ -1,6 +1,5 @@
 "use client";
 
-import { demoData } from "./demo-data";
 import { recommendCreators } from "./matching";
 import { cleanPublicMarketplaceData, createEmptyMarketplaceData } from "./public-marketplace";
 import { buyerVerificationFieldsChanged, creatorVerificationFieldsChanged } from "./review-status";
@@ -80,8 +79,7 @@ function dedupeProfilesByUserId<T extends { id: string; userId: string }>(items:
 }
 
 function normalizeData(data: MarketplaceData): MarketplaceData {
-  const demo = cloneData(demoData);
-  const buyerProfiles = (data.buyerProfiles ?? demo.buyerProfiles ?? []).map((profile) => ({
+  const buyerProfiles = (data.buyerProfiles ?? []).map((profile) => ({
     ...profile,
     displayName: profile.displayName ?? profile.companyName,
     avatarUrl: profile.avatarUrl ?? profile.companyName.slice(0, 1),
@@ -280,12 +278,12 @@ async function requestJsonAsync<T>(path: string, init?: RequestInit, options?: R
 
 function loadLocalMarketplaceData(): MarketplaceData {
   if (typeof window === "undefined") {
-    return normalizeData(cloneData(demoData));
+    return normalizeData(createEmptyMarketplaceData());
   }
 
   const cached = window.localStorage.getItem(STORAGE_KEY);
   if (!cached) {
-    const localData = cloneData(demoData);
+    const localData = createEmptyMarketplaceData();
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(localData));
     return normalizeData(localData);
   }
@@ -294,7 +292,7 @@ function loadLocalMarketplaceData(): MarketplaceData {
     return normalizeData(JSON.parse(cached) as MarketplaceData);
   } catch {
     window.localStorage.removeItem(STORAGE_KEY);
-    const localData = cloneData(demoData);
+    const localData = createEmptyMarketplaceData();
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(localData));
     return normalizeData(localData);
   }
@@ -313,7 +311,7 @@ function hasSessionScopedData(data: MarketplaceData, session: ReturnType<typeof 
 
 export function loadMarketplaceData(): MarketplaceData {
   if (typeof window === "undefined") {
-    return normalizeData(cloneData(demoData));
+    return normalizeData(createEmptyMarketplaceData());
   }
 
   const session = readAuthSession();
@@ -1397,5 +1395,5 @@ export function resetDemoData() {
     return;
   }
 
-  saveMarketplaceData(cloneData(demoData));
+  saveMarketplaceData(createEmptyMarketplaceData());
 }
