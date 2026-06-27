@@ -108,8 +108,13 @@ function normalizeData(data: MarketplaceData): MarketplaceData {
   }));
 
   return {
+    ...createEmptyMarketplaceData(),
     ...data,
+    messages: data.messages ?? [],
+    reviews: data.reviews ?? [],
+    reports: data.reports ?? [],
     feedback: data.feedback ?? [],
+    activityEvents: data.activityEvents ?? [],
     buyerProfiles: dedupeProfilesByUserId(buyerProfiles, "bp"),
     creators: dedupeProfilesByUserId(creators, "c")
   };

@@ -99,16 +99,16 @@ export default function AdminPage() {
   const verifiedSubjects = (data.buyerProfiles ?? []).filter((profile) => profile.verified).length + data.creators.filter((creator) => creator.verified).length;
   const pendingSubjects = (data.buyerProfiles ?? []).filter((profile) => !profile.verified).length + data.creators.filter((creator) => !creator.verified).length;
   const pendingProjects = data.projects.filter((project) => project.status === "pending_review").length;
-  const openReports = data.reports.filter((report) => report.status === "open" || report.status === "reviewing").length;
-  const openFeedback = data.feedback.filter((feedback) => feedback.status === "open" || feedback.status === "reviewing").length;
+  const openReports = (data.reports ?? []).filter((report) => report.status === "open" || report.status === "reviewing").length;
+  const openFeedback = (data.feedback ?? []).filter((feedback) => feedback.status === "open" || feedback.status === "reviewing").length;
   const suspendedUsers = data.users.filter((user) => user.status === "suspended").length;
   const pendingBuyerProfiles = (data.buyerProfiles ?? []).filter((profile) => !profile.verified);
   const pendingCreators = data.creators.filter((creator) => !creator.verified);
   const reviewQueueBuyers = (data.buyerProfiles ?? []).filter((profile) => !profile.verified || profile.reviewDraft);
   const reviewQueueCreators = data.creators.filter((creator) => !creator.verified || creator.reviewDraft);
   const pendingProjectReviews = data.projects.filter((project) => project.status === "pending_review");
-  const activeReports = data.reports.filter((report) => report.status === "open" || report.status === "reviewing");
-  const activeFeedback = data.feedback.filter((feedback) => feedback.status === "open" || feedback.status === "reviewing");
+  const activeReports = (data.reports ?? []).filter((report) => report.status === "open" || report.status === "reviewing");
+  const activeFeedback = (data.feedback ?? []).filter((feedback) => feedback.status === "open" || feedback.status === "reviewing");
   const suspendedAccounts = data.users.filter((user) => user.status === "suspended");
   const subjectProfiles = new Set([
     ...(data.buyerProfiles ?? []).map((profile) => profile.userId),
@@ -1410,7 +1410,7 @@ export default function AdminPage() {
               </tr>
             </thead>
             <tbody>
-              {data.reports.slice(0, 20).map((report) => {
+              {(data.reports ?? []).slice(0, 20).map((report) => {
                 const reporter = data.users.find((user) => user.id === report.reporterId);
                 const href = reportTargetHref(report.targetType, report.targetId);
                 return (
@@ -1471,7 +1471,7 @@ export default function AdminPage() {
                   </tr>
                 );
               })}
-              {!data.reports.length ? (
+              {!(data.reports ?? []).length ? (
                 <tr>
                   <td colSpan={5}>
                     <div className="muted">暂无举报记录。</div>
