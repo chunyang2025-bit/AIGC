@@ -9,9 +9,10 @@ import { activityEventLabel, categoryLabel, money, orderResultReasonLabel, order
 import { deliverableTypeLabel, projectUseCaseLabel, urgencyLabel } from "@/lib/growth-taxonomy";
 import { buyerReviewDiff, creatorReviewDiff } from "@/lib/review-status";
 import { trainingFormatLabel } from "@/lib/training";
-import { loadMarketplaceData, resolveFeedback, resolveReport, reviewProject, suspendUser, verifySubject } from "@/lib/store";
+import { resolveFeedback, resolveReport, reviewProject, suspendUser, verifySubject } from "@/lib/store";
 import { readAuthSession } from "@/lib/auth";
 import { windowMetrics } from "@/lib/growth";
+import { MarketplaceData } from "@/lib/types";
 
 function countBy(values: string[]) {
   const counts = values.reduce<Record<string, number>>((acc, value) => {
@@ -91,39 +92,52 @@ const feedbackResolutionTemplates = [
 export default function AdminPage() {
   const router = useRouter();
   const [session] = useState(() => readAuthSession());
-  const [data, setData] = useState(() => loadMarketplaceData());
-  const intentBudget = data.orders.reduce((sum, order) => sum + order.amount, 0);
-  const reachedIntent = data.orders.filter((order) => order.status === "approved").length;
-  const buyerMau = monthlyActiveUsers(data, "buyer");
-  const creatorMau = monthlyActiveUsers(data, "creator");
-  const verifiedSubjects = (data.buyerProfiles ?? []).filter((profile) => profile.verified).length + data.creators.filter((creator) => creator.verified).length;
-  const pendingSubjects = (data.buyerProfiles ?? []).filter((profile) => !profile.verified).length + data.creators.filter((creator) => !creator.verified).length;
-  const pendingProjects = data.projects.filter((project) => project.status === "pending_review").length;
-  const openReports = (data.reports ?? []).filter((report) => report.status === "open" || report.status === "reviewing").length;
-  const openFeedback = (data.feedback ?? []).filter((feedback) => feedback.status === "open" || feedback.status === "reviewing").length;
-  const suspendedUsers = data.users.filter((user) => user.status === "suspended").length;
-  const pendingBuyerProfiles = (data.buyerProfiles ?? []).filter((profile) => !profile.verified);
-  const pendingCreators = data.creators.filter((creator) => !creator.verified);
-  const reviewQueueBuyers = (data.buyerProfiles ?? []).filter((profile) => !profile.verified || profile.reviewDraft);
-  const reviewQueueCreators = data.creators.filter((creator) => !creator.verified || creator.reviewDraft);
-  const pendingProjectReviews = data.projects.filter((project) => project.status === "pending_review");
-  const activeReports = (data.reports ?? []).filter((report) => report.status === "open" || report.status === "reviewing");
-  const activeFeedback = (data.feedback ?? []).filter((feedback) => feedback.status === "open" || feedback.status === "reviewing");
-  const suspendedAccounts = data.users.filter((user) => user.status === "suspended");
+  const [data, setData] = useState<MarketplaceData | null>(null);
+  const safeData = data ?? {
+    users: [],
+    buyerProfiles: [],
+    creators: [],
+    projects: [],
+    matches: [],
+    orders: [],
+    messages: [],
+    reviews: [],
+    reports: [],
+    feedback: [],
+    activityEvents: []
+  };
+  const intentBudget = safeData.orders.reduce((sum, order) => sum + order.amount, 0);
+  const reachedIntent = safeData.orders.filter((order) => order.status === "approved").length;
+  const buyerMau = monthlyActiveUsers(safeData, "buyer");
+  const creatorMau = monthlyActiveUsers(safeData, "creator");
+  const verifiedSubjects = (safeData.buyerProfiles ?? []).filter((profile) => profile.verified).length + safeData.creators.filter((creator) => creator.verified).length;
+  const pendingSubjects = (safeData.buyerProfiles ?? []).filter((profile) => !profile.verified).length + safeData.creators.filter((creator) => !creator.verified).length;
+  const pendingProjects = safeData.projects.filter((project) => project.status === "pending_review").length;
+  const openReports = (safeData.reports ?? []).filter((report) => report.status === "open" || report.status === "reviewing").length;
+  const openFeedback = (safeData.feedback ?? []).filter((feedback) => feedback.status === "open" || feedback.status === "reviewing").length;
+  const suspendedUsers = safeData.users.filter((user) => user.status === "suspended").length;
+  const pendingBuyerProfiles = (safeData.buyerProfiles ?? []).filter((profile) => !profile.verified);
+  const pendingCreators = safeData.creators.filter((creator) => !creator.verified);
+  const reviewQueueBuyers = (safeData.buyerProfiles ?? []).filter((profile) => !profile.verified || profile.reviewDraft);
+  const reviewQueueCreators = safeData.creators.filter((creator) => !creator.verified || creator.reviewDraft);
+  const pendingProjectReviews = safeData.projects.filter((project) => project.status === "pending_review");
+  const activeReports = (safeData.reports ?? []).filter((report) => report.status === "open" || report.status === "reviewing");
+  const activeFeedback = (safeData.feedback ?? []).filter((feedback) => feedback.status === "open" || feedback.status === "reviewing");
+  const suspendedAccounts = safeData.users.filter((user) => user.status === "suspended");
   const subjectProfiles = new Set([
-    ...(data.buyerProfiles ?? []).map((profile) => profile.userId),
-    ...data.creators.map((creator) => creator.userId)
+    ...(safeData.buyerProfiles ?? []).map((profile) => profile.userId),
+    ...safeData.creators.map((creator) => creator.userId)
   ]);
   const submittedReviews = reviewQueueBuyers.length + reviewQueueCreators.length;
-  const publishedProjectUsers = new Set(data.projects.map((project) => project.buyerId));
+  const publishedProjectUsers = new Set(safeData.projects.map((project) => project.buyerId));
   const communicatingUsers = new Set([
-    ...data.orders.map((order) => order.buyerId),
-    ...data.orders
-      .map((order) => data.creators.find((creator) => creator.id === order.creatorId)?.userId)
+    ...safeData.orders.map((order) => order.buyerId),
+    ...safeData.orders
+      .map((order) => safeData.creators.find((creator) => creator.id === order.creatorId)?.userId)
       .filter(Boolean)
   ]);
   const funnel = [
-    { label: "注册账号", value: data.users.filter((user) => user.role !== "admin").length },
+    { label: "注册账号", value: safeData.users.filter((user) => user.role !== "admin").length },
     { label: "完善主体主页", value: subjectProfiles.size },
     { label: "提交审核资料", value: submittedReviews },
     { label: "审核通过主体", value: verifiedSubjects },
@@ -137,18 +151,18 @@ export default function AdminPage() {
   const [projectStatusFilter, setProjectStatusFilter] = useState("pending_review");
   const [projectEntryFilter, setProjectEntryFilter] = useState<"all" | "service" | "training">("all");
   const [metricWindow, setMetricWindow] = useState<7 | 30>(30);
-  const selectedMetrics = windowMetrics(data, metricWindow);
-  const sevenDayMetrics = windowMetrics(data, 7);
-  const thirtyDayMetrics = windowMetrics(data, 30);
-  const recentOrders = data.orders.slice(0, 20);
-  const recentActivity = data.activityEvents.slice().reverse().slice(0, 50);
-  const recentReviewSubmissions = data.activityEvents
+  const selectedMetrics = windowMetrics(safeData, metricWindow);
+  const sevenDayMetrics = windowMetrics(safeData, 7);
+  const thirtyDayMetrics = windowMetrics(safeData, 30);
+  const recentOrders = safeData.orders.slice(0, 20);
+  const recentActivity = safeData.activityEvents.slice().reverse().slice(0, 50);
+  const recentReviewSubmissions = safeData.activityEvents
     .filter((event) => event.eventType === "submit_review")
     .slice(0, 8)
     .map((event) => {
-      const buyer = (data.buyerProfiles ?? []).find((profile) => profile.id === event.targetId || profile.userId === event.userId);
-      const creator = data.creators.find((profile) => profile.id === event.targetId || profile.userId === event.userId);
-      const user = data.users.find((item) => item.id === event.userId);
+      const buyer = (safeData.buyerProfiles ?? []).find((profile) => profile.id === event.targetId || profile.userId === event.userId);
+      const creator = safeData.creators.find((profile) => profile.id === event.targetId || profile.userId === event.userId);
+      const user = safeData.users.find((item) => item.id === event.userId);
 
       return {
         ...event,
@@ -169,15 +183,15 @@ export default function AdminPage() {
           "-"
       };
     });
-  const contactedLeads = data.orders.filter((order) => ["contacted", "meeting_scheduled", "revision", "delivered", "approved"].includes(order.status));
-  const meetingLeads = data.orders.filter((order) => order.status === "meeting_scheduled");
-  const intentLeads = data.orders.filter((order) => order.status === "approved");
-  const noResponseLeads = data.orders.filter((order) => order.status === "no_response");
-  const closedLeads = data.orders.filter((order) => ["not_fit", "no_response", "cancelled"].includes(order.status));
+  const contactedLeads = safeData.orders.filter((order) => ["contacted", "meeting_scheduled", "revision", "delivered", "approved"].includes(order.status));
+  const meetingLeads = safeData.orders.filter((order) => order.status === "meeting_scheduled");
+  const intentLeads = safeData.orders.filter((order) => order.status === "approved");
+  const noResponseLeads = safeData.orders.filter((order) => order.status === "no_response");
+  const closedLeads = safeData.orders.filter((order) => ["not_fit", "no_response", "cancelled"].includes(order.status));
   const topCloseReasons = countBy(closedLeads.map((order) => orderResultReasonLabel(order.resultReason))).slice(0, 6);
-  const filteredProjects = data.projects.filter((project) => {
-    const buyer = data.buyerProfiles?.find((profile) => profile.userId === project.buyerId);
-    const buyerName = buyer?.displayName ?? buyer?.companyName ?? data.users.find((user) => user.id === project.buyerId)?.name ?? "";
+  const filteredProjects = safeData.projects.filter((project) => {
+    const buyer = safeData.buyerProfiles?.find((profile) => profile.userId === project.buyerId);
+    const buyerName = buyer?.displayName ?? buyer?.companyName ?? safeData.users.find((user) => user.id === project.buyerId)?.name ?? "";
     const haystack = `${project.title} ${project.description} ${project.tags?.join(" ") ?? ""} ${buyerName}`.toLowerCase();
     const matchesQuery = !projectQuery.trim() || haystack.includes(projectQuery.trim().toLowerCase());
     const matchesStatus = projectStatusFilter === "all" || project.status === projectStatusFilter;
@@ -186,32 +200,32 @@ export default function AdminPage() {
       (projectEntryFilter === "training" ? project.category === "AIGC Training" : project.category !== "AIGC Training");
     return matchesQuery && matchesStatus && matchesEntry;
   });
-  const topCategories = countBy(data.projects.map((project) => categoryLabel(project.category))).slice(0, 6);
-  const topCreatorCategories = countBy(data.creators.flatMap((creator) => creator.categories.map(categoryLabel))).slice(0, 6);
-  const topUseCases = countBy(data.projects.map((project) => projectUseCaseLabel(project.useCase))).slice(0, 6);
-  const topDeliverables = countBy(data.projects.flatMap((project) => (project.deliverableTypes?.length ? project.deliverableTypes : ["未填写"]).map(deliverableTypeLabel))).slice(0, 6);
+  const topCategories = countBy(safeData.projects.map((project) => categoryLabel(project.category))).slice(0, 6);
+  const topCreatorCategories = countBy(safeData.creators.flatMap((creator) => creator.categories.map(categoryLabel))).slice(0, 6);
+  const topUseCases = countBy(safeData.projects.map((project) => projectUseCaseLabel(project.useCase))).slice(0, 6);
+  const topDeliverables = countBy(safeData.projects.flatMap((project) => (project.deliverableTypes?.length ? project.deliverableTypes : ["未填写"]).map(deliverableTypeLabel))).slice(0, 6);
   const topRegions = countBy([
-    ...(data.buyerProfiles ?? []).map((profile) => profile.location || "未填写"),
-    ...data.creators.map((creator) => creator.location || "未填写")
+    ...(safeData.buyerProfiles ?? []).map((profile) => profile.location || "未填写"),
+    ...safeData.creators.map((creator) => creator.location || "未填写")
   ]).slice(0, 6);
-  const urgentProjects = data.projects.filter((project) => project.urgency === "urgent" || project.urgency === "this_week").length;
-  const longTermProjects = data.projects.filter((project) => project.longTerm).length;
-  const invoiceProjects = data.projects.filter((project) => project.needInvoice).length;
-  const trainingCreators = data.creators.filter((creator) => creator.categories.includes("AIGC Training"));
+  const urgentProjects = safeData.projects.filter((project) => project.urgency === "urgent" || project.urgency === "this_week").length;
+  const longTermProjects = safeData.projects.filter((project) => project.longTerm).length;
+  const invoiceProjects = safeData.projects.filter((project) => project.needInvoice).length;
+  const trainingCreators = safeData.creators.filter((creator) => creator.categories.includes("AIGC Training"));
   const trainingCreatorsWithTopics = trainingCreators.filter((creator) => creator.trainingProfile?.topics.length);
   const trainingCreatorsWithCases = trainingCreators.filter((creator) => creator.trainingProfile?.caseStudies.length);
   const trainingCreatorsWithPricing = trainingCreators.filter((creator) => creator.trainingProfile?.pricingNote);
   const trainingCreatorsWithMaterials = trainingCreators.filter((creator) => creator.trainingProfile?.materials.length);
   const trainingCreatorsWithCities = trainingCreators.filter((creator) => creator.trainingProfile?.cities.length);
-  const trainingProjects = data.projects.filter((project) => project.category === "AIGC Training");
-  const serviceProjects = data.projects.filter((project) => project.category !== "AIGC Training");
-  const serviceCreators = data.creators.filter((creator) => !creator.categories.includes("AIGC Training") || creator.categories.length > 1);
+  const trainingProjects = safeData.projects.filter((project) => project.category === "AIGC Training");
+  const serviceProjects = safeData.projects.filter((project) => project.category !== "AIGC Training");
+  const serviceCreators = safeData.creators.filter((creator) => !creator.categories.includes("AIGC Training") || creator.categories.length > 1);
   const trainingCreatorIds = new Set(trainingCreators.map((creator) => creator.id));
   const serviceProjectIds = new Set(serviceProjects.map((project) => project.id));
   const trainingProjectIds = new Set(trainingProjects.map((project) => project.id));
-  const serviceLeads = data.orders.filter((order) => serviceProjectIds.has(order.projectId));
-  const trainingLeads = data.orders.filter((order) => trainingProjectIds.has(order.projectId));
-  const trainingProviderLeads = data.orders.filter((order) => trainingCreatorIds.has(order.creatorId));
+  const serviceLeads = safeData.orders.filter((order) => serviceProjectIds.has(order.projectId));
+  const trainingLeads = safeData.orders.filter((order) => trainingProjectIds.has(order.projectId));
+  const trainingProviderLeads = safeData.orders.filter((order) => trainingCreatorIds.has(order.creatorId));
   const projectToTrainingOpportunities = serviceProjects.filter((project) => project.longTerm || project.useCase === "training" || project.useCase === "internal_efficiency");
   const trainingToServiceOpportunities = trainingProjects.filter((project) => project.urgency === "urgent" || project.urgency === "this_week" || project.trainingRequirement?.needCustomCases);
   const serviceToTrainingCreators = serviceCreators.filter((creator) => !creator.categories.includes("AIGC Training") && Boolean(creator.servicePackages?.length || creator.portfolioItems?.length || creator.portfolio.length));
@@ -256,8 +270,8 @@ export default function AdminPage() {
     {
       label: "我要派单",
       steps: [
-        { label: "主体资料", value: data.buyerProfiles?.length ?? 0 },
-        { label: "主体通过", value: (data.buyerProfiles ?? []).filter((profile) => profile.verified).length },
+        { label: "主体资料", value: safeData.buyerProfiles?.length ?? 0 },
+        { label: "主体通过", value: (safeData.buyerProfiles ?? []).filter((profile) => profile.verified).length },
         { label: "发布项目", value: serviceProjects.length },
         { label: "产生线索", value: serviceLeads.length }
       ]
@@ -268,14 +282,14 @@ export default function AdminPage() {
         { label: "服务方资料", value: serviceCreators.length },
         { label: "服务方通过", value: serviceCreators.filter((creator) => creator.verified).length },
         { label: "可接项目", value: serviceCreators.filter((creator) => creator.categories.some((category) => category !== "AIGC Training")).length },
-        { label: "产生线索", value: data.orders.filter((order) => serviceCreators.some((creator) => creator.id === order.creatorId)).length }
+        { label: "产生线索", value: safeData.orders.filter((order) => serviceCreators.some((creator) => creator.id === order.creatorId)).length }
       ]
     },
     {
       label: "我要找培训",
       steps: [
-        { label: "主体资料", value: data.buyerProfiles?.length ?? 0 },
-        { label: "主体通过", value: (data.buyerProfiles ?? []).filter((profile) => profile.verified).length },
+        { label: "主体资料", value: safeData.buyerProfiles?.length ?? 0 },
+        { label: "主体通过", value: (safeData.buyerProfiles ?? []).filter((profile) => profile.verified).length },
         { label: "发布培训", value: trainingProjects.length },
         { label: "培训线索", value: trainingLeads.length }
       ]
@@ -283,7 +297,7 @@ export default function AdminPage() {
     {
       label: "我能提供培训",
       steps: [
-        { label: "服务方资料", value: data.creators.length },
+        { label: "服务方资料", value: safeData.creators.length },
         { label: "培训能力", value: trainingCreators.length },
         { label: "讲师通过", value: trainingCreators.filter((creator) => creator.verified).length },
         { label: "讲师线索", value: trainingProviderLeads.length }
@@ -325,15 +339,15 @@ export default function AdminPage() {
         liabilityBoundary: "平台只提供信息展示、智能匹配和沟通留痕，不托管资金，不承诺交易交付。"
       },
       summary: {
-        registeredUsers: data.users.length,
-        buyerProfiles: data.buyerProfiles?.length ?? 0,
-        creators: data.creators.length,
-        verifiedBuyerProfiles: (data.buyerProfiles ?? []).filter((profile) => profile.verified).length,
-        verifiedCreators: data.creators.filter((creator) => creator.verified).length,
-        projects: data.projects.length,
-        publicProjects: data.projects.filter((project) => project.status === "open" || project.status === "matching").length,
-        leads: data.orders.length,
-        activeLeads: activeOrders(data),
+        registeredUsers: safeData.users.length,
+        buyerProfiles: safeData.buyerProfiles?.length ?? 0,
+        creators: safeData.creators.length,
+        verifiedBuyerProfiles: (safeData.buyerProfiles ?? []).filter((profile) => profile.verified).length,
+        verifiedCreators: safeData.creators.filter((creator) => creator.verified).length,
+        projects: safeData.projects.length,
+        publicProjects: safeData.projects.filter((project) => project.status === "open" || project.status === "matching").length,
+        leads: safeData.orders.length,
+        activeLeads: activeOrders(safeData),
         contactedLeads: contactedLeads.length,
         meetingLeads: meetingLeads.length,
         intentLeads: intentLeads.length,
@@ -343,12 +357,12 @@ export default function AdminPage() {
         reachedIntent,
         buyerMau,
         creatorMau,
-        totalMau: monthlyActiveUsers(data),
-        activityEvents: data.activityEvents.length,
-        trialFeedback: data.feedback.length,
+        totalMau: monthlyActiveUsers(safeData),
+        activityEvents: safeData.activityEvents.length,
+        trialFeedback: safeData.feedback.length,
         openFeedback,
-        agentBriefs: data.projects.filter((project) => project.agentBrief).length,
-        agentMatches: data.matches.length
+        agentBriefs: safeData.projects.filter((project) => project.agentBrief).length,
+        agentMatches: safeData.matches.length
       },
       windows: {
         sevenDays: sevenDayMetrics,
@@ -365,7 +379,7 @@ export default function AdminPage() {
         urgentProjects,
         longTermProjects,
         invoiceProjects,
-        recommendableProjects: data.projects.filter((project) => project.acceptPlatformRecommend !== false).length
+        recommendableProjects: safeData.projects.filter((project) => project.acceptPlatformRecommend !== false).length
       },
       trainingMarket: {
         creators: trainingCreators.length,
@@ -456,7 +470,7 @@ export default function AdminPage() {
           suspendedReason: user.suspendedReason || ""
         }))
       },
-      recentActivity: data.activityEvents.slice(-50).map((event) => ({
+      recentActivity: safeData.activityEvents.slice(-50).map((event) => ({
         id: event.id,
         eventType: event.eventType,
         eventLabel: activityEventLabel(event.eventType),
@@ -540,7 +554,7 @@ export default function AdminPage() {
       <section className="section">
         <div className="grid four">
           <div className="metric">
-            <strong>{data.users.length}</strong>
+            <strong>{safeData.users.length}</strong>
             <span>注册用户数</span>
           </div>
           <div className="metric">
@@ -668,11 +682,11 @@ export default function AdminPage() {
             <span>创作者月活</span>
           </div>
           <div className="metric">
-            <strong>{activeOrders(data)}</strong>
+            <strong>{activeOrders(safeData)}</strong>
             <span>活跃线索</span>
           </div>
           <div className="metric">
-            <strong>{data.activityEvents.length}</strong>
+            <strong>{safeData.activityEvents.length}</strong>
             <span>活跃事件留痕</span>
           </div>
         </div>
@@ -726,7 +740,7 @@ export default function AdminPage() {
         </div>
         <div className="grid five">
           <div className="metric">
-            <strong>{data.orders.length}</strong>
+            <strong>{safeData.orders.length}</strong>
             <span>沟通线索</span>
           </div>
           <div className="metric">
@@ -760,9 +774,9 @@ export default function AdminPage() {
             <div className="cardBody stack">
               <strong>试运营判断</strong>
               <div className="tagList">
-                <span className="tag blue">线索联系率 {data.orders.length ? Math.round((contactedLeads.length / data.orders.length) * 100) : 0}%</span>
-                <span className="tag green">意向转化率 {data.orders.length ? Math.round((intentLeads.length / data.orders.length) * 100) : 0}%</span>
-                <span className="tag gold">关闭率 {data.orders.length ? Math.round((closedLeads.length / data.orders.length) * 100) : 0}%</span>
+                <span className="tag blue">线索联系率 {safeData.orders.length ? Math.round((contactedLeads.length / safeData.orders.length) * 100) : 0}%</span>
+                <span className="tag green">意向转化率 {safeData.orders.length ? Math.round((intentLeads.length / safeData.orders.length) * 100) : 0}%</span>
+                <span className="tag gold">关闭率 {safeData.orders.length ? Math.round((closedLeads.length / safeData.orders.length) * 100) : 0}%</span>
               </div>
             </div>
           </article>
@@ -850,7 +864,7 @@ export default function AdminPage() {
             <span>需要发票/合同</span>
           </div>
           <div className="metric">
-            <strong>{data.projects.filter((project) => project.acceptPlatformRecommend !== false).length}</strong>
+            <strong>{safeData.projects.filter((project) => project.acceptPlatformRecommend !== false).length}</strong>
             <span>接受平台推荐需求</span>
           </div>
         </div>
@@ -899,7 +913,7 @@ export default function AdminPage() {
             <div className="cardBody stack">
               <strong>沟通节奏</strong>
               <div className="tagList">
-                {countBy(data.projects.map((project) => urgencyLabel(project.urgency))).map((item) => <span className="tag" key={item.label}>{item.label} · {item.value}</span>)}
+                {countBy(safeData.projects.map((project) => urgencyLabel(project.urgency))).map((item) => <span className="tag" key={item.label}>{item.label} · {item.value}</span>)}
               </div>
             </div>
           </article>
@@ -1016,19 +1030,19 @@ export default function AdminPage() {
         </div>
         <div className="grid four">
           <div className="metric">
-            <strong>{data.projects.filter((project) => project.agentBrief).length}</strong>
+            <strong>{safeData.projects.filter((project) => project.agentBrief).length}</strong>
             <span>Agent拆解需求</span>
           </div>
           <div className="metric">
-            <strong>{data.matches.length}</strong>
+            <strong>{safeData.matches.length}</strong>
             <span>Agent推荐记录</span>
           </div>
           <div className="metric">
-            <strong>{data.matches.filter((match) => match.risk).length}</strong>
+            <strong>{safeData.matches.filter((match) => match.risk).length}</strong>
             <span>风险提示生成</span>
           </div>
           <div className="metric">
-            <strong>{data.orders.length}</strong>
+            <strong>{safeData.orders.length}</strong>
             <span>合作线索</span>
           </div>
         </div>
@@ -1084,7 +1098,7 @@ export default function AdminPage() {
             </thead>
             <tbody>
               {filteredProjects.map((project) => {
-                const buyer = data.buyerProfiles?.find((profile) => profile.userId === project.buyerId);
+                const buyer = safeData.buyerProfiles?.find((profile) => profile.userId === project.buyerId);
                 return (
                   <tr key={project.id}>
                     <td>
@@ -1100,7 +1114,7 @@ export default function AdminPage() {
                       ) : null}
                       {(project.status === "rejected" || project.status === "removed") && project.rejectedReason ? <div className="muted">{project.rejectedReason}</div> : null}
                     </td>
-                    <td>{buyer?.displayName ?? buyer?.companyName ?? data.users.find((user) => user.id === project.buyerId)?.name ?? project.buyerId}</td>
+                    <td>{buyer?.displayName ?? buyer?.companyName ?? safeData.users.find((user) => user.id === project.buyerId)?.name ?? project.buyerId}</td>
                     <td>{money(project.budget)}</td>
                     <td>
                       <div className="muted">{project.referenceFile || "未上传参考文件"}</div>
@@ -1202,7 +1216,7 @@ export default function AdminPage() {
             </thead>
             <tbody>
               {reviewQueueBuyers.map((profile) => {
-                  const user = data.users.find((item) => item.id === profile.userId);
+                  const user = safeData.users.find((item) => item.id === profile.userId);
                   const suspended = user?.status === "suspended";
                   const diff = buyerReviewDiff(profile);
                   const hasDraft = Boolean(profile.reviewDraft);
@@ -1298,7 +1312,7 @@ export default function AdminPage() {
             </thead>
             <tbody>
               {reviewQueueCreators.map((creator) => {
-                const user = data.users.find((item) => item.id === creator.userId);
+                const user = safeData.users.find((item) => item.id === creator.userId);
                 const suspended = user?.status === "suspended";
                 const diff = creatorReviewDiff(creator);
                 const hasDraft = Boolean(creator.reviewDraft);
@@ -1410,8 +1424,8 @@ export default function AdminPage() {
               </tr>
             </thead>
             <tbody>
-              {(data.reports ?? []).slice(0, 20).map((report) => {
-                const reporter = data.users.find((user) => user.id === report.reporterId);
+              {(safeData.reports ?? []).slice(0, 20).map((report) => {
+                const reporter = safeData.users.find((user) => user.id === report.reporterId);
                 const href = reportTargetHref(report.targetType, report.targetId);
                 return (
                   <tr key={report.id}>
@@ -1471,7 +1485,7 @@ export default function AdminPage() {
                   </tr>
                 );
               })}
-              {!(data.reports ?? []).length ? (
+              {!(safeData.reports ?? []).length ? (
                 <tr>
                   <td colSpan={5}>
                     <div className="muted">暂无举报记录。</div>
@@ -1520,8 +1534,8 @@ export default function AdminPage() {
               </tr>
             </thead>
             <tbody>
-              {data.feedback.slice(0, 30).map((feedback) => {
-                const user = data.users.find((item) => item.id === feedback.userId);
+              {safeData.feedback.slice(0, 30).map((feedback) => {
+                const user = safeData.users.find((item) => item.id === feedback.userId);
                 return (
                   <tr key={feedback.id}>
                     <td>{feedback.content}</td>
@@ -1575,7 +1589,7 @@ export default function AdminPage() {
                   </tr>
                 );
               })}
-              {!data.feedback.length ? (
+              {!safeData.feedback.length ? (
                 <tr>
                   <td colSpan={6}>
                     <div className="muted">暂无试用建议。</div>
@@ -1608,7 +1622,7 @@ export default function AdminPage() {
             </thead>
             <tbody>
               {recentOrders.map((order) => {
-                const project = data.projects.find((item) => item.id === order.projectId);
+                const project = safeData.projects.find((item) => item.id === order.projectId);
                 return (
                   <tr key={order.id}>
                     <td>{order.id}</td>
@@ -1653,7 +1667,7 @@ export default function AdminPage() {
           </thead>
           <tbody>
             {recentActivity.map((event) => {
-              const user = data.users.find((item) => item.id === event.userId);
+              const user = safeData.users.find((item) => item.id === event.userId);
               return (
                 <tr key={event.id}>
                   <td>{user?.name ?? event.userId}</td>
