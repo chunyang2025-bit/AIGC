@@ -180,7 +180,7 @@ function AccountVerificationContent() {
       setSession(readAuthSession());
       setData(loadMarketplaceData());
       setSubmitStatus("认证审核已提交，资料已进入后台待审核队列。");
-      router.replace(`/account/verification?intent=${encodeURIComponent(intent)}`);
+      router.replace(`/account/verification?intent=${encodeURIComponent(intent)}&submitted=1`);
     } catch (error) {
       setSubmitStatus(error instanceof Error ? error.message : "提交认证审核失败，请稍后再试。");
     } finally {

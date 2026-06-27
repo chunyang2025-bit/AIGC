@@ -1044,7 +1044,14 @@ export function submitSubjectReview(data: MarketplaceData, input: Record<string,
               reviewDraftSubmittedAt: new Date().toISOString(),
               reviewDraftRejectedReason: undefined
             }
-          : { ...profile, verified: false, rejectedReason: undefined }
+          : {
+              ...profile,
+              reviewDraft: buyerDraft(profile),
+              reviewDraftSubmittedAt: new Date().toISOString(),
+              reviewDraftRejectedReason: undefined,
+              verified: false,
+              rejectedReason: undefined
+            }
         : profile
     );
     const profile = data.buyerProfiles.find((item) => item.id === idValue || item.userId === idValue);
@@ -1069,7 +1076,14 @@ export function submitSubjectReview(data: MarketplaceData, input: Record<string,
             reviewDraftSubmittedAt: new Date().toISOString(),
             reviewDraftRejectedReason: undefined
           }
-        : { ...creator, verified: false, rejectedReason: undefined }
+        : {
+            ...creator,
+            reviewDraft: creatorDraft(creator),
+            reviewDraftSubmittedAt: new Date().toISOString(),
+            reviewDraftRejectedReason: undefined,
+            verified: false,
+            rejectedReason: undefined
+          }
       : creator
   );
   const creator = data.creators.find((item) => item.id === idValue || item.userId === idValue);
