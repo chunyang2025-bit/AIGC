@@ -1092,28 +1092,6 @@ button {
   background: #effaf3;
 }
 
-.authModeSwitch {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.authModeSwitch button {
-  min-height: 46px;
-  border: 1px solid #dfe5e2;
-  border-radius: 8px;
-  color: #64706c;
-  background: #fff;
-  font-size: 15px;
-  font-weight: 850;
-}
-
-.authModeSwitch button.active {
-  border-color: #147eea;
-  color: #0a3d73;
-  background: #edf5ff;
-}
-
 .authSelectedRole {
   margin-top: 0;
   min-height: 118px;
@@ -1176,27 +1154,6 @@ button {
   font-size: 20px;
   font-weight: 900;
 }
-
-.authCodeRow {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 148px;
-  gap: 12px;
-  align-items: center;
-}
-
-.authSecondaryAction,
-.authSecondaryAction {
-  border: 1px solid #c9d7ea;
-  color: #0f5eb2;
-  background: #f6f9fe;
-}
-
-.authSecondaryAction:disabled {
-  color: #9aa5b1;
-  border-color: #dfe5ec;
-  background: #f5f6f8;
-}
-
 
 .authStatus {
   padding: 12px 14px;
