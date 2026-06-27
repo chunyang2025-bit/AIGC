@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Database, AlertTriangle, ArrowLeft } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
@@ -26,6 +27,7 @@ function explainError(message: string) {
 }
 
 export default function SupabaseDebugPage() {
+  const router = useRouter();
   const [status, setStatus] = useState("准备读取 Supabase 数据...");
   const [lastError, setLastError] = useState("");
 
@@ -69,8 +71,14 @@ export default function SupabaseDebugPage() {
             <p>页面加载时会直接查询 <code>{TABLE_NAME}</code>，并把 data / error 打到控制台。</p>
           </div>
           <div className="toolbarGroup">
-            <Link className="btn" href="/admin">
+            <button className="btn" onClick={() => router.push("/admin")} type="button">
               <ArrowLeft size={16} /> 返回后台
+            </button>
+            <Link className="btn" href="/admin" onClick={(event) => {
+              event.preventDefault();
+              window.location.assign("/admin");
+            }}>
+              直接打开后台
             </Link>
           </div>
         </div>
