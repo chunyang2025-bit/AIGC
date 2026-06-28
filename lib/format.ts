@@ -22,7 +22,7 @@ export function categoryLabel(value: string) {
 
 export function projectStatusLabel(value: string) {
   const labels: Record<string, string> = {
-    pending_review: "待审核",
+    pending_review: "历史待审核",
     rejected: "已驳回",
     open: "开放中",
     matching: "匹配中",

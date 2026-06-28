@@ -505,7 +505,7 @@ export async function createProject(input: {
     trainingRequirement: input.trainingRequirement,
     budget: input.budget,
     deadline: input.deadline,
-    status: "pending_review",
+    status: "open",
     referenceFile: input.referenceFile,
     qualificationFile: input.qualificationFile,
     contactEmail: input.contactEmail,
@@ -586,7 +586,7 @@ export async function resubmitProject(projectId: string, input: {
     trainingRequirement: input.trainingRequirement,
     budget: input.budget,
     deadline: input.deadline,
-    status: "pending_review",
+    status: "open",
     referenceFile: input.referenceFile,
     qualificationFile: input.qualificationFile,
     contactEmail: input.contactEmail,
@@ -603,7 +603,7 @@ export async function resubmitProject(projectId: string, input: {
     targetType: "project",
     targetId: nextProject.id,
     createdAt: new Date().toISOString(),
-    note: "重新提交需求审核"
+    note: "重新发布需求"
   };
   const next: MarketplaceData = {
     ...data,

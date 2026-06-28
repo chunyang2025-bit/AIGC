@@ -382,7 +382,7 @@ export function createProject(data: MarketplaceData, input: Record<string, unkno
     trainingRequirement: input.trainingRequirement as Project["trainingRequirement"],
     budget: asNumber(input.budget, 3000),
     deadline: String(input.deadline || today()),
-    status: "pending_review",
+    status: "open",
     referenceFile: input.referenceFile ? String(input.referenceFile) : undefined,
     qualificationFile: input.qualificationFile ? String(input.qualificationFile) : undefined,
     contactEmail: input.contactEmail ? String(input.contactEmail) : undefined,
@@ -432,7 +432,7 @@ export function updateProject(data: MarketplaceData, projectId: string, input: R
         : input.trainingRequirement as Project["trainingRequirement"],
     budget: input.budget === undefined ? project.budget : asNumber(input.budget, project.budget),
     deadline: input.deadline ? String(input.deadline) : project.deadline,
-    status: "pending_review",
+    status: "open",
     referenceFile: input.referenceFile ? String(input.referenceFile) : undefined,
     qualificationFile: input.qualificationFile ? String(input.qualificationFile) : undefined,
     contactEmail: input.contactEmail ? String(input.contactEmail) : undefined,
@@ -450,7 +450,7 @@ export function updateProject(data: MarketplaceData, projectId: string, input: R
     eventType: "post_project",
     targetType: "project",
     targetId: nextProject.id,
-    note: "重新提交需求审核"
+    note: "重新发布需求"
   });
 
   return {

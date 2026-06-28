@@ -190,7 +190,7 @@ export default function BuyerPortalPage() {
           <div className="panelTop">
             <div>
               <strong>我的需求</strong>
-              <div className="muted">需求方免费发布的项目、审核状态和匹配状态。</div>
+              <div className="muted">需求方免费发布的项目、发布状态和匹配状态。</div>
             </div>
             <Bot size={18} />
           </div>

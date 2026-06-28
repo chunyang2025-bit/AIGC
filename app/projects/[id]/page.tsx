@@ -228,7 +228,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
               <Link className="buyerInlineProfile" href={`/buyers/${project.buyerId}`}>
                 <Building2 size={18} />
                 <span>{buyerName}</span>
-                <em>{buyerProfile?.verified ? "已认证需求方" : "待审核需求方"}</em>
+                <em>{buyerProfile?.verified ? "已认证需求方" : "资质待审核需求方"}</em>
               </Link>
               <div>
                 <h1 style={{ margin: "0 0 10px", fontSize: 34 }}>{project.title}</h1>
@@ -254,7 +254,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                     </div>
                     <div className="tagList">
                       <span className={buyerProfile.verified ? "tag green" : "tag gold"}>
-                        {buyerProfile.verified ? "已认证主体" : "待审核主体"}
+                        {buyerProfile.verified ? "已认证主体" : "资质待审核主体"}
                       </span>
                       <span className="tag blue">{buyerProfile.industry}</span>
                       <span className="tag">{buyerProfile.location}</span>

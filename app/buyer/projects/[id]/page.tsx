@@ -261,7 +261,7 @@ export default function BuyerProjectDetailPage({ params }: { params: { id: strin
                 </div>
               ) : null}
               {project.status === "pending_review" ? (
-                <div className="notice">需求正在平台运营审核中。试运营期间你可以先查看推荐并邀请沟通；审核通过后会进入公开大厅展示。</div>
+                <div className="notice">这是一条历史待审核需求。当前规则下，需求内容本身不再单独审核；你可以继续查看推荐并推进沟通。</div>
               ) : null}
               {buyerProfile && !verified ? (
                 <div className="notice">风险提示：当前主体未审核、未认证。可以先试用匹配和沟通，查看具体信息或推进正式合作时建议完成认证。</div>

@@ -169,7 +169,7 @@ export function buyerProjectNextStep(project: Project, data: MarketplaceData, ap
   if (project.status === "pending_review") {
     return {
       label: leads.length ? "跟进试用线索" : matches.length ? "邀请推荐创作者" : "查看匹配推荐",
-      description: "需求正在审核中。试运营期间可先查看推荐并邀请沟通，审核通过后会进入公开大厅。",
+      description: "这是一条历史待审核需求。你仍可先查看推荐并继续沟通，建议后续按新的直接发布流程更新需求状态。",
       href: `/buyer/projects/${project.id}`,
       tone: "green" as const
     };

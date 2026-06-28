@@ -57,7 +57,7 @@ export default function AdminEntryPage() {
           <div className="cardBody stack">
             <ShieldCheck size={22} />
             <strong>需求审核</strong>
-            <p className="muted" style={{ margin: 0 }}>需求提交后可先试用候选推荐和沟通线索；审核通过后进入公开大厅展示。</p>
+            <p className="muted" style={{ margin: 0 }}>需求提交后会直接进入候选推荐和沟通线索；资质审核仍由运营后台处理。</p>
           </div>
         </section>
       </div>

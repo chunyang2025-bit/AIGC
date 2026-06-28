@@ -177,7 +177,7 @@ function PostProjectContent() {
       }
       clearGrowthToolDraft();
       setSubmitState("success");
-      setSubmitMessage(editMode ? "需求已重新提交，正在进入审核队列。" : "需求已提交，正在进入审核队列。");
+                  setSubmitMessage(editMode ? "需求已重新发布，正在进入匹配流程。" : "需求已发布，正在进入匹配流程。");
       router.push(`/buyer/projects/${result.project.id}`);
     } catch (error) {
       setSubmitState("error");
@@ -642,7 +642,7 @@ function PostProjectContent() {
             >
               <SendHorizonal size={16} /> {submitState === "submitting" ? "正在提交..." : publishButtonLabel}
             </button>
-            {canPublish ? <div className="notice">试运营期间提交后可先查看推荐并发起沟通；未审核、未认证会显示风险提示，审核通过后再进入公开大厅。</div> : null}
+            {canPublish ? <div className="notice">提交后会直接进入匹配和沟通流程；主体未审核、未认证时仍会保留资质风险提示。</div> : null}
             {!isSessionReady ? <div className="notice">当前登录状态不可用。重新登录后，需求会直接写入真实后端。</div> : null}
             {buyerProfile && !verified ? <div className="notice">当前主体主页未审核、未认证。可以先试用发布和匹配，查看具体联系方式或推进正式合作时会引导认证。</div> : null}
             {buyerProfile && completeness.score < 80 ? <div className="notice">需求完整度达到 80% 后才能提交。建议补充联系方式、参考资料、资质材料和清晰描述。</div> : null}
