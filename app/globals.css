@@ -1535,6 +1535,12 @@ button {
   transform: translateY(-1px);
 }
 
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+  transform: none;
+}
+
 .btn.primary {
   border-color: var(--brand);
   color: #fff;
@@ -1544,6 +1550,11 @@ button {
 .btn.primary:hover {
   border-color: var(--brand-strong);
   background: var(--brand-strong);
+}
+
+.btn.primary:disabled {
+  border-color: rgba(22, 114, 79, 0.3);
+  background: rgba(22, 114, 79, 0.42);
 }
 
 .btn.ghost {

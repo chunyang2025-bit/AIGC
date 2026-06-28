@@ -111,6 +111,79 @@ function PostProjectContent() {
     agentBrief: draft.agentBrief
   });
   const canPublish = Boolean(buyerProfile) && completeness.score >= 80;
+  const isSessionReady = Boolean(session?.userId && session?.accessToken);
+  const publishButtonLabel = canPublish
+    ? (editMode ? "重新提交需求" : "提交需求并试用匹配")
+    : buyerProfile
+      ? "补全需求后提交"
+      : "先完善主体主页";
+
+  async function handlePublish() {
+    if (!session?.userId) {
+      setSubmitState("error");
+      setSubmitMessage("请先登录后再提交需求。");
+      router.push("/login?role=dispatch&next=%2Fpost-project");
+      return;
+    }
+
+    if (!session.accessToken) {
+      setSubmitState("error");
+      setSubmitMessage("当前登录状态已失效，请重新登录后再提交需求。");
+      router.push("/login?role=dispatch&next=%2Fpost-project");
+      return;
+    }
+
+    if (!buyerProfile) {
+      setSubmitState("error");
+      setSubmitMessage("请先完善主体主页，再回来提交需求。");
+      router.push("/account/profile");
+      return;
+    }
+
+    if (completeness.score < 80) {
+      setSubmitState("error");
+      setSubmitMessage(`当前需求完整度为 ${completeness.score}%，达到 80% 后才能提交。`);
+      return;
+    }
+
+    setSubmitState("submitting");
+    setSubmitMessage("正在写入后端并生成推荐结果...");
+    const payload = {
+      title: draft.title,
+      description: draft.description,
+      category: draft.category,
+      tags: projectTags,
+      useCase,
+      deliverableTypes: selectedDeliverableTypes,
+      urgency,
+      needInvoice,
+      longTerm,
+      acceptPlatformRecommend,
+      trainingRequirement,
+      budget: draft.budget,
+      deadline: draft.deadline,
+      referenceFile,
+      qualificationFile,
+      contactEmail,
+      contactPhone,
+      agentBrief: draft.agentBrief
+    };
+    try {
+      const result = editProject ? await resubmitProject(editProject.id, payload) : await createProject(payload);
+      if (!result) {
+        setSubmitState("error");
+        setSubmitMessage("后端没有返回结果，请稍后重试。若你看到的是本地草稿，说明当前没有连到真实 API。");
+        return;
+      }
+      clearGrowthToolDraft();
+      setSubmitState("success");
+      setSubmitMessage(editMode ? "需求已重新提交，正在进入审核队列。" : "需求已提交，正在进入审核队列。");
+      router.push(`/buyer/projects/${result.project.id}`);
+    } catch (error) {
+      setSubmitState("error");
+      setSubmitMessage(error instanceof Error ? error.message : "需求提交失败，请稍后重试。");
+    }
+  }
 
   useEffect(() => {
     if (editProject || draftSource !== "tool") return;
@@ -525,7 +598,7 @@ function PostProjectContent() {
                 {submitState === "success" ? "已提交" : submitState === "error" ? "提交失败" : submitState === "submitting" ? "正在提交" : "等待提交"}
               </span>
               <span className="muted">
-                {submitMessage || (canPublish ? "点击后会真正调用后端写入需求，若 Supabase / 账号 / 配置有问题，这里会直接提示原因。" : "先补全需求，满足完整度后再提交。")}
+                {submitMessage || (canPublish ? "点击后会真正调用后端写入需求，若 Supabase / 账号 / 配置有问题，这里会直接提示原因。" : !isSessionReady ? "请先保持有效登录状态，再继续提交需求。" : "先补全需求，满足完整度后再提交。")}
               </span>
             </div>
             <div className="briefBlock">
@@ -563,51 +636,14 @@ function PostProjectContent() {
             </div>
             <button
               className="btn primary"
-              onClick={async () => {
-                if (!canPublish) return;
-                setSubmitState("submitting");
-                setSubmitMessage("正在写入后端并生成推荐结果...");
-                const payload = {
-                  title: draft.title,
-                  description: draft.description,
-                  category: draft.category,
-                  tags: projectTags,
-                  useCase,
-                  deliverableTypes: selectedDeliverableTypes,
-                  urgency,
-                  needInvoice,
-                  longTerm,
-                  acceptPlatformRecommend,
-                  trainingRequirement,
-                  budget: draft.budget,
-                  deadline: draft.deadline,
-                  referenceFile,
-                  qualificationFile,
-                  contactEmail,
-                  contactPhone,
-                  agentBrief: draft.agentBrief
-                };
-                try {
-                  const result = editProject ? await resubmitProject(editProject.id, payload) : await createProject(payload);
-                  if (!result) {
-                    setSubmitState("error");
-                    setSubmitMessage("后端没有返回结果，请稍后重试。若你看到的是本地草稿，说明当前没有连到真实 API。");
-                    return;
-                  }
-                  clearGrowthToolDraft();
-                  setSubmitState("success");
-                  setSubmitMessage(editMode ? "需求已重新提交，正在进入审核队列。" : "需求已提交，正在进入审核队列。");
-                  router.push(`/buyer/projects/${result.project.id}`);
-                } catch (error) {
-                  setSubmitState("error");
-                  setSubmitMessage(error instanceof Error ? error.message : "需求提交失败，请稍后重试。");
-                }
-              }}
-              disabled={!canPublish}
+              onClick={handlePublish}
+              disabled={submitState === "submitting"}
+              type="button"
             >
-              <SendHorizonal size={16} /> {canPublish ? (editMode ? "重新提交需求" : "提交需求并试用匹配") : buyerProfile ? "补全需求后提交" : "先完善主体主页"}
+              <SendHorizonal size={16} /> {submitState === "submitting" ? "正在提交..." : publishButtonLabel}
             </button>
             {canPublish ? <div className="notice">试运营期间提交后可先查看推荐并发起沟通；未审核、未认证会显示风险提示，审核通过后再进入公开大厅。</div> : null}
+            {!isSessionReady ? <div className="notice">当前登录状态不可用。重新登录后，需求会直接写入真实后端。</div> : null}
             {buyerProfile && !verified ? <div className="notice">当前主体主页未审核、未认证。可以先试用发布和匹配，查看具体联系方式或推进正式合作时会引导认证。</div> : null}
             {buyerProfile && completeness.score < 80 ? <div className="notice">需求完整度达到 80% 后才能提交。建议补充联系方式、参考资料、资质材料和清晰描述。</div> : null}
           </div>
