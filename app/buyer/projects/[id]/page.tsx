@@ -18,22 +18,108 @@ export default function BuyerProjectDetailPage({ params }: { params: { id: strin
   const [session] = useState(() => readAuthSession());
   const [data, setData] = useState(() => loadMarketplaceData());
   const [project, setProject] = useState<Project | null>(() => data.projects.find((item) => item.id === params.id) ?? null);
-
-  if (!project) {
-    notFound();
-  }
-
-  const [matches, setMatches] = useState<ProjectMatch[]>(() => getProjectMatches(data, project.id));
-  const [candidateIds, setCandidateIds] = useState(readCandidateCreatorIds(project.id));
-  const [leads, setLeads] = useState<Order[]>(() => data.orders.filter((order) => order.projectId === project.id));
+  const [loadState, setLoadState] = useState<"loading" | "ready" | "missing">(() =>
+    project ? "ready" : session?.accessToken ? "loading" : "missing"
+  );
+  const [matches, setMatches] = useState<ProjectMatch[]>(() => getProjectMatches(data, params.id));
+  const [candidateIds, setCandidateIds] = useState(readCandidateCreatorIds(params.id));
+  const [leads, setLeads] = useState<Order[]>(() => data.orders.filter((order) => order.projectId === params.id));
   const [buyerProfile, setBuyerProfile] = useState<BuyerProfile | null>(() => data.buyerProfiles?.find((profile) => profile.userId === session?.userId) ?? null);
   const [creators, setCreators] = useState<CreatorProfile[]>(() => {
     const creatorIds = new Set([
       ...matches.map((item) => item.creatorId),
-      ...data.orders.filter((order) => order.projectId === project.id).map((order) => order.creatorId)
+      ...data.orders.filter((order) => order.projectId === params.id).map((order) => order.creatorId)
     ]);
     return data.creators.filter((creator) => creatorIds.has(creator.id));
   });
+
+  useEffect(() => {
+    if (!session?.accessToken) return;
+
+    let active = true;
+    setLoadState((current) => (current === "ready" ? current : "loading"));
+
+    fetch(`/api/buyer/projects/${params.id}`, {
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${session.accessToken}`
+      }
+    })
+      .then(async (response) => {
+        const payload = await response.json().catch(() => null);
+        return { response, payload };
+      })
+      .then((payload) => {
+        if (!active) return;
+        if (payload.response.status === 404) {
+          setLoadState("missing");
+          return;
+        }
+        if (!payload.payload?.ok || !payload.payload.data) {
+          setLoadState(project ? "ready" : "missing");
+          return;
+        }
+        const next = payload.payload.data as {
+          project: Project;
+          buyerProfile: BuyerProfile | null;
+          matches: ProjectMatch[];
+          creators: CreatorProfile[];
+          leads: Order[];
+        };
+        setProject(next.project);
+        setBuyerProfile(next.buyerProfile);
+        setMatches(next.matches);
+        setCreators(next.creators);
+        setLeads(next.leads);
+        setData((current) => ({
+          ...current,
+          buyerProfiles: next.buyerProfile
+            ? [
+                next.buyerProfile,
+                ...(current.buyerProfiles ?? []).filter((profile) => profile.id !== next.buyerProfile?.id)
+              ]
+            : current.buyerProfiles ?? [],
+          projects: [
+            next.project,
+            ...current.projects.filter((item) => item.id !== next.project.id)
+          ],
+          matches: [
+            ...next.matches,
+            ...current.matches.filter((item) => item.projectId !== next.project.id)
+          ],
+          orders: [
+            ...next.leads,
+            ...current.orders.filter((item) => item.projectId !== next.project.id)
+          ],
+          creators: [
+            ...next.creators,
+            ...current.creators.filter((creator) => !next.creators.some((item) => item.id === creator.id))
+          ]
+        }));
+        setLoadState("ready");
+      })
+      .catch(() => {
+        if (!active) return;
+        setLoadState(project ? "ready" : "missing");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [params.id, project, session?.accessToken]);
+
+  if (loadState === "loading") {
+    return (
+      <main className="main">
+        <div className="notice">正在加载需求详情...</div>
+      </main>
+    );
+  }
+
+  if (!project || loadState === "missing") {
+    notFound();
+  }
+
   const verified = Boolean(buyerProfile?.verified);
   const canTrialInvite = Boolean(buyerProfile) && ["pending_review", "open", "matching", "in_progress"].includes(project.status);
   const isTrainingProject = project.category === "AIGC Training";
@@ -52,41 +138,6 @@ export default function BuyerProjectDetailPage({ params }: { params: { id: strin
     const invited = leads.some((order) => order.creatorId === creator.id);
     return [{ creator, match, invited, checklist: creatorInviteChecklist(creator, project, invited) }];
   });
-
-  useEffect(() => {
-    if (!session?.accessToken) return;
-
-    let active = true;
-
-    fetch(`/api/buyer/projects/${params.id}`, {
-      headers: {
-        Accept: "application/json",
-        Authorization: `Bearer ${session.accessToken}`
-      }
-    })
-      .then((response) => response.json().catch(() => null))
-      .then((payload) => {
-        if (!active || !payload?.ok || !payload.data) return;
-        const next = payload.data as {
-          project: Project;
-          buyerProfile: BuyerProfile | null;
-          matches: ProjectMatch[];
-          creators: CreatorProfile[];
-          leads: Order[];
-        };
-        setProject(next.project);
-        setBuyerProfile(next.buyerProfile);
-        setMatches(next.matches);
-        setCreators(next.creators);
-        setLeads(next.leads);
-        setData(loadMarketplaceData());
-      })
-      .catch(() => null);
-
-    return () => {
-      active = false;
-    };
-  }, [params.id, session?.accessToken]);
 
   return (
     <main className="main">
