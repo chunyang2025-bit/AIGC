@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, BriefcaseBusiness, Building2, CheckCircle2, GraduationCap, Handshake, LogIn, Plus, Search, Sparkles, Star, UserRound, UsersRound } from "lucide-react";
+import { ArrowRight, BriefcaseBusiness, CheckCircle2, GraduationCap, Handshake, LogIn, Plus, Search, Sparkles, Star, UserRound, UsersRound } from "lucide-react";
 import { CreatorCard } from "./CreatorCard";
 import { FirstActionPanel } from "./FirstActionPanel";
 import { ProjectCard } from "./ProjectCard";
@@ -37,23 +37,6 @@ export function ClientHome() {
   const serviceCreators = data.creators.filter((creator) => !creator.categories.includes("AIGC Training"));
   const serviceProjects = data.projects.filter((project) => project.category !== "AIGC Training");
   const featured = [...trainingCreators, ...data.creators.filter((creator) => !creator.categories.includes("AIGC Training"))].slice(0, 3);
-  const trainingDemanders = Array.from(new Set(trainingProjects.map((project) => project.buyerId)))
-    .map((buyerId) => {
-      const profile = (data.buyerProfiles ?? []).find((item) => item.userId === buyerId);
-      const user = data.users.find((item) => item.id === buyerId);
-      const relatedProjects = trainingProjects.filter((project) => project.buyerId === buyerId);
-      return {
-        id: buyerId,
-        name: profile?.displayName ?? profile?.companyName ?? user?.name ?? "培训需求方",
-        industry: profile?.industry ?? "行业待补充",
-        location: profile?.location ?? "城市待补充",
-        verified: profile?.verified,
-        intro: profile?.profileSlogan ?? profile?.companyIntro ?? "正在寻找AIGC培训方案、课程大纲和可沟通讲师。",
-        topics: relatedProjects.flatMap((project) => project.trainingRequirement?.topics ?? project.tags ?? []).slice(0, 4),
-        demandCount: relatedProjects.length
-      };
-    })
-    .slice(0, 3);
   const trainingEntry = loginNextPath("buyer", "/account/capabilities?intent=training_demand");
   const buyerEntry = loginNextPath("buyer", "/account/capabilities?intent=dispatch");
   const creatorEntry = loginNextPath("creator", "/account/capabilities?intent=service");
@@ -645,45 +628,6 @@ export function ClientHome() {
           ))}
         </div>
       </section>
-
-      {isLoggedIn ? null : (
-      <section className="section">
-        <div className="sectionHeader">
-          <div>
-            <h2>培训需求方信息</h2>
-          </div>
-          <Link className="btn" href="/projects">
-            查看培训需求方 <ArrowRight size={16} />
-          </Link>
-        </div>
-        <div className="grid">
-          {trainingDemanders.map((buyer) => (
-            <Link className="card" href={`/buyers/${buyer.id}`} key={buyer.id}>
-              <div className="cardBody stack">
-                <div className="spaceBetween">
-                  <Building2 size={22} />
-                  <span className={buyer.verified ? "tag green" : "tag gold"}>{buyer.verified ? "已认证" : "待审核"}</span>
-                </div>
-                <div>
-                  <h3 style={{ margin: "0 0 8px", fontSize: 20 }}>{buyer.name}</h3>
-                  <p className="muted" style={{ margin: 0, lineHeight: 1.55 }}>{buyer.intro}</p>
-                </div>
-                <div className="tagList">
-                  <span className="tag blue">{buyer.industry}</span>
-                  <span className="tag">{buyer.location}</span>
-                  <span className="tag green">{buyer.demandCount} 个培训需求</span>
-                </div>
-                {buyer.topics.length ? (
-                  <div className="tagList">
-                    {buyer.topics.map((topic) => <span className="tag" key={topic}>{topic}</span>)}
-                  </div>
-                ) : null}
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
-      )}
 
       {!isLoggedIn && !data.projects.length && !data.creators.length ? (
         <section className="section">
