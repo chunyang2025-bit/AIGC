@@ -395,7 +395,6 @@ function syncFromApi() {
         ...(accountState.creatorProjects ?? []).map((project) => [project.id, project] as const)
       ]);
       const ordersById = new Map([
-        ...local.orders.map((order) => [order.id, order] as const),
         ...accountState.buyerOrders.map((order) => [order.id, order] as const),
         ...accountState.creatorOrders.map((order) => [order.id, order] as const)
       ]);
@@ -620,13 +619,19 @@ export async function resubmitProject(projectId: string, input: {
 }
 
 export function inviteCreator(projectId: string, creatorId: string, input: { message?: string } = {}) {
-  const remote = requestJson<Order>(`/api/projects/${projectId}/invite`, {
-    method: "POST",
-    body: JSON.stringify({ creatorId, message: input.message })
-  });
+  if (shouldUseApi()) {
+    const remote = requestJson<Order>(`/api/projects/${projectId}/invite`, {
+      method: "POST",
+      body: JSON.stringify({ creatorId, message: input.message })
+    }, {
+      throwOnError: true,
+      fallbackErrorMessage: "发起沟通失败，请刷新页面后重试。"
+    });
 
-  if (remote) {
-    return remote;
+    if (remote) {
+      syncFromApi();
+      return remote;
+    }
   }
 
   const data = loadMarketplaceData();

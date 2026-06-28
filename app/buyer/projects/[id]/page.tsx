@@ -26,6 +26,7 @@ export default function BuyerProjectDetailPage({ params }: { params: { id: strin
   const [candidateIds, setCandidateIds] = useState<string[]>(() => (initialProject ? readCandidateCreatorIds(params.id) : []));
   const [leads, setLeads] = useState<Order[]>(() => initialProject ? data.orders.filter((order) => order.projectId === params.id) : []);
   const [buyerProfile, setBuyerProfile] = useState<BuyerProfile | null>(() => data.buyerProfiles?.find((profile) => profile.userId === session?.userId) ?? null);
+  const [inviteError, setInviteError] = useState<string | null>(null);
   const [creators, setCreators] = useState<CreatorProfile[]>(() => {
     if (!initialProject) return [];
     const creatorIds = new Set([
@@ -133,6 +134,17 @@ export default function BuyerProjectDetailPage({ params }: { params: { id: strin
       : `已邀请 ${creatorName} 沟通需求「${project.title}」。`;
   const nextStep = buyerProjectNextStep(project, data, Boolean(buyerProfile));
   const conversion = projectTrainingConversion(project);
+  const handleInvite = (creatorId: string, creatorName: string) => {
+    try {
+      setInviteError(null);
+      const order = inviteCreator(project.id, creatorId, { message: inviteMessage(creatorName) });
+      if (order) {
+        router.push(`/orders/${order.id}`);
+      }
+    } catch (error) {
+      setInviteError(error instanceof Error ? error.message : "发起沟通失败，请稍后重试。");
+    }
+  };
   const candidateRows = candidateIds.flatMap((id) => {
     const creator = creators.find((item) => item.id === id) ?? data.creators.find((item) => item.id === id);
     if (!creator) return [];
@@ -354,12 +366,7 @@ export default function BuyerProjectDetailPage({ params }: { params: { id: strin
                     candidateSelected={isCandidateCreator(project.id, creator.id)}
                     onInvite={
                       canTrialInvite && !invited
-                        ? () => {
-                            const order = inviteCreator(project.id, creator.id, { message: inviteMessage(creator.name) });
-                            if (order) {
-                              router.push(`/orders/${order.id}`);
-                            }
-                          }
+                        ? () => handleInvite(creator.id, creator.name)
                         : undefined
                     }
                     invited={invited}
@@ -371,6 +378,7 @@ export default function BuyerProjectDetailPage({ params }: { params: { id: strin
             </div>
             {buyerProfile && !verified ? <div className="notice">未审核、未认证：可先{isTrainingProject ? "索要培训方案" : "邀请创作者"}试用流程，正式合作前建议完成认证。</div> : null}
             {!canTrialInvite ? <div className="notice">当前需求状态暂不能{isTrainingProject ? "索要培训方案" : "邀请创作者"}，请先补充或重新提交需求。</div> : null}
+            {inviteError ? <div className="notice">{inviteError}</div> : null}
           </section>
 
           <section className="card">
@@ -497,10 +505,7 @@ export default function BuyerProjectDetailPage({ params }: { params: { id: strin
                         <button
                           className="btn primary"
                           disabled={!canTrialInvite || row.invited}
-                          onClick={() => {
-                            const order = inviteCreator(project.id, row.creator.id, { message: inviteMessage(row.creator.name) });
-                            if (order) router.push(`/orders/${order.id}`);
-                          }}
+                          onClick={() => handleInvite(row.creator.id, row.creator.name)}
                           type="button"
                         >
                           {row.invited ? invitedActionLabel : inviteActionLabel}
