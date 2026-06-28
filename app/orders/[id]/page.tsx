@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { notFound, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, CalendarDays, CheckCircle2, CircleDotDashed, MessageSquare, PhoneCall, RotateCcw, UserCheck, XCircle } from "lucide-react";
+import { ArrowLeft, CalendarDays, CheckCircle2, CircleDotDashed, MessageSquare, PhoneCall, RotateCcw, SendHorizonal, UserCheck, XCircle } from "lucide-react";
 import { compactDate, money, orderResultReasonLabel, orderStatusLabel } from "@/lib/format";
 import { createOrderMessage, loadMarketplaceData, updateOrderStatus } from "@/lib/store";
 import { readAuthSession } from "@/lib/auth";
@@ -155,7 +155,7 @@ export default function OrderPage({ params }: { params: { id: string } }) {
           <div className="panelTop">
             <input
               aria-label="message"
-              placeholder="记录沟通备注或下一步安排"
+              placeholder="发送消息或补充下一步安排"
               style={{ flex: 1, minHeight: 40, border: "1px solid var(--line)", borderRadius: 8, padding: "0 12px" }}
               value={messageBody}
               onChange={(event) => setMessageBody(event.target.value)}
@@ -182,7 +182,7 @@ export default function OrderPage({ params }: { params: { id: string } }) {
               }}
               type="button"
             >
-              <MessageSquare size={16} /> 记录
+              <SendHorizonal size={16} /> 发送
             </button>
           </div>
         </section>
