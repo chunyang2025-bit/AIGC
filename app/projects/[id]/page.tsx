@@ -16,18 +16,21 @@ import { BuyerProfile, CreatorProfile, Project, ProjectMatch } from "@/lib/types
 export default function ProjectDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const [session] = useState(() => readAuthSession());
-  const [data] = useState(() => session ? loadMarketplaceData() : loadPublicMarketplaceData());
+  const [data, setData] = useState(() => session ? loadMarketplaceData() : loadPublicMarketplaceData());
+  const initialProject = data.projects.find((item) => item.id === params.id) ?? null;
   const [currentCreator, setCurrentCreator] = useState<CreatorProfile | null>(() => data.creators.find((creator) => creator.userId === session?.userId) ?? null);
-  const [project, setProject] = useState<Project | null>(() => data.projects.find((item) => item.id === params.id) ?? null);
+  const [project, setProject] = useState<Project | null>(initialProject);
   const [buyerProfile, setBuyerProfile] = useState<BuyerProfile | null>(() => {
     const currentProject = data.projects.find((item) => item.id === params.id);
     return currentProject ? (data.buyerProfiles ?? []).find((profile) => profile.userId === currentProject.buyerId) ?? null : null;
   });
+  const [loadState, setLoadState] = useState<"loading" | "ready" | "missing">(() =>
+    initialProject ? "ready" : "loading"
+  );
   const [sampleMatches, setSampleMatches] = useState<Array<ProjectMatch & { creator?: CreatorProfile }>>(() => {
-    const currentProject = data.projects.find((item) => item.id === params.id);
-    if (!currentProject) return [];
+    if (!initialProject) return [];
     return data.matches
-      .filter((match) => match.projectId === currentProject.id)
+      .filter((match) => match.projectId === initialProject.id)
       .sort((a, b) => b.score - a.score)
       .slice(0, 3)
       .map((match) => ({
@@ -40,7 +43,127 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
     `你好，我是${currentCreator?.name ?? "接单创作者"}。我看过这个需求，想进一步沟通内容方向、周期和素材范围。`
   );
 
-  if (!project) {
+  function submitInterest(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!currentCreator || !project) return;
+
+    const order = expressInterestInProject(project.id, currentCreator.id, {
+      intro
+    });
+    if (order) {
+      router.push(`/orders/${order.id}`);
+    }
+  }
+
+  function saveProjectRemix() {
+    if (!project) return;
+    saveRemixDraft({
+      type: "project",
+      sourceProjectId: project.id,
+      sourceTitle: project.title,
+      project: {
+        title: project.title,
+        description: project.description,
+        category: project.category,
+        tags: project.tags,
+        useCase: project.useCase,
+        deliverableTypes: project.deliverableTypes,
+        urgency: project.urgency,
+        needInvoice: project.needInvoice,
+        longTerm: project.longTerm,
+        acceptPlatformRecommend: project.acceptPlatformRecommend,
+        trainingRequirement: project.trainingRequirement,
+        budget: project.budget,
+        deadline: project.deadline,
+        agentBrief: project.agentBrief
+      }
+    });
+  }
+
+  useEffect(() => {
+    let active = true;
+    setLoadState((current) => (current === "ready" ? current : "loading"));
+
+    fetch(`/api/projects/${params.id}`, {
+      headers: {
+        Accept: "application/json",
+        ...(session?.accessToken ? { Authorization: `Bearer ${session.accessToken}` } : {})
+      }
+    })
+      .then(async (response) => {
+        const payload = await response.json().catch(() => null);
+        return { response, payload };
+      })
+      .then((payload) => {
+        if (!active) return;
+        if (payload.response.status === 404) {
+          setLoadState("missing");
+          return;
+        }
+        if (!payload.payload?.ok || !payload.payload.data) {
+          setLoadState(initialProject ? "ready" : "missing");
+          return;
+        }
+        const next = payload.payload.data as {
+          project: Project;
+          buyerProfile: BuyerProfile | null;
+          currentCreator: CreatorProfile | null;
+          sampleMatches: ProjectMatch[];
+          sampleCreators: CreatorProfile[];
+        };
+        setProject(next.project);
+        setBuyerProfile(next.buyerProfile);
+        setCurrentCreator(next.currentCreator);
+        setSampleMatches(
+          next.sampleMatches.map((match) => ({
+            ...match,
+            creator: next.sampleCreators.find((creator) => creator.id === match.creatorId)
+          })).filter((match) => match.creator)
+        );
+        setData((current) => ({
+          ...current,
+          projects: [
+            next.project,
+            ...current.projects.filter((item) => item.id !== next.project.id)
+          ],
+          buyerProfiles: next.buyerProfile
+            ? [
+                next.buyerProfile,
+                ...(current.buyerProfiles ?? []).filter((profile) => profile.id !== next.buyerProfile?.id)
+              ]
+            : current.buyerProfiles ?? [],
+          creators: next.currentCreator
+            ? [
+                next.currentCreator,
+                ...current.creators.filter((creator) => creator.id !== next.currentCreator?.id)
+              ]
+            : current.creators,
+          matches: [
+            ...next.sampleMatches,
+            ...current.matches.filter((match) => match.projectId !== next.project.id)
+          ]
+        }));
+        setLoadState("ready");
+      })
+      .catch(() => {
+        if (!active) return;
+        setLoadState(initialProject ? "ready" : "missing");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [initialProject, params.id, session?.accessToken]);
+
+  if (loadState === "loading") {
+    return (
+      <main className="main">
+        <div className="notice">正在加载需求内容...</div>
+      </main>
+    );
+  }
+
+  if (!project || loadState === "missing") {
     notFound();
   }
 
@@ -78,80 +201,6 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
       : project.agentBrief?.deliverables?.length ? `我建议先确认${project.agentBrief.deliverables.slice(0, 2).join("、")}的样式参考和修改轮次。` : "我建议先确认交付范围、参考风格和修改轮次。",
     currentCreator ? `我的展示页里包含代表作、简历和联系方式，可以先供你判断是否适合继续沟通。` : ""
   ].filter(Boolean).join("\n");
-
-  function submitInterest(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!currentCreator) return;
-
-    const order = expressInterestInProject(projectId, currentCreator.id, {
-      intro
-    });
-    if (order) {
-      router.push(`/orders/${order.id}`);
-    }
-  }
-
-  function saveProjectRemix() {
-    saveRemixDraft({
-      type: "project",
-      sourceProjectId: publicProject.id,
-      sourceTitle: publicProject.title,
-      project: {
-        title: publicProject.title,
-        description: publicProject.description,
-        category: publicProject.category,
-        tags: publicProject.tags,
-        useCase: publicProject.useCase,
-        deliverableTypes: publicProject.deliverableTypes,
-        urgency: publicProject.urgency,
-        needInvoice: publicProject.needInvoice,
-        longTerm: publicProject.longTerm,
-        acceptPlatformRecommend: publicProject.acceptPlatformRecommend,
-        trainingRequirement: publicProject.trainingRequirement,
-        budget: publicProject.budget,
-        deadline: publicProject.deadline,
-        agentBrief: publicProject.agentBrief
-      }
-    });
-  }
-
-  useEffect(() => {
-    if (!session?.accessToken) return;
-
-    let active = true;
-
-    fetch(`/api/projects/${params.id}`, {
-      headers: {
-        Accept: "application/json",
-        Authorization: `Bearer ${session.accessToken}`
-      }
-    })
-      .then((response) => response.json().catch(() => null))
-      .then((payload) => {
-        if (!active || !payload?.ok || !payload.data) return;
-        const next = payload.data as {
-          project: Project;
-          buyerProfile: BuyerProfile | null;
-          currentCreator: CreatorProfile | null;
-          sampleMatches: ProjectMatch[];
-          sampleCreators: CreatorProfile[];
-        };
-        setProject(next.project);
-        setBuyerProfile(next.buyerProfile);
-        setCurrentCreator(next.currentCreator);
-        setSampleMatches(
-          next.sampleMatches.map((match) => ({
-            ...match,
-            creator: next.sampleCreators.find((creator) => creator.id === match.creatorId)
-          })).filter((match) => match.creator)
-        );
-      })
-      .catch(() => null);
-
-    return () => {
-      active = false;
-    };
-  }, [params.id, session?.accessToken]);
 
   return (
     <main className="main">
