@@ -1142,6 +1142,9 @@ export function verifySubject(subjectType: "buyer" | "creator", id: string, veri
   const remote = requestJson(`/api/admin/verify`, {
     method: "PATCH",
     body: JSON.stringify({ subjectType, id, verified, rejectedReason })
+  }, {
+    throwOnError: true,
+    fallbackErrorMessage: "主体审核失败，请稍后重试。"
   });
 
   if (remote) {
@@ -1151,7 +1154,7 @@ export function verifySubject(subjectType: "buyer" | "creator", id: string, veri
     return true;
   }
 
-  return false;
+  throw new Error("主体审核失败，请稍后重试。");
 }
 
 export async function submitReview(subjectType: "buyer" | "creator", id: string) {
@@ -1239,6 +1242,9 @@ export function reviewProject(projectId: string, status: "open" | "rejected" | "
   const remote = requestJson<Project>(`/api/admin/projects/${projectId}/review`, {
     method: "PATCH",
     body: JSON.stringify({ status, rejectedReason })
+  }, {
+    throwOnError: true,
+    fallbackErrorMessage: "需求审核失败，请稍后重试。"
   });
 
   if (remote) {
@@ -1246,34 +1252,7 @@ export function reviewProject(projectId: string, status: "open" | "rejected" | "
     return remote;
   }
 
-  const data = loadMarketplaceData();
-  const project = data.projects.find((item) => item.id === projectId);
-  if (!project) return null;
-
-  const activityEvent: ActivityEvent = {
-    id: `a-${Date.now()}`,
-    userId: project.buyerId,
-    role: "admin",
-    eventType: "browse",
-    targetType: "project",
-    targetId: projectId,
-    createdAt: new Date().toISOString()
-  };
-  const next: MarketplaceData = {
-    ...data,
-    projects: data.projects.map((item) =>
-      item.id === projectId
-        ? {
-            ...item,
-            status,
-            rejectedReason: status === "rejected" || status === "removed" ? rejectedReason || "需求信息不完整，请补充资质、联系方式或需求说明后重新提交。" : undefined
-          }
-        : item
-    ),
-    activityEvents: [activityEvent, ...data.activityEvents]
-  };
-  saveMarketplaceData(next);
-  return next.projects.find((item) => item.id === projectId) ?? null;
+  throw new Error("需求审核失败，请稍后重试。");
 }
 
 export function submitReport(input: { targetType: AbuseReport["targetType"]; targetId: string; reason: string }) {
@@ -1316,6 +1295,9 @@ export function resolveFeedback(feedbackId: string, status: "reviewing" | "resol
   const remote = requestJson<TrialFeedback>(`/api/admin/feedback/${feedbackId}`, {
     method: "PATCH",
     body: JSON.stringify({ status, resolution })
+  }, {
+    throwOnError: true,
+    fallbackErrorMessage: "试用反馈处理失败，请稍后重试。"
   });
 
   if (remote) {
@@ -1323,13 +1305,16 @@ export function resolveFeedback(feedbackId: string, status: "reviewing" | "resol
     return remote;
   }
 
-  return null;
+  throw new Error("试用反馈处理失败，请稍后重试。");
 }
 
 export function resolveReport(reportId: string, status: "reviewing" | "resolved" | "dismissed", resolution?: string) {
   const remote = requestJson<AbuseReport>(`/api/admin/reports/${reportId}`, {
     method: "PATCH",
     body: JSON.stringify({ status, resolution })
+  }, {
+    throwOnError: true,
+    fallbackErrorMessage: "举报处理失败，请稍后重试。"
   });
 
   if (remote) {
@@ -1337,13 +1322,16 @@ export function resolveReport(reportId: string, status: "reviewing" | "resolved"
     return remote;
   }
 
-  return null;
+  throw new Error("举报处理失败，请稍后重试。");
 }
 
 export function suspendUser(userId: string, suspended = true, reason?: string) {
   const remote = requestJson<User>(`/api/admin/users/${userId}/suspend`, {
     method: "PATCH",
     body: JSON.stringify({ suspended, reason })
+  }, {
+    throwOnError: true,
+    fallbackErrorMessage: "账号状态更新失败，请稍后重试。"
   });
 
   if (remote) {
@@ -1351,7 +1339,7 @@ export function suspendUser(userId: string, suspended = true, reason?: string) {
     return remote;
   }
 
-  return null;
+  throw new Error("账号状态更新失败，请稍后重试。");
 }
 
 export function createOrderMessage(orderId: string, input: { senderId: string; body: string; attachmentUrl?: string }) {
