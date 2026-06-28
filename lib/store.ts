@@ -863,7 +863,14 @@ export async function upsertCurrentBuyerProfile(input: {
   qualificationFiles: string[];
 }) {
   const session = readAuthSession();
-  const userId = session?.userId ?? "u-buyer-1";
+  if (!session?.userId) {
+    throw new Error("请先登录后再保存主体主页。");
+  }
+  if (!session.accessToken) {
+    throw new Error("当前登录状态已失效，请重新登录后再保存主体主页。");
+  }
+
+  const userId = session.userId;
   const profileId = `bp-${userId}`;
   const remote = await requestJsonAsync<BuyerProfile>("/api/buyers", {
     method: "POST",
@@ -872,10 +879,10 @@ export async function upsertCurrentBuyerProfile(input: {
       userId,
       ...input
     })
-  }, session?.accessToken ? {
+  }, {
     throwOnError: true,
     fallbackErrorMessage: "主体资料保存失败，请重新登录后再试。"
-  } : undefined);
+  });
 
   if (remote) {
     if (session) saveAuthSession({ ...session, status: remote.verified ? "approved" : "registered" });
@@ -883,62 +890,7 @@ export async function upsertCurrentBuyerProfile(input: {
     return remote;
   }
 
-  const data = loadMarketplaceData();
-  const now = new Date().toISOString();
-  const existing = (data.buyerProfiles ?? []).find((item) => item.id === profileId || item.userId === userId);
-  const draftProfile: BuyerProfile = {
-    id: profileId,
-    userId,
-    companyName: input.companyName,
-    displayName: input.displayName,
-    avatarUrl: input.avatarUrl,
-    profileSlogan: input.profileSlogan,
-    industry: input.industry,
-    location: input.location,
-    companyIntro: input.companyIntro,
-    verificationType: input.verificationType,
-    contactEmail: input.contactEmail,
-    contactPhone: input.contactPhone,
-    websiteUrl: input.websiteUrl,
-    socialUrl: input.socialUrl,
-    serviceArea: input.serviceArea,
-    businessLicenseFile: input.businessLicenseFile,
-    qualificationFiles: input.qualificationFiles,
-    verified: false,
-    rejectedReason: existing?.rejectedReason,
-    cover: "linear-gradient(135deg, #153f31, #2457c5)"
-  };
-  const resetVerifiedReview = Boolean(existing?.verified) && buyerVerificationFieldsChanged(existing, draftProfile);
-  const profile: BuyerProfile = existing?.verified && resetVerifiedReview
-    ? keepPublishedBuyerWithDraft(existing, draftProfile)
-    : {
-        ...draftProfile,
-        verified: existing?.verified ?? false,
-        rejectedReason: existing?.rejectedReason,
-        reviewDraft: undefined,
-        reviewDraftSubmittedAt: undefined,
-        reviewDraftRejectedReason: undefined
-      };
-  const users = data.users.map((user) => (user.id === userId ? { ...user, name: input.companyName, email: input.contactEmail } : user));
-  const buyerProfiles = [profile, ...(data.buyerProfiles ?? []).filter((item) => item.id !== profileId && item.userId !== userId)];
-  const activityEvent: ActivityEvent = {
-    id: `a-${Date.now()}`,
-    userId,
-    role: "buyer",
-    eventType: "browse",
-    targetType: "buyer_profile",
-    targetId: profileId,
-    createdAt: now
-  };
-  const next: MarketplaceData = {
-    ...data,
-    users,
-    buyerProfiles,
-    activityEvents: [activityEvent, ...data.activityEvents]
-  };
-  saveMarketplaceData(next);
-  if (session) saveAuthSession({ ...session, status: profile.verified ? "approved" : "registered" });
-  return profile;
+  throw new Error("主体资料保存失败，请稍后重试。");
 }
 
 export async function upsertUnifiedSubjectProfile(input: {
@@ -997,13 +949,7 @@ export async function upsertUnifiedSubjectProfile(input: {
   if (remote) {
     return buyerProfile;
   }
-
-  const next = loadMarketplaceData();
-  saveMarketplaceData({
-    ...next,
-    creators: [mergedCreator, ...next.creators.filter((item) => item.id !== creator.id && item.userId !== creator.userId)]
-  });
-  return buyerProfile;
+  throw new Error("主体资料同步失败，请稍后再试。");
 }
 
 export async function upsertCurrentCreatorProfile(input: {
@@ -1034,7 +980,14 @@ export async function upsertCurrentCreatorProfile(input: {
   trainingProfile?: TrainingProfile;
 }) {
   const session = readAuthSession();
-  const userId = session?.userId ?? "u-creator-self";
+  if (!session?.userId) {
+    throw new Error("请先登录后再保存服务主页。");
+  }
+  if (!session.accessToken) {
+    throw new Error("当前登录状态已失效，请重新登录后再保存服务主页。");
+  }
+
+  const userId = session.userId;
   const profileId = `c-${userId}`;
   const remote = await requestJsonAsync<CreatorProfile>("/api/creators", {
     method: "POST",
@@ -1044,98 +997,17 @@ export async function upsertCurrentCreatorProfile(input: {
       verificationType: input.identityType,
       ...input
     })
-  }, session?.accessToken ? {
+  }, {
     throwOnError: true,
     fallbackErrorMessage: "服务主页保存失败，请重新登录后再试。"
-  } : undefined);
+  });
 
   if (remote) {
     if (session) saveAuthSession({ ...session, status: remote.verified ? "approved" : "registered" });
     cacheCreatorProfile(remote);
     return remote;
   }
-
-  const data = loadLocalMarketplaceData();
-  const now = new Date().toISOString();
-  const existing = data.creators.find((item) => item.id === profileId || item.userId === userId);
-  const draftProfile: CreatorProfile = {
-    id: profileId,
-    userId,
-    name: input.name,
-    title: input.title,
-    location: input.location,
-    bio: input.bio,
-    resume: input.resume,
-    skills: input.skills,
-    categories: input.categories,
-    portfolio: input.portfolio,
-    portfolioItems: input.portfolioItems,
-    servicePackages: input.servicePackages,
-    priceMin: input.priceMin,
-    priceMax: input.priceMax,
-    completedProjects: 0,
-    rating: 4.6,
-    responseTime: input.responseTime,
-    verified: false,
-    identityType: input.identityType,
-    verificationType: input.identityType,
-    avatarUrl: input.avatarUrl,
-    displayName: input.displayName,
-    profileSlogan: input.profileSlogan,
-    websiteUrl: input.websiteUrl,
-    socialUrl: input.socialUrl,
-    serviceArea: input.serviceArea,
-    credentialFile: input.credentialFile,
-    qualificationFiles: input.qualificationFiles,
-    contactEmail: input.contactEmail,
-    contactPhone: input.contactPhone,
-    trainingProfile: input.trainingProfile,
-    cover: "linear-gradient(135deg, #153f31, #2f7c5f 46%, #f0b35a)"
-  };
-  const resetVerifiedReview = Boolean(existing?.verified) && creatorVerificationFieldsChanged(existing, draftProfile);
-  const profile: CreatorProfile = existing?.verified && resetVerifiedReview
-    ? keepPublishedCreatorWithDraft(existing, draftProfile)
-    : {
-        ...draftProfile,
-        verified: existing?.verified ?? false,
-        rejectedReason: existing?.rejectedReason,
-        reviewDraft: undefined,
-        reviewDraftSubmittedAt: undefined,
-        reviewDraftRejectedReason: undefined
-      };
-
-  const existingUser = data.users.some((user) => user.id === userId);
-  const users = existingUser
-    ? data.users.map((user) => (user.id === userId ? { ...user, name: input.name } : user))
-    : [
-        {
-          id: userId,
-          name: input.name,
-          email: input.contactEmail || "creator@demo.local",
-          role: "creator" as const,
-          createdAt: now.slice(0, 10)
-        },
-        ...data.users
-      ];
-  const creators = [profile, ...data.creators.filter((creator) => creator.id !== profileId && creator.userId !== userId)];
-  const activityEvent: ActivityEvent = {
-    id: `a-${Date.now()}`,
-    userId,
-    role: "creator",
-    eventType: "browse",
-    targetType: "creator",
-    targetId: profileId,
-    createdAt: now
-  };
-  const next: MarketplaceData = {
-    ...data,
-    users,
-    creators,
-    activityEvents: [activityEvent, ...data.activityEvents]
-  };
-  saveMarketplaceData(next);
-  if (session) saveAuthSession({ ...session, status: profile.verified ? "approved" : "registered" });
-  return profile;
+  throw new Error("服务主页保存失败，请稍后重试。");
 }
 
 export function verifySubject(subjectType: "buyer" | "creator", id: string, verified = true, rejectedReason?: string) {
