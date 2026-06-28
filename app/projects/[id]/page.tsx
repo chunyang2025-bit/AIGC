@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { notFound, useRouter } from "next/navigation";
-import { ArrowLeft, Bot, Building2, CheckCircle2, FileBadge2, FileText, Link2, Send, Sparkles, UsersRound } from "lucide-react";
+import { ArrowLeft, ArrowRight, Bot, Building2, CheckCircle2, FileBadge2, FileText, Link2, Send, Sparkles, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { categoryLabel, compactDate, money, projectStatusLabel } from "@/lib/format";
 import { trainingFormatLabel } from "@/lib/training";
@@ -52,6 +52,18 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
   const projectId = project.id;
   const isTrainingProject = project.category === "AIGC Training";
   const buyerName = buyerProfile?.displayName ?? buyerProfile?.companyName ?? data.users.find((user) => user.id === project.buyerId)?.name ?? "需求发布方";
+  const buyerTrainingProjects = isTrainingProject
+    ? data.projects.filter((item) => item.buyerId === project.buyerId && item.category === "AIGC Training")
+    : [];
+  const buyerTrainingTopics = isTrainingProject
+    ? Array.from(
+        new Set(
+          buyerTrainingProjects.flatMap(
+            (item) => item.trainingRequirement?.topics ?? item.tags ?? []
+          )
+        )
+      ).slice(0, 5)
+    : [];
   const decisionItems = projectDecisionItems(project, buyerProfile ?? undefined);
   const suitabilityScore = creatorProjectScore(currentCreator ?? undefined, project);
   const trustScore = decisionScore(project, buyerProfile ?? undefined);
@@ -180,6 +192,52 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                   {project.tags.map((tag) => (
                     <span className="tag" key={tag}>{tag}</span>
                   ))}
+                </div>
+              ) : null}
+              {buyerProfile ? (
+                <div className="card">
+                  <div className="cardBody stack">
+                    <div className="spaceBetween">
+                      <strong>需求方信息</strong>
+                      <Link className="btn" href={`/buyers/${project.buyerId}`}>
+                        查看主体主页 <ArrowRight size={16} />
+                      </Link>
+                    </div>
+                    <div className="tagList">
+                      <span className={buyerProfile.verified ? "tag green" : "tag gold"}>
+                        {buyerProfile.verified ? "已认证主体" : "待审核主体"}
+                      </span>
+                      <span className="tag blue">{buyerProfile.industry}</span>
+                      <span className="tag">{buyerProfile.location}</span>
+                      {buyerProfile.serviceArea ? <span className="tag">{buyerProfile.serviceArea}</span> : null}
+                      {isTrainingProject ? <span className="tag green">{buyerTrainingProjects.length} 个培训需求</span> : null}
+                    </div>
+                    <div className="grid two compactGrid">
+                      <div className="briefBlock">
+                        <strong>主体名称</strong>
+                        <p>{buyerProfile.displayName ?? buyerProfile.companyName}</p>
+                      </div>
+                      <div className="briefBlock">
+                        <strong>当前重点</strong>
+                        <p>{buyerProfile.profileSlogan || (isTrainingProject ? "正在筛选讲师、课程大纲和培训方案。" : "正在筛选可合作的服务方。")}</p>
+                      </div>
+                    </div>
+                    <div className="briefBlock">
+                      <strong>主体简介</strong>
+                      <p>{buyerProfile.companyIntro || "平台已收录主体信息，公开页展示的是适合合作判断的简介与认证状态。"}</p>
+                    </div>
+                    {isTrainingProject ? (
+                      <div className="briefBlock">
+                        <strong>培训主题线索</strong>
+                        <div className="tagList">
+                          {buyerTrainingTopics.map((topic) => (
+                            <span className="tag blue" key={topic}>{topic}</span>
+                          ))}
+                          {!buyerTrainingTopics.length ? <span className="tag">以当前需求沟通为准</span> : null}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
               ) : null}
               <div className="grid four">
