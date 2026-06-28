@@ -53,7 +53,10 @@ function normalizeData(data: MarketplaceData): MarketplaceData {
     users: data.users ?? [],
     buyerProfiles: dedupeProfilesByUserId(data.buyerProfiles ?? [], "bp"),
     creators: dedupeProfilesByUserId(data.creators ?? [], "c"),
-    projects: data.projects ?? [],
+    projects: (data.projects ?? []).map((project) => ({
+      ...project,
+      status: project.status === "pending_review" ? "open" : project.status
+    })),
     matches: data.matches ?? [],
     orders: data.orders ?? [],
     messages: data.messages ?? [],

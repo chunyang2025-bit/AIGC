@@ -108,6 +108,10 @@ function normalizeData(data: MarketplaceData): MarketplaceData {
   return {
     ...createEmptyMarketplaceData(),
     ...data,
+    projects: (data.projects ?? []).map((project) => ({
+      ...project,
+      status: project.status === "pending_review" ? "open" : project.status
+    })),
     messages: data.messages ?? [],
     reviews: data.reviews ?? [],
     reports: data.reports ?? [],

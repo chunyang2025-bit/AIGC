@@ -85,6 +85,7 @@ function mapCreator(row: Record<string, unknown>): CreatorProfile {
 }
 
 function mapProject(row: Record<string, unknown>): Project {
+  const status = String(row.status || "open") as Project["status"];
   return {
     id: String(row.id),
     buyerId: String(row.buyer_id),
@@ -101,7 +102,7 @@ function mapProject(row: Record<string, unknown>): Project {
     trainingRequirement: row.training_requirement as Project["trainingRequirement"],
     budget: Number(row.budget || 0),
     deadline: toDate(row.deadline),
-    status: String(row.status || "open") as Project["status"],
+    status: status === "pending_review" ? "open" : status,
     referenceFile: row.reference_file ? String(row.reference_file) : undefined,
     qualificationFile: row.qualification_file ? String(row.qualification_file) : undefined,
     contactEmail: row.contact_email ? String(row.contact_email) : undefined,
