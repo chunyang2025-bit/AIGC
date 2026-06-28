@@ -10,7 +10,7 @@ const demoIdPatterns = [
   /^r-\d+$/
 ];
 
-function isDemoSeedId(value: unknown) {
+export function isDemoSeedId(value: unknown) {
   const text = String(value || "").trim();
   return Boolean(text && demoIdPatterns.some((pattern) => pattern.test(text)));
 }
@@ -51,7 +51,7 @@ function isDemoProject(project: Pick<Project, "id" | "buyerId" | "title" | "cont
   return isDemoSeedId(project.id) || isDemoSeedId(project.buyerId) || textMatchesArtifact(project.title) || accountMatchesArtifact(project.contactEmail);
 }
 
-function isDemoCreator(creator: Pick<CreatorProfile, "id" | "userId" | "name" | "title" | "displayName" | "profileSlogan" | "contactEmail">) {
+export function isDemoCreator(creator: Pick<CreatorProfile, "id" | "userId" | "name" | "title" | "displayName" | "profileSlogan" | "contactEmail">) {
   return (
     isDemoSeedId(creator.id) ||
     isDemoSeedId(creator.userId) ||

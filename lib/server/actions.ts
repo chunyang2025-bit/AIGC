@@ -1,7 +1,7 @@
 import { monthlyActiveUsers, activeOrders } from "../analytics";
 import { draftProjectBrief } from "../brief-agent";
 import { recommendCreators } from "../matching";
-import { cleanPublicCreators, cleanPublicProjects } from "../public-marketplace";
+import { cleanPublicCreators, cleanPublicProjects, isDemoCreator } from "../public-marketplace";
 import { buyerVerificationFieldsChanged, creatorVerificationFieldsChanged } from "../review-status";
 import {
   ActivityEvent,
@@ -365,6 +365,7 @@ export function setUserPassword(data: MarketplaceData, input: Record<string, unk
 
 export function createProject(data: MarketplaceData, input: Record<string, unknown>) {
   const buyerId = String(input.buyerId || "u-buyer-1");
+  const recommendationCreators = data.creators.filter((creator) => !isDemoCreator(creator));
   const project: Project = {
     id: id("p"),
     buyerId,
@@ -390,7 +391,7 @@ export function createProject(data: MarketplaceData, input: Record<string, unkno
     rejectedReason: input.rejectedReason ? String(input.rejectedReason) : undefined,
     createdAt: today()
   };
-  const matches = recommendCreators(project, data.creators, 10);
+  const matches = recommendCreators(project, recommendationCreators, 10);
 
   data.projects.unshift(project);
   data.matches.unshift(...matches);
@@ -408,6 +409,7 @@ export function createProject(data: MarketplaceData, input: Record<string, unkno
 export function updateProject(data: MarketplaceData, projectId: string, input: Record<string, unknown>) {
   const project = data.projects.find((item) => item.id === projectId);
   if (!project) return null;
+  const recommendationCreators = data.creators.filter((creator) => !isDemoCreator(creator));
 
   const nextProject: Project = {
     ...project,
@@ -441,7 +443,7 @@ export function updateProject(data: MarketplaceData, projectId: string, input: R
 
   data.projects = data.projects.map((item) => (item.id === projectId ? nextProject : item));
   data.matches = data.matches.filter((match) => match.projectId !== projectId);
-  data.matches.unshift(...recommendCreators(nextProject, data.creators, 10));
+  data.matches.unshift(...recommendCreators(nextProject, recommendationCreators, 10));
   addActivity(data, {
     userId: nextProject.buyerId,
     role: "buyer",
@@ -480,13 +482,14 @@ export function pagedProjects(data: MarketplaceData, searchParams: URLSearchPara
 export function getProjectMatches(data: MarketplaceData, projectId: string) {
   const project = data.projects.find((item) => item.id === projectId);
   if (!project) return null;
+  const recommendationCreators = data.creators.filter((creator) => !isDemoCreator(creator));
 
   const stored = data.matches.filter((item) => item.projectId === projectId);
   if (stored.length >= 10) {
     return stored.sort((a, b) => b.score - a.score).slice(0, 10);
   }
 
-  return recommendCreators(project, data.creators, 10);
+  return recommendCreators(project, recommendationCreators, 10);
 }
 
 export function inviteCreator(data: MarketplaceData, projectId: string, input: Record<string, unknown>) {

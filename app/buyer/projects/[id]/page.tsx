@@ -17,15 +17,17 @@ export default function BuyerProjectDetailPage({ params }: { params: { id: strin
   const router = useRouter();
   const [session] = useState(() => readAuthSession());
   const [data, setData] = useState(() => loadMarketplaceData());
-  const [project, setProject] = useState<Project | null>(() => data.projects.find((item) => item.id === params.id) ?? null);
+  const initialProject = data.projects.find((item) => item.id === params.id) ?? null;
+  const [project, setProject] = useState<Project | null>(initialProject);
   const [loadState, setLoadState] = useState<"loading" | "ready" | "missing">(() =>
-    project ? "ready" : session?.accessToken ? "loading" : "missing"
+    initialProject ? "ready" : session?.accessToken ? "loading" : "missing"
   );
-  const [matches, setMatches] = useState<ProjectMatch[]>(() => getProjectMatches(data, params.id));
-  const [candidateIds, setCandidateIds] = useState(readCandidateCreatorIds(params.id));
-  const [leads, setLeads] = useState<Order[]>(() => data.orders.filter((order) => order.projectId === params.id));
+  const [matches, setMatches] = useState<ProjectMatch[]>(() => (initialProject ? getProjectMatches(data, params.id) : []) ?? []);
+  const [candidateIds, setCandidateIds] = useState<string[]>(() => (initialProject ? readCandidateCreatorIds(params.id) : []));
+  const [leads, setLeads] = useState<Order[]>(() => initialProject ? data.orders.filter((order) => order.projectId === params.id) : []);
   const [buyerProfile, setBuyerProfile] = useState<BuyerProfile | null>(() => data.buyerProfiles?.find((profile) => profile.userId === session?.userId) ?? null);
   const [creators, setCreators] = useState<CreatorProfile[]>(() => {
+    if (!initialProject) return [];
     const creatorIds = new Set([
       ...matches.map((item) => item.creatorId),
       ...data.orders.filter((order) => order.projectId === params.id).map((order) => order.creatorId)
