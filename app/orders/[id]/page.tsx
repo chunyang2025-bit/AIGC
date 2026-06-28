@@ -38,22 +38,23 @@ export default function OrderPage({ params }: { params: { id: string } }) {
   const [selectedStatus, setSelectedStatus] = useState<OrderStatus>("not_fit");
   const [resultReason, setResultReason] = useState("budget_mismatch");
   const [resultNote, setResultNote] = useState("");
-  const [order, setOrder] = useState<Order | null>(() => data.orders.find((item) => item.id === params.id) ?? null);
-
-  if (!order) {
-    notFound();
-  }
-
-  const [project, setProject] = useState<Project | null>(() => data.projects.find((item) => item.id === order.projectId) ?? null);
-  const [creator, setCreator] = useState<CreatorProfile | null>(() => data.creators.find((item) => item.id === order.creatorId) ?? null);
-  const [messages, setMessages] = useState<Message[]>(() => data.messages.filter((message) => message.orderId === order.id).reverse());
-  const [users, setUsers] = useState<User[]>(() => data.users.filter((user) => user.id === order.buyerId || user.id === creator?.userId || messages.some((message) => message.senderId === user.id)));
-  const senderId = session?.role === "creator" ? creator?.userId ?? session.userId : order.buyerId;
+  const initialOrder = data.orders.find((item) => item.id === params.id) ?? null;
+  const [order, setOrder] = useState<Order | null>(initialOrder);
+  const [project, setProject] = useState<Project | null>(() => initialOrder ? data.projects.find((item) => item.id === initialOrder.projectId) ?? null : null);
+  const [creator, setCreator] = useState<CreatorProfile | null>(() => initialOrder ? data.creators.find((item) => item.id === initialOrder.creatorId) ?? null : null);
+  const [messages, setMessages] = useState<Message[]>(() => initialOrder ? data.messages.filter((message) => message.orderId === initialOrder.id).reverse() : []);
+  const [users, setUsers] = useState<User[]>(() => initialOrder ? data.users.filter((user) => user.id === initialOrder.buyerId || user.id === creator?.userId || messages.some((message) => message.senderId === user.id)) : []);
+  const [loadState, setLoadState] = useState<"loading" | "ready" | "missing">(() => initialOrder ? "ready" : "loading");
+  const senderId = session?.role === "creator" ? creator?.userId ?? session.userId : order?.buyerId ?? session?.userId ?? "";
 
   useEffect(() => {
-    if (!session?.accessToken) return;
+    if (!session?.accessToken) {
+      if (!initialOrder) setLoadState("missing");
+      return;
+    }
 
     let active = true;
+    setLoadState((current) => (current === "ready" ? current : "loading"));
 
     fetch(`/api/orders/${params.id}`, {
       headers: {
@@ -61,9 +62,20 @@ export default function OrderPage({ params }: { params: { id: string } }) {
         Authorization: `Bearer ${session.accessToken}`
       }
     })
-      .then((response) => response.json().catch(() => null))
-      .then((payload) => {
-        if (!active || !payload?.ok || !payload.data) return;
+      .then(async (response) => {
+        const payload = await response.json().catch(() => null);
+        return { response, payload };
+      })
+      .then(({ response, payload }) => {
+        if (!active) return;
+        if (response.status === 404) {
+          setLoadState("missing");
+          return;
+        }
+        if (!payload?.ok || !payload.data) {
+          setLoadState(initialOrder ? "ready" : "missing");
+          return;
+        }
         const next = payload.data as {
           order: Order;
           project: Project | null;
@@ -76,13 +88,29 @@ export default function OrderPage({ params }: { params: { id: string } }) {
         setCreator(next.creator);
         setMessages(next.messages.slice().reverse());
         setUsers(next.users);
+        setLoadState("ready");
       })
-      .catch(() => null);
+      .catch(() => {
+        if (!active) return;
+        setLoadState(initialOrder ? "ready" : "missing");
+      });
 
     return () => {
       active = false;
     };
-  }, [params.id, session?.accessToken]);
+  }, [initialOrder, params.id, session?.accessToken]);
+
+  if (loadState === "loading") {
+    return (
+      <main className="main">
+        <div className="notice">正在加载沟通线索...</div>
+      </main>
+    );
+  }
+
+  if (!order || loadState === "missing") {
+    notFound();
+  }
 
   return (
     <main className="main">
