@@ -5,7 +5,7 @@ import { BriefcaseBusiness, Clock3, Download, ShieldCheck, UsersRound } from "lu
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { activeOrders, monthlyActiveUsers } from "@/lib/analytics";
-import { activityEventLabel, categoryLabel, money, orderResultReasonLabel, orderStatusLabel, projectStatusLabel, roleLabel, targetTypeLabel, verificationTypeLabel } from "@/lib/format";
+import { activityEventLabel, categoryLabel, compactDate, money, orderResultReasonLabel, orderStatusLabel, projectStatusLabel, roleLabel, targetTypeLabel, verificationTypeLabel } from "@/lib/format";
 import { deliverableTypeLabel, projectUseCaseLabel, urgencyLabel } from "@/lib/growth-taxonomy";
 import { buyerReviewDiff, creatorReviewDiff } from "@/lib/review-status";
 import { trainingFormatLabel } from "@/lib/training";
@@ -156,6 +156,11 @@ export default function AdminPage() {
   const thirtyDayMetrics = windowMetrics(safeData, 30);
   const recentOrders = safeData.orders.slice(0, 20);
   const recentActivity = safeData.activityEvents.slice().reverse().slice(0, 50);
+  const recentRegisteredUsers = safeData.users
+    .filter((user) => user.role !== "admin")
+    .slice()
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 12);
   const recentReviewSubmissions = safeData.activityEvents
     .filter((event) => event.eventType === "submit_review")
     .slice(0, 8)
@@ -663,6 +668,52 @@ export default function AdminPage() {
             审核动作仍在下方“派单方审核”和“创作者审核”区完成；这里负责明确告诉你哪些资料是最新送审的。
           </div>
         </div>
+      </section>
+
+      <section className="card">
+        <div className="panelTop">
+          <div>
+            <strong>最新注册账号</strong>
+            <div className="muted">这里直接显示已写入平台账号表的注册用户，不要求先完善资料。</div>
+          </div>
+          <UsersRound size={18} />
+        </div>
+        <table className="table">
+          <thead>
+            <tr>
+              <th>用户</th>
+              <th>角色</th>
+              <th>账号</th>
+              <th>状态</th>
+              <th>注册时间</th>
+            </tr>
+          </thead>
+          <tbody>
+            {recentRegisteredUsers.map((user) => (
+              <tr key={user.id}>
+                <td>
+                  <strong>{user.name || user.id}</strong>
+                  <div className="muted">{user.id}</div>
+                </td>
+                <td>{roleLabel(user.role)}</td>
+                <td>{user.phone || user.email || user.account || "-"}</td>
+                <td>
+                  <span className={user.status === "suspended" ? "tag" : "tag green"}>
+                    {user.status === "suspended" ? "已限制" : "正常"}
+                  </span>
+                </td>
+                <td>{compactDate(user.createdAt)}</td>
+              </tr>
+            ))}
+            {!recentRegisteredUsers.length ? (
+              <tr>
+                <td colSpan={5}>
+                  <div className="muted">还没有读到真实注册账号。</div>
+                </td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
       </section>
 
       <section className="section">
