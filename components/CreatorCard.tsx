@@ -45,10 +45,10 @@ export function CreatorCard({ creator, matchScore, reason, risk, nextStep, onInv
           <span className="tag">{verificationTypeLabel(creator.verificationType ?? creator.identityType)}</span>
           {creator.verified ? (
             <span className="tag blue">
-              <CheckCircle2 size={13} /> 已认证
+              <CheckCircle2 size={13} /> 资质已认证
             </span>
           ) : (
-            <span className="tag">待审核</span>
+            <span className="tag">资质待补充</span>
           )}
         </div>
         <p className="muted" style={{ margin: 0, lineHeight: 1.55 }}>

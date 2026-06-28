@@ -354,7 +354,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                       <span>{isTrainingProject ? "需求信息完整度" : "与你的能力匹配"}</span>
                     </div>
                     <div className="metric">
-                      <strong>{buyerProfile?.verified ? "已认证" : "待审核"}</strong>
+                      <strong>{buyerProfile?.verified ? "资质已认证" : "资质待补充"}</strong>
                       <span>派单方主体</span>
                     </div>
                   </div>
@@ -451,7 +451,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                   </div>
                   {!currentCreator.verified ? (
                     <div className="notice">
-                      风险提示：你的展示页未审核、未认证。试运营期间可先发送沟通意向，查看具体信息或推进正式合作时建议完成认证。
+                      风险提示：你的主体资质尚未完成认证。服务包、案例和主页说明可以先展示；正式合作前建议补齐资质认证。
                     </div>
                   ) : null}
                   {["pending_review", "open", "matching", "in_progress"].includes(project.status) ? (

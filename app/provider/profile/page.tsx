@@ -358,7 +358,7 @@ function ProviderProfileContent() {
           </span>
           <div>
             <h1>{wantsTraining ? "生成培训服务主页" : "生成服务主页"}</h1>
-            <p>主体资料会自动继承。先填展示名称、服务定位、方向标签、报价和联系方式，保存后进入认证中心提交审核。</p>
+            <p>主体资料会自动继承。先填展示名称、服务定位、方向标签、报价和联系方式；服务包、案例和介绍保存后会直接用于展示，资质材料再进入认证中心提交审核。</p>
           </div>
           <div className="profileSteps">
             <span>
@@ -384,11 +384,11 @@ function ProviderProfileContent() {
             <Sparkles size={18} />
           </div>
           <div className="notice">
-            轻入驻建议：先完成展示名称、服务定位、可接方向、报价和联系方式；先保存主页，再在下一步提交认证审核。
+            轻入驻建议：先完成展示名称、服务定位、可接方向、报价和联系方式；先保存主页，服务内容会先展示，资质材料再在下一步提交认证审核。
           </div>
           {currentProfile?.verified || subjectProfile?.verified ? (
             <div className="notice">
-              已认证后仍可继续更新服务主页。案例、报价、介绍和服务包会直接生效；如果修改展示主体名称、认证类型或资质材料，系统会要求重新提交审核。
+              已认证后仍可继续更新服务主页。案例、报价、介绍和服务包会直接生效；只有展示主体名称、认证类型或资质材料这类关键信息变更时，系统才会要求重新提交审核。
             </div>
           ) : null}
           {loadedCreatorRemix ? (
@@ -689,7 +689,7 @@ function ProviderProfileContent() {
 
             <div className="toolbarGroup">
               <button className="btn primary" disabled={isSaving} type="submit">
-                <Save size={16} /> {isSaving ? "正在保存..." : "保存并进入认证审核"}
+                <Save size={16} /> {isSaving ? "正在保存..." : "保存主页并前往资质认证"}
               </button>
               <Link className="btn" href="/creators">
                 查看创作者大厅 <ArrowRight size={16} />

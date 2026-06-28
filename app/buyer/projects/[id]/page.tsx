@@ -402,7 +402,7 @@ export default function BuyerProjectDetailPage({ params }: { params: { id: strin
                     <tr key={match.id}>
                       <td>
                         <Link href={`/creators/${creator.id}`}>{creator.displayName ?? creator.name}</Link>
-                        <div className="muted">{creator.verified ? "已认证" : "待审核"}</div>
+                        <div className="muted">{creator.verified ? "资质已认证" : "资质待补充"}</div>
                       </td>
                       <td>{money(creator.priceMin)}-{money(creator.priceMax)}</td>
                       <td>{creator.rating.toFixed(1)}</td>
@@ -481,7 +481,7 @@ export default function BuyerProjectDetailPage({ params }: { params: { id: strin
                   <tr key={row.creator.id}>
                     <td>
                       <Link href={`/creators/${row.creator.id}`}>{row.creator.displayName ?? row.creator.name}</Link>
-                      <div className="muted">{row.creator.verified ? "已认证" : "待审核"} · {row.creator.categories.map(categoryLabel).join("、")}</div>
+                      <div className="muted">{row.creator.verified ? "资质已认证" : "资质待补充"} · {row.creator.categories.map(categoryLabel).join("、")}</div>
                     </td>
                     <td>{typeof row.match?.score === "number" ? `${row.match.score}%` : "手动候选"}</td>
                     <td>
