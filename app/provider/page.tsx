@@ -507,7 +507,7 @@ export default function ProviderPortalPage() {
               {pools.contacted.slice(0, 4).map((project) => (
                 <Link className="miniLead" href={`/projects/${project.id}`} key={project.id}>
                   <span>{project.title}</span>
-                  <em>已发起沟通 · 意向预算 {money(project.budget)}</em>
+                  <em>已发送邀请 · 意向预算 {money(project.budget)}</em>
                 </Link>
               ))}
               {!pools.contacted.length ? <div className="muted">还没有发起沟通的机会。</div> : null}

@@ -35,7 +35,7 @@ export function projectStatusLabel(value: string) {
 
 export function orderStatusLabel(value: string) {
   const labels: Record<string, string> = {
-    active: "已发起沟通",
+    active: "已发送邀请",
     contacted: "已联系",
     meeting_scheduled: "已约沟通",
     delivered: "已交换资料",
