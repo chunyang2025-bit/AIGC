@@ -222,7 +222,7 @@ export function buyerProjectNextStep(project: Project, data: MarketplaceData, ap
 
   return {
     label: "查看项目进展",
-    description: "查看推荐、候选和合作线索。",
+    description: "查看推荐、候选和沟通线索。",
     href: `/buyer/projects/${project.id}`,
     tone: "blue" as const
   };
@@ -249,7 +249,7 @@ export function buyerActionItems(data: MarketplaceData, buyerId: string, approve
     },
     {
       label: activeLead ? "回复沟通线索" : "暂无待回复线索",
-      description: activeLead ? "已有合作线索处于沟通中，建议及时查看消息和结果。" : "产生线索后，这里会提醒你继续推进。",
+      description: activeLead ? "已有沟通线索处于沟通中，建议及时查看消息和结果。" : "产生沟通后，这里会提醒你继续推进。",
       href: activeLead ? `/orders/${activeLead.id}` : "/buyer",
       done: !activeLead
     },

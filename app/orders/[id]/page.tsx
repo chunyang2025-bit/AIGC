@@ -124,7 +124,7 @@ export default function OrderPage({ params }: { params: { id: string } }) {
         <section className="card">
           <div className="panelTop">
             <div>
-              <h1 style={{ margin: 0, fontSize: 26 }}>{project?.title ?? "合作线索"}</h1>
+              <h1 style={{ margin: 0, fontSize: 26 }}>{project?.title ?? "沟通线索"}</h1>
               <div className="muted">意向创作者：{creator?.name ?? "创作者"} · 意向预算 {money(order.amount)}</div>
             </div>
             <span className="tag green">{orderStatusLabel(order.status)}</span>

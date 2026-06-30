@@ -180,7 +180,7 @@ export default function AccountPage() {
           { label: "主体资料", done: hasSubjectProfile },
           { label: "平台审核", done: subjectVerified },
           { label: "需求/主页", done: hasAnyDemand || hasAnyProviderPage },
-          { label: "首条线索", done: hasAnyLead }
+          { label: "首条沟通", done: hasAnyLead }
         ]}
       />
 

@@ -234,7 +234,7 @@ export function notificationsForUser(data: MarketplaceData, userId: string) {
   if (buyerLeads.length) {
     notifications.push({
       id: "buyer-leads",
-      title: `你有 ${buyerLeads.length} 条合作线索`,
+      title: `你有 ${buyerLeads.length} 条沟通线索`,
       body: "有接单方或已邀请对象进入沟通流程，请及时跟进。",
       href: "/buyer",
       level: "info"

@@ -193,7 +193,7 @@ export default function BuyerProjectDetailPage({ params }: { params: { id: strin
                 </div>
                 <div className="metric">
                   <strong>{leads.length}</strong>
-                  <span>合作线索</span>
+                  <span>沟通线索</span>
                 </div>
               </div>
               <div className="notice">
@@ -438,7 +438,7 @@ export default function BuyerProjectDetailPage({ params }: { params: { id: strin
 
         <aside className="card">
           <div className="cardBody stack">
-            <h2 style={{ margin: 0, fontSize: 22 }}>合作线索</h2>
+            <h2 style={{ margin: 0, fontSize: 22 }}>沟通线索</h2>
             {leads.length === 0 ? (
               <div className="notice">
                 {isTrainingProject ? "还没有培训方案线索。你可以先从讲师短名单或候选池索要课程大纲、报价和15分钟沟通时间。" : "还没有沟通线索。你可以先从推荐列表或候选池邀请创作者，接单者主动发送资料后也会出现在这里。"}

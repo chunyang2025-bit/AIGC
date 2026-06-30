@@ -147,7 +147,7 @@ export function targetTypeLabel(value?: string) {
     creator: "创作者",
     buyer_profile: "需求方主页",
     project: "需求",
-    order: "合作线索",
+    order: "沟通线索",
     message: "消息",
     user: "用户",
     report: "举报",

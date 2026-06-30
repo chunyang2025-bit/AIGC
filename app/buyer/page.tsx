@@ -46,7 +46,7 @@ export default function BuyerPortalPage() {
         : {
             title: "跟进沟通线索，确认是否适合继续合作",
             description: "把线索状态更新清楚，能帮助运营判断平台是否真的完成撮合。",
-            primaryLabel: "查看合作线索",
+            primaryLabel: "查看沟通线索",
             primaryHref: `/orders/${leads[0].id}`,
             secondaryLabel: "继续发布新需求",
             secondaryHref: "/post-project"
@@ -156,7 +156,7 @@ export default function BuyerPortalPage() {
           { label: "主体认证", done: verified },
           { label: "发布需求", done: Boolean(projects.length) },
           { label: "培训需求", done: hasTrainingDemand },
-          { label: "首条线索", done: Boolean(leads.length) }
+          { label: "首条沟通", done: Boolean(leads.length) }
         ]}
       />
 
@@ -248,7 +248,7 @@ export default function BuyerPortalPage() {
 
         <aside className="card">
           <div className="cardBody stack">
-            <h2 style={{ margin: 0, fontSize: 22 }}>合作线索</h2>
+            <h2 style={{ margin: 0, fontSize: 22 }}>沟通线索</h2>
             {leads.map((order) => {
               const project = data.projects.find((item) => item.id === order.projectId);
               const creator = data.creators.find((item) => item.id === order.creatorId);
@@ -266,7 +266,7 @@ export default function BuyerPortalPage() {
             })}
             {!leads.length ? (
               <div className="emptyState">
-                <strong>还没有合作线索</strong>
+                <strong>还没有沟通线索</strong>
                 <span>发布需求后，可以从匹配推荐或创作者大厅邀请接单方。</span>
                 <Link className="btn" href={projects.some((project) => ["pending_review", "open", "matching", "in_progress"].includes(project.status)) ? `/creators?project=${projects.find((project) => ["pending_review", "open", "matching", "in_progress"].includes(project.status))?.id}` : "/post-project"}>
                   <Search size={16} /> {projects.length ? "去邀请创作者" : "先发布需求"}

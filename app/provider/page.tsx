@@ -119,7 +119,7 @@ export default function ProviderPortalPage() {
           }
         : !leads.length
           ? {
-              title: "处理一个高匹配机会，产生第一条线索",
+              title: "处理一个高匹配机会，产生第一条沟通",
               description: topOpportunity ? `优先查看「${topOpportunity.title}」，它和你的能力标签匹配度较高。` : "公开需求会按你的能力和服务范围推荐，先浏览一轮可接机会。",
               primaryLabel: topOpportunity ? "查看推荐机会" : "浏览可接需求",
               primaryHref: topOpportunity ? `/projects/${topOpportunity.id}` : "/projects",
@@ -129,7 +129,7 @@ export default function ProviderPortalPage() {
           : {
               title: "跟进已有线索，推动一次有效沟通",
               description: "更新线索状态和沟通备注，能帮助你沉淀客户，也帮助平台判断匹配质量。",
-              primaryLabel: "跟进第一条线索",
+              primaryLabel: "跟进第一条沟通",
               primaryHref: `/orders/${leads[0].id}`,
               secondaryLabel: "继续找机会",
               secondaryHref: "/projects"
@@ -232,7 +232,7 @@ export default function ProviderPortalPage() {
           { label: "服务包报价", done: hasServicePackage },
           { label: "代表作", done: hasPortfolio },
           { label: "培训主页", done: hasTrainingProfile },
-          { label: "首条线索", done: Boolean(leads.length) }
+          { label: "首条沟通", done: Boolean(leads.length) }
         ]}
       />
 
@@ -262,7 +262,7 @@ export default function ProviderPortalPage() {
           </div>
           <div className="metric">
             <strong>{leads.length}</strong>
-            <span>合作线索</span>
+            <span>沟通线索</span>
           </div>
           <div className="metric">
             <strong>{money(intentBudget)}</strong>
