@@ -130,7 +130,7 @@ export function getLandingAction(input: {
 
   if (input.stage === "submitted") {
     return {
-      title: "资料已进入待审核，先继续试用业务流程",
+      title: "资料已进入审核中，先继续试用业务流程",
       primaryLabel: input.isBuyer ? "进入需求方后台" : "进入服务方后台",
       primaryHref: input.isBuyer ? "/buyer" : "/provider",
       secondaryLabel: "查看认证状态",
@@ -205,16 +205,16 @@ export function notificationsForUser(data: MarketplaceData, userId: string) {
       (creatorProfile && !creatorProfile.verified && creatorSubmitted);
     notifications.push({
       id: "review-pending",
-      title: reason ? (hasDraft ? "认证变更需补充资料" : "认证需补充资料") : pending ? (hasDraft ? "认证变更待审核" : "认证待运营审核") : hasDraft ? "认证变更已保存" : "主页资料已保存",
+      title: reason ? (hasDraft ? "认证变更需补充资料" : "认证需补充资料") : pending ? (hasDraft ? "认证变更审核中" : "认证审核中") : hasDraft ? "认证变更已保存" : "主页资料已保存",
       body:
         reason ||
         (pending
           ? hasDraft
             ? "新的认证变更资料已提交审核，旧的已认证主页会继续展示，审核通过后再替换。"
-            : "认证资料已提交，正在等待运营人工核验。试运营期间可以先继续使用发布、匹配和沟通功能。"
+            : "认证资料已提交，正在等待平台审核。试运营期间可以先继续使用发布、匹配和沟通功能。"
           : hasDraft
             ? "你保存了一版认证变更草稿。进入认证中心提交审核后，新的主体信息或资质才会替换当前已认证主页。"
-            : "主页资料已经保存，但还没有提交认证审核。进入认证中心点一下“提交认证审核”就会进入待审核队列。"),
+            : "主页资料已经保存，但还没有提交认证审核。进入认证中心点一下“提交认证审核”就会进入审核中。"),
       href: "/account/verification",
       level: reason ? "warning" : "info"
     });

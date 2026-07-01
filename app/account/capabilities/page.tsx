@@ -259,10 +259,10 @@ function AccountCapabilitiesContent() {
             <div className="notice stack">
               <span>
                 {subjectStage === "submitted"
-                  ? "主体资料已提交认证审核，正在等待运营人工核验。试运营期间你仍然可以继续使用发布、匹配和沟通功能。"
+                  ? "主体资料已提交认证审核，正在等待平台审核。试运营期间你仍然可以继续使用发布、匹配和沟通功能。"
                   : subjectStage === "rejected"
                     ? "当前资料需要补充后重新提交认证审核。认证中心会显示审核意见和缺项。"
-                    : "主体主页已经保存，但还没有提交认证审核。先去认证中心点一下“提交认证审核”，再进入待审核队列。"}
+                    : "主体主页已经保存，但还没有提交认证审核。先去认证中心点一下“提交认证审核”，再进入审核中。"}
               </span>
               <div className="toolbarGroup">
                 <Link className="btn" href={`/account/verification?intent=${intent}`}>查看认证中心</Link>

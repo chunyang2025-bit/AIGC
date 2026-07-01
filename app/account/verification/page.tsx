@@ -97,7 +97,7 @@ function getStage(input: {
 function stageLabel(stage: ReviewStage) {
   if (stage === "empty") return "未提交";
   if (stage === "saved") return "资料已保存";
-  if (stage === "submitted") return "待运营审核";
+  if (stage === "submitted") return "审核中";
   if (stage === "approved") return "已认证";
   return "需补充";
 }
@@ -112,7 +112,7 @@ function stageClass(stage: ReviewStage) {
 function stageDescription(stage: ReviewStage) {
   if (stage === "empty") return "请先保存主体主页或服务主页。";
   if (stage === "saved") return "主页资料已经保存完成，下一步只需要提交认证审核。";
-  if (stage === "submitted") return "认证资料已进入运营后台待审核队列，接下来等待人工核验。";
+  if (stage === "submitted") return "认证资料已提交成功，接下来等待平台审核。";
   if (stage === "approved") return "认证已通过，可继续使用全部业务路径。";
   return "请根据审核意见补充资料后重新提交。";
 }
@@ -172,14 +172,14 @@ function AccountVerificationContent() {
       return;
     }
 
-    setIsSubmitting(true);
+      setIsSubmitting(true);
     setSubmitStatus("");
 
     try {
       await submitReview(targetType, targetId);
       setSession(readAuthSession());
       setData(loadMarketplaceData());
-      setSubmitStatus("认证审核已提交，资料已进入后台待审核队列。");
+      setSubmitStatus("认证审核已提交，资料已进入审核中。");
       router.replace(`/account/verification?intent=${encodeURIComponent(intent)}&submitted=1`);
     } catch (error) {
       setSubmitStatus(error instanceof Error ? error.message : "提交认证审核失败，请稍后再试。");
@@ -249,7 +249,7 @@ function AccountVerificationContent() {
         </section>
       ) : null}
       {stage === "saved" ? (
-        <section className="notice">保存不等于送审。只有点击“提交认证审核”，资料才会进入后台待审核队列。</section>
+        <section className="notice">保存不等于送审。只有点击“提交认证审核”，资料才会进入审核中。</section>
       ) : null}
       {stage === "approved" ? (
         <section className="notice">
@@ -280,7 +280,7 @@ function AccountVerificationContent() {
               <span className={stageClass(stage)}>{stageLabel(stage)}</span>
               <h2 style={{ margin: "10px 0 0" }}>{stage === "submitted" ? "认证审核进度" : "保存后下一步"}</h2>
               <div className="muted" style={{ marginTop: 8 }}>
-                {stage === "submitted" ? "资料已送入审核队列，接下来等待运营核验。" : stage === "approved" ? "认证已经通过，后续可继续使用各条业务路径。" : "主页资料已经保存完成，接下来提交认证审核即可。"}
+                {stage === "submitted" ? "资料已提交成功，接下来等待平台审核。" : stage === "approved" ? "认证已经通过，后续可继续使用各条业务路径。" : "主页资料已经保存完成，接下来提交认证审核即可。"}
               </div>
             </div>
             <Clock size={20} />
@@ -292,11 +292,11 @@ function AccountVerificationContent() {
             </div>
             <div className="metric">
               <strong>2</strong>
-              <span>{stage === "submitted" ? "等待运营后台审核" : "提交认证审核"}</span>
+              <span>{stage === "submitted" ? "等待平台审核" : "提交认证审核"}</span>
             </div>
             <div className="metric">
               <strong>3</strong>
-              <span>{stage === "submitted" ? "通过后公开展示已认证标识" : "运营后台人工核验真实性"}</span>
+              <span>{stage === "submitted" ? "通过后公开展示已认证标识" : "平台核验主体真实性"}</span>
             </div>
             <div className="metric">
               <strong>4</strong>
@@ -309,7 +309,7 @@ function AccountVerificationContent() {
           {stage === "saved" || stage === "rejected" ? (
             <div className="toolbarGroup">
               <button className="btn primary" disabled={isSubmitting} onClick={handleSubmitReview} type="button">
-                <ShieldCheck size={16} /> {isSubmitting ? "正在提交审核..." : "正式提交认证审核"}
+                <ShieldCheck size={16} /> {isSubmitting ? "正在提交审核..." : "提交认证审核"}
               </button>
               <Link className="btn" href={continueHref(intent)}>继续当前业务</Link>
             </div>

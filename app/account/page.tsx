@@ -14,7 +14,7 @@ import { BuyerProfile, CreatorProfile, Order, Project } from "@/lib/types";
 
 function statusText(stage: ReviewStage) {
   if (stage === "approved") return "已认证";
-  if (stage === "submitted") return "待运营审核";
+  if (stage === "submitted") return "审核中";
   if (stage === "saved") return "资料已保存";
   if (stage === "rejected") return "需补充资料";
   return "未开通";
@@ -205,13 +205,13 @@ export default function AccountPage() {
           </div>
           {subjectStage === "submitted" ? (
             <section className="notice">
-              <Clock size={15} /> 认证资料已提交，正在等待运营人工核验。预计1-2个工作日内完成；认证标准、缺项和补充入口可在认证中心查看。
+              <Clock size={15} /> 认证资料已提交，正在等待平台审核。预计1-2个工作日内完成；认证标准、缺项和补充入口可在认证中心查看。
               <Link className="btn" href="/account/verification">查看认证中心</Link>
             </section>
           ) : null}
           {subjectStage === "saved" || subjectStage === "rejected" ? (
             <section className="notice">
-              <FileBadge2 size={15} /> 主页资料已经保存，但还没有进入审核队列。下一步请到认证中心点击“提交认证审核”。
+              <FileBadge2 size={15} /> 主页资料已经保存，但还没有进入审核中。下一步请到认证中心点击“提交认证审核”。
               <Link className="btn" href="/account/verification">进入认证中心</Link>
             </section>
           ) : null}
@@ -237,7 +237,7 @@ export default function AccountPage() {
           </Link>
           <Link className="miniLead" href="/account/verification">
             <span>认证教程：提交方式、审核入口和通过标准</span>
-            <em>保存主页后进入认证中心；点击提交认证审核后，资料才会进入运营后台待审核队列。</em>
+            <em>保存主页后进入认证中心；点击提交认证审核后，资料才会进入审核中。</em>
           </Link>
           {notifications.length ? notifications.map((item) => (
             <Link className="miniLead" href={item.href} key={item.id}>
