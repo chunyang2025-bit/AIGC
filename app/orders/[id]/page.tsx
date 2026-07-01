@@ -148,7 +148,7 @@ export default function OrderPage({ params }: { params: { id: string } }) {
             })}
             {messages.length === 0 ? (
               <div className="notice">
-                <MessageSquare size={15} /> 邀请沟通后的线索记录会显示在这里。
+                <MessageSquare size={15} /> 邀请沟通后的消息记录会显示在这里。
               </div>
             ) : null}
           </div>
@@ -190,7 +190,7 @@ export default function OrderPage({ params }: { params: { id: string } }) {
         <aside className="stack">
           <div className="card">
             <div className="cardBody stack">
-              <h2 style={{ margin: 0, fontSize: 22 }}>线索状态</h2>
+              <h2 style={{ margin: 0, fontSize: 22 }}>沟通状态</h2>
               <div className="notice">
                 平台只记录双方沟通意向，不处理收款、担保交易、成果交付或纠纷。
               </div>
@@ -254,7 +254,7 @@ export default function OrderPage({ params }: { params: { id: string } }) {
 
           <div className="card">
             <div className="cardBody stack">
-              <h2 style={{ margin: 0, fontSize: 22 }}>线索记录</h2>
+              <h2 style={{ margin: 0, fontSize: 22 }}>沟通记录</h2>
               <div className="row">
                 <CircleDotDashed size={16} />
                 <span>创建于 {compactDate(order.createdAt)}</span>

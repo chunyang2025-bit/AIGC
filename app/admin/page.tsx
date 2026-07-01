@@ -534,7 +534,7 @@ export default function AdminPage() {
       <div className="pageHeader">
         <div>
           <h1>运营后台</h1>
-          <p>查看用户审核、需求管理、合作线索、意向预算和月活数据。</p>
+          <p>查看用户审核、需求管理、沟通线索、意向预算和月活数据。</p>
         </div>
         <button
           className="btn"
@@ -1094,7 +1094,7 @@ export default function AdminPage() {
           </div>
           <div className="metric">
             <strong>{safeData.orders.length}</strong>
-            <span>合作线索</span>
+            <span>沟通线索</span>
           </div>
         </div>
       </section>
@@ -1656,8 +1656,8 @@ export default function AdminPage() {
         <section className="card">
           <div className="panelTop">
             <div>
-              <strong>合作线索管理</strong>
-              <div className="muted">展示最近20条合作线索，完整数据可导出运营报表。</div>
+              <strong>沟通线索管理</strong>
+              <div className="muted">展示最近20条沟通线索，完整数据可导出运营报表。</div>
             </div>
             <ShieldCheck size={18} />
           </div>
@@ -1689,7 +1689,7 @@ export default function AdminPage() {
               {!recentOrders.length ? (
                 <tr>
                   <td colSpan={5}>
-                    <div className="muted">暂无合作线索。</div>
+                    <div className="muted">暂无沟通线索。</div>
                   </td>
                 </tr>
               ) : null}

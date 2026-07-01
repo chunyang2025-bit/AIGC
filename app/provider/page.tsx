@@ -128,7 +128,7 @@ export default function ProviderPortalPage() {
             }
           : {
               title: "跟进已有线索，推动一次有效沟通",
-              description: "更新线索状态和沟通备注，能帮助你沉淀客户，也帮助平台判断匹配质量。",
+              description: "更新沟通状态和沟通备注，能帮助你沉淀客户，也帮助平台判断匹配质量。",
               primaryLabel: "跟进第一条沟通",
               primaryHref: `/orders/${leads[0].id}`,
               secondaryLabel: "继续找机会",
@@ -262,7 +262,7 @@ export default function ProviderPortalPage() {
           </div>
           <div className="metric">
             <strong>{leads.length}</strong>
-            <span>沟通线索</span>
+            <span>沟通中</span>
           </div>
           <div className="metric">
             <strong>{money(intentBudget)}</strong>

@@ -160,7 +160,7 @@ export function getLandingAction(input: {
 
   if (!input.hasAnyLead) {
     return {
-      title: "推进第一条沟通线索",
+      title: "推进第一条沟通",
       primaryLabel: input.isBuyer ? "进入需求方后台" : "进入服务方后台",
       primaryHref: input.isBuyer ? "/buyer" : "/provider",
       secondaryLabel: input.isBuyer ? "查看服务方大厅" : "查看公开需求",
@@ -234,7 +234,7 @@ export function notificationsForUser(data: MarketplaceData, userId: string) {
   if (buyerLeads.length) {
     notifications.push({
       id: "buyer-leads",
-      title: `你有 ${buyerLeads.length} 条沟通线索`,
+      title: `你有 ${buyerLeads.length} 条沟通记录`,
       body: "有接单方或已邀请对象进入沟通流程，请及时跟进。",
       href: "/buyer",
       level: "info"
@@ -248,7 +248,7 @@ export function notificationsForUser(data: MarketplaceData, userId: string) {
       notifications.push({
         id: "creator-leads",
         title: `你有 ${creatorLeads.length} 条接单沟通`,
-        body: "派单方已与你建立沟通线索，请及时查看。",
+        body: "派单方已向你发出沟通邀请，请及时查看。",
         href: "/provider",
         level: "info"
       });

@@ -36,7 +36,7 @@ export default function BuyerPortalPage() {
         }
       : !leads.length
         ? {
-            title: "邀请 2-3 位候选服务方，产生第一条沟通线索",
+            title: "邀请 2-3 位候选服务方，产生第一条沟通",
             description: openProject ? `优先处理「${openProject.title}」，从匹配推荐或服务方大厅发起邀请。` : "先从已发布需求进入匹配推荐，邀请候选服务方沟通。",
             primaryLabel: openProject ? "查看匹配推荐" : "查看我的需求",
             primaryHref: openProject ? `/buyer/projects/${openProject.id}` : "/buyer",
@@ -44,9 +44,9 @@ export default function BuyerPortalPage() {
             secondaryHref: "/creators"
           }
         : {
-            title: "跟进沟通线索，确认是否适合继续合作",
-            description: "把线索状态更新清楚，能帮助运营判断平台是否真的完成撮合。",
-            primaryLabel: "查看沟通线索",
+            title: "跟进沟通，确认是否适合继续合作",
+            description: "把沟通状态更新清楚，能帮助运营判断平台是否真的完成撮合。",
+            primaryLabel: "查看沟通记录",
             primaryHref: `/orders/${leads[0].id}`,
             secondaryLabel: "继续发布新需求",
             secondaryHref: "/post-project"
@@ -108,7 +108,7 @@ export default function BuyerPortalPage() {
           </span>
           <div>
             <h1>我的派单后台</h1>
-            <p>免费发布内容需求，启动 Brief Agent，试运营期间可先查看匹配结果并邀请创作者建立沟通线索。</p>
+            <p>免费发布内容需求，启动 Brief Agent，试运营期间可先查看匹配结果并邀请创作者建立沟通。</p>
           </div>
           <div className="toolbarGroup">
             <Link className="btn primary" href="/post-project">
@@ -129,7 +129,7 @@ export default function BuyerPortalPage() {
           </div>
           <div className="metric">
             <strong>{activeLeads.length}</strong>
-            <span>沟通中线索</span>
+            <span>沟通中</span>
           </div>
           <div className="metric">
             <strong>{agentProjects.length}</strong>
@@ -305,7 +305,7 @@ export default function BuyerPortalPage() {
           <div className="card">
             <div className="cardBody stack">
               <CheckCircle2 size={20} />
-              <strong>沉淀沟通线索</strong>
+              <strong>沉淀沟通记录</strong>
               <p className="muted" style={{ margin: 0 }}>平台记录邀请和沟通状态，具体合作由双方自行推进。</p>
             </div>
           </div>

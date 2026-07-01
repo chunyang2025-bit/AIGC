@@ -195,7 +195,7 @@ export function ClientHome() {
 
   const loggedInQuickLinks = currentBuyerProfile
     ? [
-        { title: "我的派单", href: "/buyer", text: "查看需求、匹配和沟通线索。", icon: BriefcaseBusiness },
+        { title: "我的派单", href: "/buyer", text: "查看需求、匹配和沟通记录。", icon: BriefcaseBusiness },
         { title: "发布新需求", href: "/post-project", text: "继续补充新的项目或培训需求。", icon: Plus },
         { title: "需求方后台", href: "/buyer", text: "处理待办、候选和反馈。", icon: UsersRound },
         { title: "查看公开市场", href: "/projects", text: "先看当前有哪些需求和服务方。", icon: Search }
